@@ -80,6 +80,8 @@ test('cada operación básica tiene una inversa exacta', () => {
     { op: 'tipo.color', args: { nombre: 'personal', color: '#2D7A80' } },
   ];
   for (const op of ops) idaYVuelta(mu, op);
+  // cambiar la plantilla no toca ninguna semana existente
+  assert.deepEqual(aplicar(mu, ops.find((o) => o.op === 'plantilla.crear'), CTX).tocados, ['plantilla.md']);
 });
 
 test('editar una línea conserva el resto del fichero tal cual', () => {
@@ -175,4 +177,16 @@ test('A medias: guarda «dejado» en estudio.md o proyectos.md; si el tema no ex
   assert.equal(m.temasEstudio(r.mundo.ficheros['estudio.md'])[0].dejado, 'pregunta 12 / tema 3');
   const deploy = bloque(mu, 'Deploy del pipeline');
   assert.throws(() => aplicar(mu, { op: 'bloque.aMedias', args: { semana: S, id: deploy.id, dejado: 'x' } }, CTX), /no es un tema de estudio ni un proyecto/);
+});
+
+test('datos.inicializar: ajustes, tipos y plantilla por defecto sin pisar lo que exista', () => {
+  const vacio = { ficheros: { 'ajustes.md': null, 'tipos.md': null, 'plantilla.md': null, 'tareas.md': null } };
+  const r = aplicar(vacio, { op: 'datos.inicializar', args: { plantillas: ['trabajo', 'gimnasio'] } }, CTX);
+  assert.deepEqual(r.tocados.sort(), ['ajustes.md', 'plantilla.md', 'tipos.md']);
+  assert.match(serializar(r.mundo.ficheros['ajustes.md']), /^# Ajustes\n- capacidad: 70\n[\s\S]*- tema: nordico-claro\n- tema_temporada: no\n- decoracion: sí\n$/);
+  assert.equal(m.tiposDe(r.mundo.ficheros['tipos.md']).length, 5);
+  assert.equal(serializar(r.mundo.ficheros['plantilla.md']), '# Plantilla de semana\n- L,M,X,J,V 09:00-17:30 | trabajo | Trabajo\n- L,X,V 18:00-19:30 | entreno | Gimnasio\n');
+  // repetirlo no duplica ni toca nada
+  const otra = aplicar(r.mundo, { op: 'datos.inicializar', args: { plantillas: ['trabajo'] } }, CTX);
+  assert.deepEqual(otra.tocados, []);
 });

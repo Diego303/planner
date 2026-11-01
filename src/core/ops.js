@@ -9,7 +9,7 @@ import { normalizar, limpiarTexto } from './formato/comun.js';
 import * as fsem from './formato/semana.js';
 import * as ftar from './formato/tareas.js';
 import { entradaPlantilla, tipo as nuevoTipo, tiposVacio, plantillaVacia } from './formato/tipos.js';
-import { ajustes as fajustes, estudio as festudio, proyectos as fproyectos, diario as fdiario, vacio as listaVacia } from './formato/listas.js';
+import { ajustes as fajustes, estudio as festudio, proyectos as fproyectos, diario as fdiario, vacio as listaVacia, AJUSTES_DEFECTO as AJUSTES_DEFECTO_OPS } from './formato/listas.js';
 import {
   indiceSeccion, finContenido, finSeccion, entidades, bloquesDe, tareasDe, valoresAjustes, tiposDe, TIPOS_DEFECTO,
   seccionesDe, temaDe, mismoTema, temasEstudio, proyectosDe, buscarTema, tipoPorNombre, las3De, huellaDe,
@@ -809,6 +809,33 @@ registrar('proyecto.cambiar', (tx, a) => {
   if (a.clave === 'siguiente' || a.clave === 'dejado') fijarClave(tx, 'proyecto', a.id, 'actualizado', exigirHoy(tx));
 });
 registrar('proyecto.eliminar', (tx, a) => eliminarSeccionLista(tx, 'proyecto', a.id));
+
+// ---------- Onboarding ----------
+
+/** Plantillas rápidas del primer paso del onboarding. */
+export const PLANTILLAS_RAPIDAS = {
+  trabajo: { titulo: 'trabajo L–V 9–17:30', entradas: [{ dias: [0, 1, 2, 3, 4], inicio: 540, fin: 1050, tipo: 'trabajo', titulo: 'Trabajo' }] },
+  gimnasio: { titulo: 'gimnasio L/X/V', entradas: [{ dias: [0, 2, 4], inicio: 1080, fin: 1170, tipo: 'entreno', titulo: 'Gimnasio' }] },
+};
+
+/** Crea lo mínimo para empezar (ajustes.md, tipos.md y plantilla.md) sin pisar nada que ya exista. */
+registrar('datos.inicializar', (tx, a) => {
+  if (!tx.doc('ajustes.md')) {
+    const doc = listaVacia('ajustes', 'Ajustes');
+    for (const [clave, valor] of Object.entries(fajustes.claves).map(([k]) => [k, AJUSTES_DEFECTO_OPS[k]])) doc.lineas.push(fajustes.kv(clave, valor));
+    tx.crear('ajustes.md', doc);
+  }
+  asegurarTipos(tx);
+  tx.asegurar('plantilla.md', plantillaVacia);
+  for (const nombre of a.plantillas ?? []) {
+    const def = PLANTILLAS_RAPIDAS[nombre];
+    exigir(def, 'Plantilla rápida desconocida');
+    for (const e of def.entradas) {
+      const ya = entidades(tx.doc('plantilla.md'), 'plantilla').some((x) => normalizar(x.titulo) === normalizar(e.titulo));
+      if (!ya) tx.aplicar('plantilla.crear', e);
+    }
+  }
+});
 
 // ---------- Utilidades para otras operaciones ----------
 

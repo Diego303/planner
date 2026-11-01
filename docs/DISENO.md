@@ -282,3 +282,27 @@ El usuario pidió avanzar sin paradas; estas son las preguntas que habría hecho
 - Tokens añadidos a los del plan, necesarios para no tener colores fijos en los componentes: `--modo` (claro | oscuro | contraste, lo usa `core/color.js`), `--velo` (fondo de los modales), `--sombra-alta` (popovers y modales), `--enlace` («+ añadir») y `--borde-ancho` (1,5 px en alto contraste). Los demás matices (`--mut`, `--linea`…) se derivan con `color-mix()` en `styles.css`.
 - Las miniaturas usan `data-tema-muestra="…"` (los selectores de cada tema también lo aceptan) y colorean sus bloques con `core/color.js`.
 - `test/temas.test.js` lee los CSS y comprueba AA (≥ 4,5:1) del texto de bloque en todos los temas × la paleta, además de texto/fondo y acento.
+
+## 8. Casos límite (§7 del plan) y cómo se cubren
+
+| # | Caso | Cobertura |
+|---|---|---|
+| 1 | Bloques solapados: carriles + ⚠; Proponer nunca solapa | `semana-core.test.js` (carriles), `proponer.test.js` (invariantes de cada escenario) |
+| 2 | Más de `tareas_hoy`: lo nuevo a Más adelante con aviso; «↑ hoy» deshabilitado | `ops.test.js` (Hoy lleno), `captura.test.js` (destino); UI: aviso y botón deshabilitado |
+| 3 | Tareas vencidas arriba en rojo | Vista Hoy (grupo «Vencidas» primero), revisado en captura de pantalla |
+| 4 | Edición a mano con la web abierta; op en vuelo → 409 | `server.test.js` (409); sondeo cada 2 s por mtime/tamaño |
+| 5 | Líneas mal escritas se conservan y se marcan | `formato.test.js` (todos los formatos); UI «⚠ línea no reconocida» |
+| 6 | Semana cerrada por error: reabrir no cambia la siguiente | `cierre.test.js` |
+| 7 | Semanas futuras se crean desde plantilla al abrirlas | `ops.test.js`; UI Gestión → Semanas → planificar |
+| 8 | Semanas pasadas sin fichero: vacías y solo lectura | `semana-core.test.js` (estado «sin datos»), `ops.test.js` (rechazo) |
+| 9 | Cambiar la plantilla no toca semanas existentes | `ops.test.js` (solo toca plantilla.md) |
+| 10 | Borrar un tipo en uso: bloqueado con explicación | `ops.test.js`, `server.test.js` (422 «en uso») |
+| 11 | Bloque que cruza la hora visible máxima: se recorta al pintar | `capacidad.js` (`minutosVisibles`), `semana.js` (recorte al pintar, el fichero no cambia) |
+| 12 | Semana ISO 53 y cambio de año | `fechas.test.js`, `proponer.test.js` (escenario 12), `semana-core.test.js` |
+| 13 | Puerto ocupado → siguiente libre; segunda instancia → abre la primera | `cli.test.js` |
+| 14 | Carpeta inexistente o vacía → onboarding | `cli.test.js` (`datos.vacia`), `ops.test.js` (`datos.inicializar`); probado en navegador |
+| 15 | Fichero enorme o binario → ignorado con aviso | `server.test.js` |
+| 16 | Sin muestras de factor → ×1,0 y «aún no hay datos» | `proponer.test.js` (factor), UI de Ajustes, Progreso y toast de «Hecho» |
+| 17 | Estudio sin examen o sin total → solo horas semanales | `progreso.test.js` (`soloSemanal`) |
+| 18 | Cambio de tema con popovers/modales abiertos; tema desconocido → nórdico claro + aviso | Tokens CSS (repintado sin cerrar), `temas.test.js` (aviso) |
+| 19 | Tema personalizado con poco contraste: se aplica con aviso | Ajustes/Tema calculan el contraste del tema aplicado; `server.test.js` (inyección) |

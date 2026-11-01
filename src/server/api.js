@@ -60,6 +60,8 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
     });
     const versiones = {};
     if (cambiados.length) {
+      // La carpeta solo se crea cuando el usuario lo pide en el onboarding.
+      if (!store.existe() && peticion.op === 'datos.inicializar') store.crearCarpeta();
       if (!store.existe()) throw new ErrorHttp(422, 'La carpeta de datos no existe');
       const modo = await modoCopias();
       try { copias.antesDeEscribir(modo, peticion.op); } catch (e) { console.error('copia:', e.message); }

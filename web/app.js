@@ -42,6 +42,9 @@ function aplicarTema() {
     document.head.appendChild(estilo);
   }
   if (estilo) estilo.textContent = a.personalizado ? `:root[data-personalizado][data-tema]{${a.css}}` : '';
+  // la barra de la app instalada toma el fondo del tema
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = getComputedStyle(raiz).getPropertyValue('--fondo').trim();
 }
 
 function pintarBanda() {

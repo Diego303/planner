@@ -11,3 +11,4 @@ import './gestion/ajustes.js';
 import './vistas/hecho.js';
 import './gestion/cerrar-semana.js';
 import './gestion/tema.js';
+import './gestion/onboarding.js';

@@ -1,6 +1,6 @@
 // Acceso a la carpeta de datos: lectura con caché por mtime+tamaño, escritura atómica y versiones.
 import { open, readFile, rename, unlink, stat, mkdir, readdir } from 'node:fs/promises';
-import { existsSync, readdirSync, unlinkSync } from 'node:fs';
+import { existsSync, readdirSync, unlinkSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, resolve, dirname, basename, sep } from 'node:path';
 import { parsear, serializar, tipoDeRuta } from '../core/formato/index.js';
@@ -33,6 +33,7 @@ export function crearStore(carpeta) {
   }
 
   const existe = () => existsSync(raiz);
+  const crearCarpeta = () => mkdirSync(raiz, { recursive: true });
 
   /** Lee y parsea un fichero: { doc, version } (doc null si no existe). Lanza FicheroIgnorado si es enorme o binario. */
   async function leer(ruta) {
@@ -147,5 +148,5 @@ export function crearStore(carpeta) {
     }
   }
 
-  return { raiz, existe, leer, leerSeguro, escribir, escribirTexto, borrar, listar, versionGlobal, limpiarTemporales, avisos, absoluta };
+  return { raiz, existe, crearCarpeta, leer, leerSeguro, escribir, escribirTexto, borrar, listar, versionGlobal, limpiarTemporales, avisos, absoluta };
 }

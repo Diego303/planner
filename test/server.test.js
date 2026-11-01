@@ -141,3 +141,23 @@ test('GET /api/semanas lista con estados', async () => {
   assert.deepEqual(json.semanas.map((s) => `${s.id}:${s.estado}`),
     ['2026-W42:cerrada', '2026-W43:cerrada', '2026-W44:sin cerrar', '2026-W45:en curso', '2026-W46:sin planificar']);
 });
+
+test('ficheros enormes o binarios se ignoran con aviso (y no se pisan)', async () => {
+  writeFileSync(join(dir, 'semanas', '2026-W30.md'), Buffer.from([0x23, 0x00, 0x01, 0x02]));
+  const { json } = await get(`/api/estado?hoy=${HOY}`);
+  assert.ok(json.meta.avisos.some((a) => /2026-W30\.md ignorado: parece binario/.test(a)), json.meta.avisos.join());
+  const r = await post('/api/op', { op: 'bloque.crear', hoy: HOY, args: { semana: '2026-W30', bloque: { dia: 0, inicio: 600, fin: 660, tipo: 'x', titulo: 'y' } } });
+  assert.equal(r.estado, 422);
+  assert.match(r.json.error, /ignorado/);
+  rmSync(join(dir, 'semanas', '2026-W30.md'));
+});
+
+test('tema personalizado: el servidor lo inyecta para la primera pintura', async () => {
+  writeFileSync(join(dir, 'tema.md'), '- base: nordico-oscuro\n- acento: #E0A25A\n');
+  const antes = readFileSync(join(dir, 'ajustes.md'), 'utf8');
+  await post('/api/op', { op: 'ajustes.cambiar', hoy: HOY, args: { clave: 'tema', valor: 'personalizado' } });
+  const r = await cruda({ path: '/', headers: { host: `localhost:${app.puerto}` } });
+  assert.match(r.datos, /<html lang="es" data-tema="nordico-oscuro" data-deco="sí" data-personalizado/);
+  assert.match(r.datos, /<style id="tema-personalizado">:root\[data-personalizado\]\[data-tema\]\{--acento: #E0A25A;\}<\/style>/);
+  writeFileSync(join(dir, 'ajustes.md'), antes);
+});
