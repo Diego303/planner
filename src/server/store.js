@@ -7,6 +7,11 @@ import { parsear, serializar, tipoDeRuta } from '../core/formato/index.js';
 import { semanaDe, sumarDias } from '../core/fechas.js';
 
 export const TAMANO_MAXIMO = 1024 * 1024;
+/** Lo que vigila el sondeo (y se lee siempre del disco): semanas a ±10 de hoy y el diario de los últimos 14 días. */
+export const SEMANAS_VIGILADAS = 10;
+export const DIAS_VIGILADOS = 14;
+/** Lo demás se da por bueno durante este tiempo sin volver a mirar el disco. */
+export const FRESCO_LEJANO = 60_000;
 const RAIZ_FIJOS = ['ajustes.md', 'tipos.md', 'plantilla.md', 'tareas.md', 'estudio.md', 'proyectos.md', 'inbox.md', 'tema.md'];
 const DIRECTORIOS = ['semanas', 'diario', 'archivo'];
 
@@ -55,8 +60,16 @@ export function crearStore(carpeta) {
   const existe = () => existsSync(raiz);
   const crearCarpeta = () => mkdirSync(raiz, { recursive: true });
 
-  /** Lee y parsea un fichero: { doc, version } (doc null si no existe). Lanza FicheroIgnorado si es enorme o binario. */
-  async function leer(ruta) {
+  /**
+   * Lee y parsea un fichero: { doc, version } (doc null si no existe). Lanza FicheroIgnorado si es enorme o binario.
+   * `fresco` (ms): si se comprobó contra el disco hace menos, se usa la caché sin volver a hacer stat (para lo
+   * lejano: semanas y diario viejos, que el sondeo tampoco vigila). Escribir siempre comprueba el disco.
+   */
+  async function leer(ruta, { fresco = 0 } = {}) {
+    if (fresco) {
+      const e = cache.get(ruta);
+      if (e && Date.now() - e.comprobado < fresco) return e;
+    }
     const abs = absoluta(ruta);
     const ignorar = (motivo) => { cache.delete(ruta); avisos.set(ruta, motivo); return new FicheroIgnorado(ruta, motivo); };
     let st, buf;
@@ -64,7 +77,7 @@ export function crearStore(carpeta) {
       st = await stat(abs);
       if (st.isDirectory()) throw ignorar('es una carpeta, no un fichero');
       const enCache = cache.get(ruta);
-      if (enCache && enCache.firma === firma(st)) return enCache;
+      if (enCache && enCache.firma === firma(st)) { enCache.comprobado = Date.now(); return enCache; }
       if (st.size > TAMANO_MAXIMO) throw ignorar('muy grande (más de 1 MB)');
       buf = await readFile(abs);
     } catch (e) {
@@ -76,14 +89,14 @@ export function crearStore(carpeta) {
     if (buf.includes(0)) throw ignorar('parece binario');
     avisos.delete(ruta);
     const texto = buf.toString('utf8');
-    const entrada = { firma: firma(st), version: versionDe(texto), doc: parsear(ruta, texto) };
+    const entrada = { firma: firma(st), version: versionDe(texto), doc: parsear(ruta, texto), comprobado: Date.now() };
     cache.set(ruta, entrada);
     return entrada;
   }
 
   /** Como `leer`, pero un fichero ignorado cuenta como inexistente (para pintar). */
-  async function leerSeguro(ruta) {
-    try { return await leer(ruta); } catch (e) {
+  async function leerSeguro(ruta, opciones) {
+    try { return await leer(ruta, opciones); } catch (e) {
       if (e instanceof FicheroIgnorado) return { doc: null, version: null, ignorado: e.motivo };
       throw e;
     }
@@ -281,8 +294,8 @@ export function crearStore(carpeta) {
   async function versionGlobal(hoy = null) {
     const h = createHash('sha1');
     const rutas = [...RAIZ_FIJOS];
-    const cercanas = hoy ? new Set(Array.from({ length: 21 }, (_, i) => semanaDe(sumarDias(hoy, (i - 10) * 7)))) : null;
-    const desde = hoy ? sumarDias(hoy, -60) : null;
+    const cercanas = hoy ? new Set(Array.from({ length: 2 * SEMANAS_VIGILADAS + 1 }, (_, i) => semanaDe(sumarDias(hoy, (i - SEMANAS_VIGILADAS) * 7)))) : null;
+    const desde = hoy ? sumarDias(hoy, -DIAS_VIGILADOS) : null;
     for (const d of DIRECTORIOS) {
       for (const n of await listar(d)) {
         const ruta = `${d}/${n}`, base = n.slice(0, -3);
@@ -290,8 +303,14 @@ export function crearStore(carpeta) {
         if (relevante) rutas.push(ruta); else h.update(`${ruta};`);
       }
     }
-    const stats = await Promise.all(rutas.map((r) => stat(join(raiz, r)).catch(() => null)));
-    rutas.forEach((r, i) => { if (stats[i]) h.update(`${r}:${firma(stats[i])};`); });
+    // lo que se acaba de comprobar (el estado que se está construyendo) no se vuelve a mirar
+    const ahora = Date.now();
+    const firmas = await Promise.all(rutas.map((r) => {
+      const e = cache.get(r);
+      if (e && ahora - e.comprobado < 250) return e.firma;
+      return stat(join(raiz, r)).then(firma, () => null);
+    }));
+    rutas.forEach((r, i) => { if (firmas[i]) h.update(`${r}:${firmas[i]};`); });
     return h.digest('hex').slice(0, 12);
   }
 

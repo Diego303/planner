@@ -130,13 +130,13 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
       const desde = esSemana(q.get('desde')) ? q.get('desde') : sumarSemanas(actual, -4);
       const hasta = esSemana(q.get('hasta')) ? q.get('hasta') : sumarSemanas(actual, 5);
       if (desde > hasta) throw new ErrorHttp(400, 'Rango de semanas no válido');
-      return { semanas: listaSemanas(desde, hasta, await todasLasSemanas(store), actual) };
+      return { semanas: listaSemanas(desde, hasta, await todasLasSemanas(store, hoy), actual) };
     },
     'GET /api/cierre': async (q) => {
       const hoy = leerHoy(q.get('hoy'));
       const id = q.get('semana');
       if (!esSemana(id)) throw new ErrorHttp(400, 'Semana no válida');
-      const docsSemanas = await todasLasSemanas(store);
+      const docsSemanas = await todasLasSemanas(store, hoy);
       const leer = async (r) => (await store.leerSeguro(r)).doc;
       const dias = diasDeSemana(id);
       const meses = [...new Set([dias[0].slice(0, 7), dias[6].slice(0, 7)])];
@@ -174,6 +174,8 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
   async function alArrancar() {
     if (!store.existe()) return;
     try { if ((await modoCopias()) === 'diaria') copias.empezar?.(); } catch { /* sin ajustes legibles: ya se copiará al escribir */ }
+    // y la caché se llena ya: la primera página que abra el navegador no espera a leer años de semanas
+    try { await rutas['GET /api/estado'](new URLSearchParams()); } catch { /* lo dirá la primera petición de verdad */ }
   }
 
   return { rutas, ejecutar, hoyServidor, alArrancar };

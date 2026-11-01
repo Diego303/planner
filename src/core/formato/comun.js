@@ -108,8 +108,17 @@ export function clasificar(textos, { seccionDe, enCabecera = () => null, enSecci
 
 /** minúsculas, sin tildes y con espacios simples: para comparar nombres */
 export function normalizar(s) {
-  return String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const t = String(s ?? '');
+  let r = normalizados.get(t);
+  if (r === undefined) {
+    // las métricas comparan los mismos nombres miles de veces: se recuerdan (memoria acotada)
+    if (normalizados.size > 20000) normalizados.clear();
+    r = t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+    normalizados.set(t, r);
+  }
+  return r;
 }
+const normalizados = new Map();
 
 /** Limpia texto que viene de la UI para que nunca cree campos, comentarios ni líneas nuevas. */
 export function limpiarTexto(s) {
