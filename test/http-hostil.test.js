@@ -78,3 +78,13 @@ test('un error inesperado da 500 sin el mensaje interno', async (t) => {
     assert.match(JSON.parse(r.datos).error, /Error interno/);
   } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
 });
+
+test('método que no toca: 405 con Allow; ruta de la API desconocida: 404', async () => {
+  for (const [method, path, allow] of [['GET', '/api/op', 'POST'], ['DELETE', '/api/op', 'POST'], ['POST', '/api/estado', 'GET'], ['PUT', '/api/deshacer', 'POST']]) {
+    const r = await cruda({ method, path, headers: JSON_(), body: method === 'GET' ? null : '{}' });
+    assert.equal(r.estado, 405, `${method} ${path}`);
+    assert.equal(r.cabeceras.allow, allow);
+  }
+  assert.equal((await cruda({ path: '/api/nada' })).estado, 404);
+  assert.equal((await cruda({ method: 'PUT', path: '/index.html', body: 'x' })).estado, 405);
+});

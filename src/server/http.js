@@ -90,7 +90,11 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
     if (url.pathname.startsWith('/api/')) {
       const clave = `${req.method} ${url.pathname}`;
       const ruta = api.rutas[clave];
-      if (!ruta) return json(res, 404, { error: 'Ruta desconocida' });
+      if (!ruta) {
+        const metodos = Object.keys(api.rutas).filter((k) => k.endsWith(` ${url.pathname}`)).map((k) => k.split(' ')[0]);
+        if (metodos.length) return responder(res, 405, JSON.stringify({ error: 'Método no permitido' }), { Allow: metodos.join(', '), 'Content-Type': 'application/json; charset=utf-8' });
+        return json(res, 404, { error: 'Ruta desconocida' });
+      }
       try {
         let cuerpo = {};
         if (req.method === 'POST') {
@@ -106,7 +110,7 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
       }
     }
 
-    if (req.method !== 'GET' && req.method !== 'HEAD') return responder(res, 405, 'Método no permitido');
+    if (req.method !== 'GET' && req.method !== 'HEAD') return responder(res, 405, 'Método no permitido', { Allow: 'GET, HEAD', 'Content-Type': 'text/plain; charset=utf-8' });
     const [raiz, rel] = url.pathname.startsWith('/core/')
       ? [RAIZ_CORE, url.pathname.slice('/core/'.length)]
       : [RAIZ_WEB, url.pathname === '/' ? 'index.html' : url.pathname.slice(1)];
