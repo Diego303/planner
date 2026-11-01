@@ -57,3 +57,16 @@ for (const ancho of ANCHOS) {
     });
   }
 }
+
+test('Plan frente a real: el nombre del tipo no se parte en dos líneas, ni en temas con letra ancha', async ({ page, app }) => {
+  app.escribir('tipos.md', `${app.leer('tipos.md')}- familia y amigos | #6B5B95\n`);
+  for (const tema of ['papel', 'nordico-claro']) {
+    app.escribir('ajustes.md', app.leer('ajustes.md').replace(/- tema: \S+/, `- tema: ${tema}`));
+    await abrir(page, app);
+    await page.locator('#seg').getByRole('button', { name: 'Progreso' }).click();
+    const alturas = await page.locator('#v-progreso .card', { hasText: 'Plan frente a real' }).evaluate((card) => [...card.querySelectorAll('[data-plan-tipo]')].map((e) => [e.textContent.trim(), e.getBoundingClientRect().height]));
+    expect(alturas.length, tema).toBeGreaterThanOrEqual(4);
+    const una = Math.min(...alturas.map(([, h]) => h));
+    for (const [tipo, h] of alturas) expect(h, `${tema}: «${tipo}» ocupa más de una línea`).toBeLessThan(una * 1.5);
+  }
+});
