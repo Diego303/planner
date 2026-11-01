@@ -1,5 +1,5 @@
 // Copias de seguridad: diaria (antes de la primera escritura del día), al cerrar semana, o git local.
-import { cpSync, existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, readdirSync, rmSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { fechaDe } from '../core/fechas.js';
@@ -16,13 +16,23 @@ export function crearCopias(raiz, { hoy = () => fechaDe(new Date()), avisar = ()
     if (ultimaCopia === fecha) return false;
     const destino = join(raiz, '.copias', fecha);
     if (!existsSync(destino) && existsSync(raiz)) {
-      // Entrada a entrada: cpSync no deja copiar una carpeta dentro de sí misma aunque se filtre.
-      for (const nombre of readdirSync(raiz)) {
-        if (EXCLUIDOS.has(nombre) || /\.tmp-\d+-\d+$/.test(nombre)) continue;
-        cpSync(join(raiz, nombre), join(destino, nombre), {
-          recursive: true,
-          filter: (origen) => !/\.tmp-\d+-\d+$/.test(origen),
-        });
+      // Se copia a una carpeta temporal y se renombra al final: una copia a medias (disco lleno) nunca
+      // queda con nombre de copia buena, y el siguiente cambio la vuelve a intentar.
+      const temporal = join(raiz, '.copias', `.${fecha}.tmp-${process.pid}-${Date.now()}`);
+      try {
+        mkdirSync(temporal, { recursive: true });
+        // Entrada a entrada: cpSync no deja copiar una carpeta dentro de sí misma aunque se filtre.
+        for (const nombre of readdirSync(raiz)) {
+          if (EXCLUIDOS.has(nombre) || /\.tmp-\d+-\d+$/.test(nombre)) continue;
+          cpSync(join(raiz, nombre), join(temporal, nombre), {
+            recursive: true,
+            filter: (origen) => !/\.tmp-\d+-\d+$/.test(origen),
+          });
+        }
+        renameSync(temporal, destino);
+      } catch (e) {
+        rmSync(temporal, { recursive: true, force: true });
+        throw e;
       }
       rotar();
     }
@@ -35,6 +45,8 @@ export function crearCopias(raiz, { hoy = () => fechaDe(new Date()), avisar = ()
     const dir = join(raiz, '.copias');
     let nombres = [];
     try { nombres = readdirSync(dir); } catch { return; }
+    // restos de copias interrumpidas (el proceso murió a mitad)
+    for (const n of nombres.filter((x) => /^\.\d{4}-\d{2}-\d{2}\.tmp-/.test(x))) rmSync(join(dir, n), { recursive: true, force: true });
     const copias = nombres.filter((n) => /^\d{4}-\d{2}-\d{2}$/.test(n)).sort().reverse();
     for (const viejo of copias.slice(MAXIMO_COPIAS)) rmSync(join(dir, viejo), { recursive: true, force: true });
   }

@@ -72,3 +72,27 @@ test('si la copia de seguridad falla, se guarda igual pero el usuario recibe el 
     assert.ok(!r2.estado.meta.avisos.some((a) => /copia de seguridad/.test(a)));
   } finally { c.borrar(); }
 });
+
+test('una copia que falla a medias no se da por buena: se reintenta y queda completa', async (t) => {
+  const fs = (await import('node:fs')).default;
+  const { syncBuiltinESMExports } = await import('node:module');
+  const dir = carpeta();
+  writeFileSync(join(dir, 'zz-ultimo.md'), 'x'); // se copia el último
+  mkdirSync(join(dir, '.copias', '.2026-10-30.tmp-999-1'), { recursive: true }); // resto de un proceso que murió
+  const c = crearCopias(dir, { hoy: () => '2026-11-02' });
+  const original = fs.cpSync;
+  t.mock.method(fs, 'cpSync', (a, b, o) => {
+    if (String(a).endsWith('zz-ultimo.md')) throw Object.assign(new Error('ENOSPC simulado'), { code: 'ENOSPC' });
+    return original(a, b, o);
+  });
+  syncBuiltinESMExports();
+  assert.throws(() => c.antesDeEscribir('diaria', 'tarea.crear'), /ENOSPC/);
+  assert.ok(!existsSync(join(dir, '.copias', '2026-11-02')), 'no queda una copia a medias con nombre de copia buena');
+  t.mock.restoreAll();
+  syncBuiltinESMExports();
+  c.antesDeEscribir('diaria', 'tarea.crear');
+  assert.ok(existsSync(join(dir, '.copias', '2026-11-02', 'zz-ultimo.md')), 'el reintento la completa');
+  assert.ok(existsSync(join(dir, '.copias', '2026-11-02', 'semanas', '2026-W45.md')));
+  assert.deepEqual(readdirSync(join(dir, '.copias')), ['2026-11-02'], 'sin restos');
+  rmSync(dir, { recursive: true, force: true });
+});
