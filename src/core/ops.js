@@ -5,7 +5,7 @@
 // Toda operación se reduce a primitivas exactas sobre líneas; su inversa es la lista de inversas al revés.
 // ctx = { hoy: 'AAAA-MM-DD', ahora?: minutos, factores?, usoTipos? }. Nunca se lee el reloj.
 import { esFecha, esSemana, semanaDe, compararSemanas, DIAS, sumarSemanas, lunesDe, sumarDias } from './fechas.js';
-import { normalizar, limpiarTexto } from './formato/comun.js';
+import { normalizar, limpiarTexto, claveValor } from './formato/comun.js';
 import * as fsem from './formato/semana.js';
 import * as ftar from './formato/tareas.js';
 import { entradaPlantilla, tipo as nuevoTipo, tiposVacio, plantillaVacia } from './formato/tipos.js';
@@ -133,6 +133,17 @@ function textoObligatorio(v, que) {
   return t;
 }
 const textoOpcional = (v) => (v == null ? null : limpiarTexto(v) || null);
+
+/**
+ * Nombre de tipo que el formato puede volver a leer: no puede parecer «clave: valor» (en tipos.md, en los
+ * bloques y en las tareas se leería como un campo) ni ser una bandera de tarea («prioridad», «las3»).
+ */
+function nombreTipo(v, obligatorio = true) {
+  const t = obligatorio ? textoObligatorio(v, 'el tipo') : textoOpcional(v);
+  if (t == null) return null;
+  exigir(!claveValor(t) && !['prioridad', 'las3'].includes(normalizar(t)), `Ese nombre de tipo no se puede usar: «${t}» (sin «:» detrás de una palabra, ni «prioridad» ni «las3»)`);
+  return t;
+}
 const esEntero = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
 
 function exigirHoy(tx) {
@@ -217,7 +228,7 @@ function validarCamposBloque(c, parcial) {
   if (!parcial || tiene('dia')) { exigir(esEntero(c.dia, 0, 6), 'Día no válido'); out.dia = c.dia; }
   if (!parcial || tiene('inicio')) { exigir(esEntero(c.inicio, 0, 1439), 'Hora de inicio no válida'); out.inicio = c.inicio; }
   if (!parcial || tiene('fin')) { exigir(esEntero(c.fin, 1, 1440), 'Hora de fin no válida'); out.fin = c.fin; }
-  if (!parcial || tiene('tipo')) out.tipo = textoObligatorio(c.tipo, 'el tipo');
+  if (!parcial || tiene('tipo')) out.tipo = nombreTipo(c.tipo);
   if (!parcial || tiene('titulo')) out.titulo = textoObligatorio(c.titulo, 'el título');
   if (tiene('subtipo')) {
     exigir(c.subtipo == null || fsem.SUBTIPOS.includes(c.subtipo), 'Subtipo no válido');
@@ -554,7 +565,7 @@ function asegurarTipos(tx) {
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 
 registrar('tipo.crear', (tx, a) => {
-  const nombre = textoObligatorio(a.nombre, 'el nombre').toLowerCase();
+  const nombre = nombreTipo(a.nombre).toLowerCase();
   exigir(COLOR.test(a.color ?? ''), 'Color no válido');
   asegurarTipos(tx);
   exigir(!tipoPorNombre(tipos(tx), nombre), 'Ya existe');
@@ -652,7 +663,7 @@ export function hoyLleno(tareasDoc, ajustesDoc) {
 function camposTarea(c) {
   const out = {};
   if (Object.hasOwn(c, 'texto')) out.texto = textoObligatorio(c.texto, 'el texto');
-  if (Object.hasOwn(c, 'tipo')) out.tipo = textoOpcional(c.tipo);
+  if (Object.hasOwn(c, 'tipo')) out.tipo = nombreTipo(c.tipo, false);
   if (Object.hasOwn(c, 'prioridad')) out.prioridad = !!c.prioridad;
   if (Object.hasOwn(c, 'las3')) out.las3 = !!c.las3;
   if (Object.hasOwn(c, 'fecha')) { exigir(c.fecha == null || esFecha(c.fecha), 'Fecha no válida'); out.fecha = c.fecha ?? null; }
