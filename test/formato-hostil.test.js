@@ -17,3 +17,14 @@ test('finales de línea mezclados (Bloc de notas + otro editor): cada línea con
   doc.lineas.push({ t: 'tarea', seccion: 'mas', hecha: false, texto: 'cuatro', tipo: null, prioridad: false, las3: false, fecha: null, dur: null, creada: null, fechaHecha: null, extra: [], comentario: null });
   assert.ok(serializar(doc).endsWith('- [ ] tres\n- [ ] cuatro\r\n'));
 });
+
+test('## Estudio de la semana: nombres de tema con « # » o con «:» se leen bien', () => {
+  for (const tema of ['AI-102 # parte 2', 'Curso: IA aplicada', 'C# avanzado', 'a: b # c: d']) {
+    const x = `## Estudio\n- ${tema}: 6,5 h\n`;
+    const doc = parsear('semanas/2026-W45.md', x);
+    assert.deepEqual(m.objetivosDe(doc), { [m.normalizar(tema)]: 6.5 }, tema);
+    assert.equal(serializar(doc), x);
+  }
+  // el comentario final sigue funcionando con dos espacios
+  assert.deepEqual(m.objetivosDe(parsear('semanas/2026-W45.md', '## Estudio\n- Curso: 6 h   # una semana floja\n')), { curso: 6 });
+});
