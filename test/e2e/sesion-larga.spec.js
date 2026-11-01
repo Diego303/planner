@@ -10,7 +10,7 @@ test.use({ datos: 'tres-años' });
 test.skip(!MINUTOS, 'solo con PLANNER_SESION_MIN');
 
 test(`sesión de ${MINUTOS} min sin fugas`, async ({ page, app }) => {
-  test.setTimeout((MINUTOS + 3) * 60_000);
+  test.setTimeout((MINUTOS + 8) * 60_000);
   // timers vivos de la página (setTimeout pendientes + setInterval activos)
   await page.addInitScript(() => {
     const vivos = new Set();
@@ -41,13 +41,16 @@ test(`sesión de ${MINUTOS} min sin fugas`, async ({ page, app }) => {
     async () => { await page.locator('#drawer [role=tab]').nth(azar.entero(0, 1)).click().catch(() => {}); },
   ];
   const muestras = [];
-  const fin = Date.now() + MINUTOS * 60_000;
-  let siguiente = Date.now() + 60_000;
-  muestras.push(await medir());
-  while (Date.now() < fin) {
+  // reloj monotónico: en WSL el de pared salta (se ajusta con el de Windows) y alargaba el bucle
+  const ahora = () => performance.now();
+  const fin = ahora() + MINUTOS * 60_000;
+  let siguiente = ahora() + 60_000;
+  const anotar = async () => { const x = await medir(); muestras.push(x); console.log('muestra', muestras.length - 1, JSON.stringify(x)); };
+  await anotar();
+  while (ahora() < fin) {
     await azar.elegir(acciones)().catch(() => {}); // una acción que no aplica (p. ej. sin tareas) no cuenta
     await page.waitForTimeout(azar.entero(200, 1500));
-    if (Date.now() > siguiente) { muestras.push(await medir()); siguiente += 60_000; }
+    if (ahora() > siguiente) { await anotar(); siguiente += 60_000; }
   }
   await page.locator('#seg').getByRole('button', { name: 'Semana' }).click();
   await page.getByRole('button', { name: 'hoy', exact: true }).click();
