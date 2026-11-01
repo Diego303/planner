@@ -16,9 +16,11 @@ planner/
 │   │   ├── fechas.js           # semanas ISO, días, horas ⇄ minutos, textos de fecha
 │   │   ├── formato/
 │   │   │   ├── comun.js        # líneas, campos, comentarios, conservación del texto original
-│   │   │   ├── index.js        # ruta → formato (parse/serialize)
-│   │   │   ├── semana.js  tareas.js  estudio.js  proyectos.js  plantilla.js
-│   │   │   ├── tipos.js  ajustes.js  diario.js  inbox.js  tema.js  archivo.js
+│   │   │   ├── index.js        # ruta → formato (parse/serialize); incluye inbox.md
+│   │   │   ├── semana.js       # semanas/AAAA-Www.md
+│   │   │   ├── tareas.js       # tareas.md y archivo/tareas-AAAA-MM.md (misma gramática de tarea)
+│   │   │   ├── tipos.js        # tipos.md y plantilla.md
+│   │   │   └── listas.js       # `- clave: valor`: ajustes, estudio, proyectos, diario y tema
 │   │   ├── modelo.js           # constantes, valores por defecto, accesores y validación
 │   │   ├── ops.js              # operaciones puras con inversa
 │   │   ├── captura.js  carriles.js  capacidad.js  factor.js  proponer.js
@@ -48,6 +50,7 @@ planner/
 - `web/estado.js` y `web/api.js` sacan de `app.js` el almacén y la red para que `app.js` solo orqueste.
 - `web/vistas/editor-bloque.js` separa el popover del bloque (es la pieza más grande de la vista Semana).
 - `server/estado.js` compone el estado completo y las métricas; `api.js` se queda en rutas.
+- Los formatos que comparten gramática comparten módulo (`listas.js`, `tareas.js` con el archivo, `tipos.js` con la plantilla) en vez de un fichero por formato: menos código repetido y una sola forma de leer `- clave: valor`.
 
 ## 2. Scripts de `package.json`
 
