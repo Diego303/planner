@@ -16,7 +16,8 @@
     "dev": "node --watch-path=src --watch-path=bin bin/planner.js --ejemplo --silencioso",
     "test": "node --test test/*.test.js",
     "check": "node scripts/check.js",
-    "test:zonas": "TZ=UTC node --test test/*.test.js && TZ=Europe/Madrid node --test test/*.test.js && TZ=America/Los_Angeles node --test test/*.test.js"
+    "test:zonas": "TZ=UTC node --test test/*.test.js && TZ=Europe/Madrid node --test test/*.test.js && TZ=America/Los_Angeles node --test test/*.test.js",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1"
