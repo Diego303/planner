@@ -7,10 +7,12 @@ Plan en [`QA-PLAN.md`](QA-PLAN.md). Este informe se actualiza al cerrar cada fas
 | | Valor | Objetivo |
 |---|---|---|
 | Tests (`pnpm test`) | **183 / 183 en verde** (también con `TZ=UTC`, `Europe/Madrid`, `America/Los_Angeles`) | todo en verde |
-| Cobertura `src/core` | **99,2 %** líneas · 95,2 % ramas | ≥ 95 % líneas |
-| Cobertura `src/server` | **96,7 %** líneas · 91,3 % ramas (CLI: `sistema.js` 97 %, `bin/planner.js` 88 %) | ≥ 85 % líneas |
-| e2e (`pnpm test:e2e`) | **42 / 42 en verde**, tres veces seguidas | todo en verde, sin intermitentes |
+| Cobertura `src/core` | **99,2 %** líneas · 95,1 % ramas | ≥ 95 % líneas |
+| Cobertura `src/server` | **97,3 %** líneas · 90,9 % ramas (CLI: `sistema.js` 97 %, `bin/planner.js` 88 %) | ≥ 85 % líneas |
+| e2e (`pnpm test:e2e`) | **50 / 50 en verde** (con la sesión de 3 min); también con los datos en /mnt/d | todo en verde, sin intermitentes |
 | Visual (`pnpm test:visual`) | **171 / 171 en verde**, tres veces seguidas (144 capturas + diseño adaptable + temas) | sin regresiones |
+| `pnpm test:todo` | **en verde tres veces seguidas** (5,5 min cada una: check, 183 + 200 SIGKILL, 50 e2e, 171 visuales) | 3 seguidas |
+| Bugs | **34 arreglados**, cada uno con su test (6 críticos de pérdida de datos) | |
 | Fases | Q0 ✓ · Q1 ✓ · Q2 ✓ · Q3 ✓ · Q4 ✓ · Q5 ✓ · Q6 ✓ · Q7 ✓ · Q8 (falta tu permiso para tus datos) | Q0–Q8 |
 
 ## Bugs
@@ -56,7 +58,7 @@ Gravedad: **crítico** = pérdida o corrupción de datos, o seguridad · alto ·
 
 ## Decisiones dudosas (para que decidas)
 
-Las D1–D10 de [`QA-PLAN.md`](QA-PLAN.md) §7 se mantienen como están (aprobadas con «ok a todo»).
+Las D1–D10 de [`QA-PLAN.md`](QA-PLAN.md) §7 se mantienen como están (aprobadas con «ok a todo»). Las nuevas, sin tocar hasta que decidas:
 
 | Id | Qué hace hoy | Por qué es dudoso | Opciones |
 |---|---|---|---|
@@ -139,7 +141,17 @@ Datos: `test/rendimiento/generar.js` crea tres años realistas (157 semanas, 5.0
 - En /mnt/d el suelo es la latencia de cada llamada al sistema (~4 ms): 39 `stat` y 5 `readdir` por estado. Ampliar el pool de hilos de libuv no mejora.
 - El arranque > 1 s solo pasa con el código enlazado al repo en /mnt/d (cargar ~40 módulos desde drvfs): instrucciones.md (paso 2.5) explica cómo instalarlo desde un paquete. `package.json` ya tiene `files` (antes, el paquete metía `test/` con 8,5 MB de capturas).
 - El sondeo cada 2 s solo pide `/api/version`: en 9 s, ninguna escritura en disco y ninguna recarga.
-- Sesión larga: `test/e2e/sesion-larga.spec.js` (3 min en `test:todo`; la de 30 min, abajo).
+- **Sesión de 30 min** (`PLANNER_SESION_MIN=30`): acciones al azar que no hacen crecer los datos (marcar y desmarcar, navegar semanas, abrir modales y el editor, pestañas, escribir en la captura) con el sondeo activo, tres años de datos y el servidor en su propio proceso. Memoria tras forzar el GC, por minuto:
+
+  | | minuto 1 | minuto 15 | minuto 30 |
+  |---|---|---|---|
+  | Servidor (heap) | 12,4 MB | 12,8 MB | 13,0 MB (se aplana) |
+  | Pestaña (heap JS) | 3,5 MB | 4,4 MB | 4,7 MB (+0,3 MB en el último cuarto de hora) |
+  | Nodos del DOM | 2.481 | 2.301 | 2.383 |
+  | Listeners | 54 | 54 | 54 |
+  | Timers vivos | 1 | 1 | 1 |
+
+  Sin fugas. Una primera versión que creaba tareas sin parar sí crecía, pero por los datos (unas 300 tareas nuevas); la del servidor medía también la memoria de Playwright (64 MB). `test:todo` pasa una sesión de 3 min.
 - Bugs: B25, B26 (y R6, R12).
 
 ### Q7 · Entorno real (WSL, Windows y app instalada)
