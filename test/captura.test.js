@@ -46,7 +46,7 @@ test('destino: algún día, hoy con hueco, más adelante', () => {
 test('fechas de tokens y etiquetas', () => {
   assert.equal(fechaDeToken('Miércoles', HOY), '2026-11-04');
   assert.equal(fechaDeToken('sáb', HOY), '2026-11-07');
-  assert.equal(fechaDeToken('29/02', '2027-03-01'), null);
+  assert.equal(fechaDeToken('29/02', '2027-03-01'), '2028-02-29'); // el próximo 29 de febrero
   assert.equal(etiquetaFecha('2026-11-03', HOY), 'mañana');
   assert.equal(etiquetaFecha('2026-11-05', HOY), 'jue 5');
   assert.equal(etiquetaFecha('2026-12-12', HOY), '12 dic');
