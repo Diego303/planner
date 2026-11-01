@@ -6,16 +6,18 @@ import { join, dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { arrancar } from '../../src/server/index.js';
+import { generar } from '../rendimiento/generar.js';
 
 export const EJEMPLO = fileURLToPath(new URL('../../ejemplo/', import.meta.url));
 export const HOY = '2026-11-02'; // lunes de la semana 45 del ejemplo
 
-/** Servidor sobre una copia nueva. `datos: 'vacia'` (carpeta vacía) o `'inexistente'` para el onboarding. */
+/** Servidor sobre una copia nueva. `datos: 'vacia'` (carpeta vacía) o `'inexistente'` para el onboarding; `'tres-años'` para rendimiento. */
 export async function servidor({ datos = 'ejemplo', hoy = HOY } = {}) {
   const base = mkdtempSync(join(tmpdir(), 'planner-e2e-'));
   // 'inexistente': la carpeta de datos aún no existe (se crea en el primer paso del onboarding)
   const dir = datos === 'inexistente' ? join(base, 'mis datos') : base;
   if (datos === 'ejemplo') cpSync(EJEMPLO, dir, { recursive: true });
+  if (datos === 'tres-años') generar(dir, { hoy });
   let app = await arrancar({ datos: dir, puerto: 0, hoySimulado: hoy });
   const puerto = app.puerto;
   const s = {
