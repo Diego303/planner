@@ -1,4 +1,4 @@
-// Acceso a la carpeta de datos: lectura con caché por mtime+tamaño, escritura atómica y versiones.
+// Acceso a la carpeta de datos: lectura con caché (mtime, ctime, tamaño, inodo), escritura atómica y versiones.
 import { open, readFile, rename, unlink, stat, mkdir, readdir } from 'node:fs/promises';
 import { existsSync, readdirSync, unlinkSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -9,6 +9,13 @@ import { semanaDe, sumarDias } from '../core/fechas.js';
 export const TAMANO_MAXIMO = 1024 * 1024;
 const RAIZ_FIJOS = ['ajustes.md', 'tipos.md', 'plantilla.md', 'tareas.md', 'estudio.md', 'proyectos.md', 'inbox.md', 'tema.md'];
 const DIRECTORIOS = ['semanas', 'diario', 'archivo'];
+
+/**
+ * Firma de un fichero para la caché: mtime, ctime, tamaño e inodo. El ctime lo cambia el sistema en cada
+ * escritura y ningún editor puede restaurarlo, así que una edición con el mismo tamaño y el mtime de antes
+ * también invalida la caché.
+ */
+const firma = (st) => `${st.mtimeMs}|${st.ctimeMs}|${st.size}|${st.ino}`;
 
 export const versionDe = (texto) => createHash('sha1').update(texto).digest('hex').slice(0, 12);
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -33,7 +40,7 @@ export class FicheroIgnorado extends Error {
 
 export function crearStore(carpeta) {
   const raiz = resolve(carpeta);
-  const cache = new Map(); // ruta → { mtimeMs, size, version, doc }
+  const cache = new Map(); // ruta → { firma, version, doc }
   const avisos = new Map(); // ruta → motivo (ficheros ignorados)
   let contador = 0;
 
@@ -57,13 +64,13 @@ export function crearStore(carpeta) {
       throw e;
     }
     const enCache = cache.get(ruta);
-    if (enCache && enCache.mtimeMs === st.mtimeMs && enCache.size === st.size) return enCache;
+    if (enCache && enCache.firma === firma(st)) return enCache;
     if (st.size > TAMANO_MAXIMO) { avisos.set(ruta, 'muy grande (más de 1 MB)'); throw new FicheroIgnorado(ruta, 'muy grande (más de 1 MB)'); }
     const buf = await readFile(abs);
     if (buf.includes(0)) { avisos.set(ruta, 'parece binario'); throw new FicheroIgnorado(ruta, 'parece binario'); }
     avisos.delete(ruta);
     const texto = buf.toString('utf8');
-    const entrada = { mtimeMs: st.mtimeMs, size: st.size, version: versionDe(texto), doc: parsear(ruta, texto) };
+    const entrada = { firma: firma(st), version: versionDe(texto), doc: parsear(ruta, texto) };
     cache.set(ruta, entrada);
     return entrada;
   }
@@ -143,7 +150,7 @@ export function crearStore(carpeta) {
         }
         if (p.texto == null) { cache.delete(p.ruta); versiones[p.ruta] = null; continue; }
         const st = await stat(p.abs);
-        const entrada = { mtimeMs: st.mtimeMs, size: st.size, version: versionDe(p.texto), doc: parsear(p.ruta, p.texto) };
+        const entrada = { firma: firma(st), version: versionDe(p.texto), doc: parsear(p.ruta, p.texto) };
         cache.set(p.ruta, entrada);
         versiones[p.ruta] = entrada.version;
       }
@@ -192,7 +199,7 @@ export function crearStore(carpeta) {
       }
     }
     const stats = await Promise.all(rutas.map((r) => stat(join(raiz, r)).catch(() => null)));
-    rutas.forEach((r, i) => { if (stats[i]) h.update(`${r}:${stats[i].mtimeMs}:${stats[i].size};`); });
+    rutas.forEach((r, i) => { if (stats[i]) h.update(`${r}:${firma(stats[i])};`); });
     return h.digest('hex').slice(0, 12);
   }
 
