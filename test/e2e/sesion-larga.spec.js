@@ -2,7 +2,7 @@
 // (30 para la prueba completa; «pnpm test:todo» usa 3). Ni el servidor ni la pestaña crecen en memoria, y no se
 // acumulan nodos, listeners ni timers. Sin PLANNER_SESION_MIN, se salta.
 import { test, expect, abrir } from './ayudas.js';
-import v8 from 'node:v8';
+import { spawn } from 'node:child_process';
 import { crearAzar } from '../azar.js';
 
 const MINUTOS = Number(process.env.PLANNER_SESION_MIN ?? 0);
@@ -11,6 +11,17 @@ test.skip(!MINUTOS, 'solo con PLANNER_SESION_MIN');
 
 test(`sesión de ${MINUTOS} min sin fugas`, async ({ page, app }) => {
   test.setTimeout((MINUTOS + 8) * 60_000);
+  // el servidor, en su propio proceso: así su memoria no se mezcla con la de Playwright
+  await app.parar();
+  const hijo = spawn(process.execPath, ['--expose-gc', new URL('../rendimiento/servidor-medido.js', import.meta.url).pathname, app.dir, '2026-11-02'], { stdio: ['pipe', 'pipe', 'inherit'] });
+  const lineas = [];
+  let esperando = null;
+  hijo.stdout.on('data', (d) => { for (const l of String(d).split('\n').filter(Boolean)) { lineas.push(l); esperando?.(); } });
+  const leerLinea = async (prefijo) => { for (;;) { const i = lineas.findIndex((l) => l.startsWith(prefijo)); if (i >= 0) return lineas.splice(i, 1)[0].slice(prefijo.length).trim(); await new Promise((r) => { esperando = r; }); } };
+  const puerto = await leerLinea('listo ');
+  const heapServidor = async () => { hijo.stdin.write('medir\n'); return Number(await leerLinea('heap ')); };
+  process.once('exit', () => hijo.kill()); // si el test falla antes de terminar, el hijo no se queda vivo
+  app.url_ = `http://localhost:${puerto}/`;
   // timers vivos de la página (setTimeout pendientes + setInterval activos)
   await page.addInitScript(() => {
     const vivos = new Set();
@@ -21,15 +32,14 @@ test(`sesión de ${MINUTOS} min sin fugas`, async ({ page, app }) => {
     window.clearInterval = (id) => { vivos.delete(id); ci(id); };
     window.__timers = () => vivos.size;
   });
-  await abrir(page, app);
+  await abrir(page, { url: app.url_ });
   page.setDefaultTimeout(5000); // una acción que no aplica falla rápido en vez de esperar sin fin
   const cdp = await page.context().newCDPSession(page);
   const medir = async () => {
     await cdp.send('HeapProfiler.collectGarbage');
     const { usedSize } = await cdp.send('Runtime.getHeapUsage');
     const dom = await cdp.send('Memory.getDOMCounters');
-    globalThis.gc?.();
-    return { pestaña: usedSize, nodos: dom.nodes, listeners: dom.jsEventListeners, timers: await page.evaluate(() => window.__timers()), servidor: v8.getHeapStatistics().used_heap_size };
+    return { pestaña: usedSize, nodos: dom.nodes, listeners: dom.jsEventListeners, timers: await page.evaluate(() => window.__timers()), servidor: await heapServidor() };
   };
   const azar = crearAzar(7);
   // Acciones que no hacen crecer los datos (marcar y desmarcar, navegar, abrir y cerrar): si algo crece, es una fuga.
@@ -67,4 +77,5 @@ test(`sesión de ${MINUTOS} min sin fugas`, async ({ page, app }) => {
   expect(ultima.listeners, 'listeners').toBeLessThanOrEqual(base.listeners + 20);
   expect(ultima.nodos, 'nodos del DOM').toBeLessThan(base.nodos * 1.5 + 200);
   expect(ultima.timers, 'timers vivos').toBeLessThanOrEqual(6);
+  hijo.stdin.end();
 });
