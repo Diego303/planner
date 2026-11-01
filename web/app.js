@@ -95,6 +95,8 @@ function iniciarBarra() {
   on($('#gmenu'), 'click', '[data-gestion]', (_ev, el) => {
     const e = menuGestion.find((x) => x.id === el.dataset.gestion);
     cerrarMenu();
+    // el foco vuelve a «Gestión ▾» (la entrada del menú desaparece): al cerrar el modal, ahí sigue
+    $('#gbtn').focus();
     e?.accion();
   });
   document.addEventListener('click', (ev) => { if (menuAbierto && !ev.target.closest('.gm')) cerrarMenu(); });

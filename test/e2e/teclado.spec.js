@@ -1,6 +1,29 @@
 // e2e · Teclado y accesibilidad: Esc, Tab por todos los controles con foco visible, nombres accesibles y sin trampas.
 import { test, expect, abrir, bloque } from './ayudas.js';
 
+test('Esc cierra el popover, luego el modal y luego el menú, y devuelve el foco', async ({ page, app }) => {
+  await abrir(page, app);
+  await bloque(page, 'Deploy del pipeline').click();
+  await expect(page.locator('.pop')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.pop')).toHaveCount(0);
+  await page.locator('#gbtn').click();
+  await expect(page.locator('#gmenu [role=menuitem]').first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#gmenu [role=menu]')).toHaveCount(0);
+  await expect(page.locator('#gbtn')).toBeFocused();
+  await page.locator('#gbtn').click();
+  await page.locator('#gmenu').getByRole('menuitem', { name: /Ajustes/ }).click();
+  await expect(page.locator('#modal .mod')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#modal .mod')).toHaveCount(0);
+  await expect(page.locator('#gbtn')).toBeFocused();
+  // un bloque se abre con Enter
+  await bloque(page, 'Gimnasio').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.pop #ed-titulo')).toBeFocused();
+});
+
 /** Recorre la página con Tab: cada parada, con su nombre accesible y si se ve el foco. */
 async function recorrer(page, veces) {
   const paradas = [];
