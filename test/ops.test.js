@@ -148,3 +148,31 @@ test('tarea.marcar guarda la fecha y tarea.crear la de creación', () => {
   const r = aplicar(mu, { op: 'tarea.marcar', args: { id: t.id, hecha: true } }, CTX);
   assert.match(serializar(r.mundo.ficheros['tareas.md']), /- \[x\] Leer: chunking y reranking \| estudio \| hecha: 2026-11-02/);
 });
+
+test('Hecho ✓: duración real, nota del simulacro, borra el «dejado» y actualiza el proyecto; todo con inversa', () => {
+  const mu = mundo();
+  const curso = bloque(mu, 'Curso · lab RAG');
+  const r = idaYVuelta(mu, { op: 'bloque.hecho', args: { semana: S, id: curso.id, huella: `${curso.dia}|${curso.inicio}|${curso.fin}|${curso.titulo}`, delta: 30 } });
+  assert.equal(m.bloquesDe(r.mundo.ficheros[RS]).find((b) => b.id === curso.id).hecho, 30);
+  assert.equal(m.temasEstudio(r.mundo.ficheros['estudio.md']).find((t) => t.nombre === 'Curso').dejado, null);
+  const sim = bloque(mu, 'MLA-C01 · simulacro');
+  const r2 = idaYVuelta(mu, { op: 'bloque.hecho', args: { semana: S, id: sim.id, delta: 0, nota: 74, cambios: { paso: 'examen 3' } } });
+  const b2 = m.bloquesDe(r2.mundo.ficheros[RS]).find((b) => b.id === sim.id);
+  assert.deepEqual([b2.hecho, b2.nota, b2.paso], [0, 74, 'examen 3']);
+  assert.deepEqual(m.temasEstudio(r2.mundo.ficheros['estudio.md'])[1].simulacros.at(-1), { nota: 74, fecha: '2026-11-05' });
+  // proyecto: bloque «huddle · …» marcado → actualizado hoy
+  const conPro = aplicar(mu, { op: 'bloque.crear', args: { semana: S, bloque: { dia: 1, inicio: 1290, fin: 1350, tipo: 'proyectos', titulo: 'gymhub · importar' } } }, CTX);
+  const r3 = idaYVuelta(conPro.mundo, { op: 'bloque.hecho', args: { semana: S, id: conPro.resultado.id, delta: 60 } });
+  assert.equal(m.proyectosDe(r3.mundo.ficheros['proyectos.md'])[1].actualizado, '2026-11-02');
+  assert.throws(() => aplicar(mu, { op: 'bloque.hecho', args: { semana: S, id: curso.id, delta: 7 } }, CTX), /no válida/);
+  idaYVuelta(r.mundo, { op: 'bloque.desmarcar', args: { semana: S, id: curso.id } });
+});
+
+test('A medias: guarda «dejado» en estudio.md o proyectos.md; si el tema no existe, lo explica', () => {
+  const mu = mundo();
+  const ai = bloque(mu, 'AI-102 · repasar');
+  const r = idaYVuelta(mu, { op: 'bloque.aMedias', args: { semana: S, id: ai.id, dejado: 'pregunta 12 | tema 3' } });
+  assert.equal(m.temasEstudio(r.mundo.ficheros['estudio.md'])[0].dejado, 'pregunta 12 / tema 3');
+  const deploy = bloque(mu, 'Deploy del pipeline');
+  assert.throws(() => aplicar(mu, { op: 'bloque.aMedias', args: { semana: S, id: deploy.id, dejado: 'x' } }, CTX), /no es un tema de estudio ni un proyecto/);
+});

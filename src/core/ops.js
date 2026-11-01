@@ -15,6 +15,8 @@ import {
   seccionesDe, temaDe, mismoTema, temasEstudio, proyectosDe, buscarTema, tipoPorNombre, las3De, huellaDe,
 } from './modelo.js';
 import { estadoSemana, crearDesdePlantilla, soloLectura } from './semanas.js';
+import { proponer } from './proponer.js';
+import { fechaDeDia } from './fechas.js';
 
 export class ErrorOp extends Error {
   constructor(mensaje) { super(mensaje); this.name = 'ErrorOp'; }
@@ -277,6 +279,88 @@ registrar('las3.eliminar', (tx, a) => {
   const ruta = semanaEditable(tx, a.semana);
   elemento(tx, ruta, a.id, 'las3', 'Ese objetivo', a.huella);
   tx.quitar(ruta, a.id);
+});
+
+// ---------- Proponer, Hecho y A medias ----------
+
+/** Quita las sugerencias no aceptadas de una semana (de abajo arriba para no mover índices). */
+function quitarSugerencias(tx, ruta) {
+  const ids = bloquesDe(tx.doc(ruta)).filter((b) => b.sugerido).map((b) => b.id).sort((x, y) => y - x);
+  for (const i of ids) tx.quitar(ruta, i);
+  return ids.length;
+}
+
+registrar('semana.proponer', (tx, a) => {
+  const ruta = semanaEditable(tx, a.semana);
+  exigir(compararSemanas(a.semana, tx.ctx.semanaActual) >= 0, 'Las semanas pasadas no se proponen');
+  quitarSugerencias(tx, ruta);
+  const r = proponer({
+    id: a.semana, doc: tx.doc(ruta), temas: temasEstudio(tx.doc('estudio.md')), proyectos: proyectosDe(tx.doc('proyectos.md')),
+    ajustes: valoresAjustes(tx.doc('ajustes.md')), tipos: tipos(tx), factores: tx.ctx.factores ?? {}, hoy: exigirHoy(tx), ahora: tx.ctx.ahora ?? null,
+  });
+  for (const b of r.bloques) anadirBloque(tx, ruta, fsem.bloque(b));
+  return { n: r.bloques.length, noCaben: r.noCaben };
+});
+
+const DELTA_MAX = 4 * 60;
+
+registrar('bloque.hecho', (tx, a) => {
+  const hoy = exigirHoy(tx);
+  const ruta = semanaEditable(tx, a.semana);
+  elemento(tx, ruta, a.id, 'bloque', 'El bloque', a.huella);
+  if (a.cambios) tx.aplicar('bloque.editar', { semana: a.semana, id: a.id, cambios: a.cambios });
+  const b = tx.doc(ruta).lineas[a.id];
+  const dur = b.fin - b.inicio;
+  exigir(Number.isInteger(a.delta) && a.delta % 15 === 0 && a.delta >= -dur && a.delta <= DELTA_MAX, 'Duración real no válida');
+  const cambios = { hecho: a.delta, sugerido: false };
+  if (a.nota != null && a.nota !== '') {
+    exigir(esEntero(a.nota, 0, 100), 'La nota va de 0 a 100');
+    cambios.nota = a.nota;
+  }
+  tx.cambiar(ruta, a.id, cambios);
+  const tema = temaDe(b.titulo);
+  const est = () => buscarTema(temasEstudio(tx.doc('estudio.md')), tema);
+  if (est()?.dejado) fijarClave(tx, 'estudio', est().id, 'dejado', null);
+  if (est() && cambios.nota != null) {
+    fijarClave(tx, 'estudio', est().id, 'simulacros', [...est().simulacros, { nota: cambios.nota, fecha: fechaDeDia(a.semana, b.dia) }]);
+  }
+  const pro = () => buscarTema(proyectosDe(tx.doc('proyectos.md')), tema);
+  if (pro()) {
+    if (pro().dejado) fijarClave(tx, 'proyecto', pro().id, 'dejado', null);
+    fijarClave(tx, 'proyecto', pro().id, 'actualizado', hoy);
+  }
+  return { tipo: b.tipo, titulo: b.titulo };
+});
+
+registrar('bloque.desmarcar', (tx, a) => {
+  const ruta = semanaEditable(tx, a.semana);
+  elemento(tx, ruta, a.id, 'bloque', 'El bloque', a.huella);
+  tx.cambiar(ruta, a.id, { hecho: null, nota: null });
+});
+
+/** ¿Tiene «dejado» el tema del título? → 'estudio' | 'proyecto' | null */
+export function destinoDejado(tituloBloque, estudioDoc, proyectosDoc) {
+  const tema = temaDe(tituloBloque);
+  if (buscarTema(temasEstudio(estudioDoc), tema)) return 'estudio';
+  if (buscarTema(proyectosDe(proyectosDoc), tema)) return 'proyecto';
+  return null;
+}
+
+registrar('bloque.aMedias', (tx, a) => {
+  const hoy = exigirHoy(tx);
+  const ruta = semanaEditable(tx, a.semana);
+  elemento(tx, ruta, a.id, 'bloque', 'El bloque', a.huella);
+  if (a.cambios) tx.aplicar('bloque.editar', { semana: a.semana, id: a.id, cambios: a.cambios });
+  const b = tx.doc(ruta).lineas[a.id];
+  const tema = temaDe(b.titulo);
+  const dejado = textoObligatorio(a.dejado, 'dónde lo dejaste');
+  const cual = destinoDejado(b.titulo, tx.doc('estudio.md'), tx.doc('proyectos.md'));
+  exigir(cual, `«${tema}» no es un tema de estudio ni un proyecto: el título tiene que empezar por su nombre (p. ej. «${tema} · …»)`);
+  const lista = cual === 'estudio' ? temasEstudio(tx.doc('estudio.md')) : proyectosDe(tx.doc('proyectos.md'));
+  const x = buscarTema(lista, tema);
+  fijarClave(tx, cual, x.id, 'dejado', dejado);
+  if (cual === 'proyecto') fijarClave(tx, 'proyecto', buscarTema(proyectosDe(tx.doc('proyectos.md')), tema).id, 'actualizado', hoy);
+  return { tema: x.nombre, dejado };
 });
 
 function cambiarEstadoSemana(tx, ruta, valor) {
@@ -585,6 +669,6 @@ registrar('proyecto.eliminar', (tx, a) => eliminarSeccionLista(tx, 'proyecto', a
 export const util = {
   exigir, exigirHoy, textoObligatorio, textoOpcional, elemento, rutaSemana, semanaEditable, crearSemanaSiFalta,
   anadirBloque, anadirEnSeccion, anadirTarea, asegurarTareas, cambiarEstadoSemana, fijarClave, tipos, finUltimo,
-  archivarTareas, lineasDeTareas, moverLinea,
+  archivarTareas, lineasDeTareas, moverLinea, quitarSugerencias,
 };
 export { DIAS, sumarSemanas, lunesDe, sumarDias, temaDe, mismoTema, bloquesDe, las3De, temasEstudio, proyectosDe };

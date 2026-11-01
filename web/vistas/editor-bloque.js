@@ -14,10 +14,13 @@ const DURACIONES = [30, 60, 90, 120, 150, 180, 240, 510];
 export const pasosEditor = {};
 /** Botones extra del pie: [(b) → html] */
 export const botonesPie = [];
+/** Acciones de esos botones (data-ed="nombre"): { nombre(el, bloque) } */
+export const accionesEditor = {};
 
 let ed = null; // estado del editor abierto: { id, huella, tipo, subtipo, modo }
 
 export const editorAbierto = () => ed;
+export { bloqueActual };
 
 const etiquetaDuracion = (min) => (min < 60 ? `${min} min` : `${f.numero(min / 60)} h`);
 
@@ -147,6 +150,8 @@ function enlazar(el, b) {
       cerrarEditor();
     } else if (t.dataset.paso) {
       cambiarPaso(el, t.dataset.paso);
+    } else if (accionesEditor[t.dataset.ed]) {
+      accionesEditor[t.dataset.ed](el, bloqueActual());
     }
   };
   el.onkeydown = (ev) => {

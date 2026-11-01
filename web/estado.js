@@ -110,8 +110,8 @@ export function enviar(op, args, { mensaje = null } = {}) {
       st.ui.semana = r.estado.meta.semana;
       recomponer();
       avisar();
-      if (mensaje && r.inversaId) toast(mensaje(r.resultado ?? local?.resultado ?? {}), { deshacer: () => deshacer(r.inversaId) });
-      else if (mensaje) toast(mensaje(r.resultado ?? {}));
+      if (mensaje && r.inversaId) toast(mensaje(r.resultado ?? local?.resultado ?? {}, r), { deshacer: () => deshacer(r.inversaId) });
+      else if (mensaje) toast(mensaje(r.resultado ?? {}, r));
       return r;
     } catch (e) {
       manejarError(e);
