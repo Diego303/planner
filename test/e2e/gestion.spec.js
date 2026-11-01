@@ -153,6 +153,23 @@ test('Ajustes: cada uno cambia la interfaz al momento', async ({ page, app }) =>
   await esperarFichero(app, 'ajustes.md', (t) => /- cierre: 21:00/.test(t));
   await m.locator('#aj-foco').selectOption({ label: '5 h' });
   await esperarFichero(app, 'ajustes.md', (t) => /- foco_max: 5/.test(t));
+  // capacidad 50 %: el lunes (690 min de 900 visibles, 77 %, «aviso» con 70 %) pasa a «exceso»
+  const lunes = page.locator('#wk .dias > div', { has: page.locator('.dia-cab', { hasText: 'L 2' }) }).locator('.capb > div');
+  await expect(lunes).toHaveClass('aviso');
+  await m.locator('#aj-capacidad').evaluate((el) => { el.value = '50'; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); });
+  await esperarFichero(app, 'ajustes.md', (t) => /- capacidad: 50/.test(t));
+  await expect(lunes).toHaveClass('exceso');
+  await expect(m.locator('#aj-capacidad-v')).toHaveText('50 %');
+  for (const [sel, valor, re] of [['#aj-mejores', 'noches', /- mejores_horas: noches/], ['#aj-margen', 'fijo', /- margen: fijo/], ['#aj-copias', 'al cerrar semana', /- copias: al cerrar semana/]]) {
+    await m.locator(sel).selectOption(valor);
+    await esperarFichero(app, 'ajustes.md', (t) => re.test(t));
+  }
+  await m.locator('#aj-puerto').fill('4400');
+  await m.locator('#aj-puerto').press('Tab');
+  await esperarFichero(app, 'ajustes.md', (t) => /- puerto: 4400/.test(t));
+  await page.keyboard.press('Escape');
+  await page.locator('#gbtn').click();
+  await expect(page.locator('#gmenu')).toContainText('copia al cerrar semana');
   await page.keyboard.press('Escape');
   await expect(page.locator('#wk .foco')).toHaveCount(0); // 3,5 h el domingo ya no pasa de 5 h
   await expect(bloque(page, 'Gimnasio')).toBeVisible();
