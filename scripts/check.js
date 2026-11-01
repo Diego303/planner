@@ -27,7 +27,7 @@ const rel = (r) => relative(raiz, r).split(sep).join('/');
 
 // 1. Sintaxis
 const js = ['bin', 'src', 'web', 'test', 'scripts', 'plugin']
-  .flatMap((d) => recorrer(join(raiz, d), (r) => r.endsWith('.js')));
+  .flatMap((d) => recorrer(join(raiz, d), (r) => r.endsWith('.js') || r.endsWith('.mjs')));
 for (const fichero of js) {
   try {
     execFileSync(process.execPath, ['--check', fichero], { stdio: 'pipe' });

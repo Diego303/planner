@@ -145,6 +145,9 @@ estado: en curso | sin cerrar | cerrada | reabierta | planificada | solo plantil
 ## Estudio                ← opcional: horas de ESTA semana cuando difieren de estudio.md
 - AI-102: 6 h
 
+## Notas                  ← opcional: texto libre (lo escribe /planner:repaso); se enseña bajo la semana
+- repaso: …
+
 ## Cierre
 - estudio: 9/8 h · proyectos: 3/4 h · tareas: 18 · ánimo: 3,6     ← resumen (el que contenga « · »)
 - funcionó: …
@@ -153,7 +156,7 @@ estado: en curso | sin cerrar | cerrada | reabierta | planificada | solo plantil
 - Orden canónico de campos de bloque: `tipo:`, `paso:`, `hecho:`, `nota:`, `plantilla`, `sugerido`, desconocidos.
 - **Tema** del bloque = texto antes del primer ` · ` del título. `★` no se guarda.
 - `estado:` solo manda para `cerrada` y `reabierta`; el resto se calcula con la fecha (§4.5 del plan).
-- La sección `## Estudio` la escribe el paso 4 de «Cerrar semana» (horas por certificación de la semana nueva) y la usa Proponer. Es la única ampliación del formato y es opcional.
+- La sección `## Estudio` la escribe el paso 4 de «Cerrar semana» (horas por certificación de la semana nueva) y la usa Proponer. `## Notas` (texto libre) la usa el plugin opcional. Son las dos únicas ampliaciones del formato y son opcionales.
 
 Válidas: `- L 09:00-17:30 | trabajo | Trabajo | plantilla`, `- J 20:00-21:00 | estudio | MLA-C01 · simulacro | tipo: simulacro | hecho: 0 | nota: 71`, `- [x] Simulacro ≥ 70 % | rel: MLA-C01`.
 No reconocidas: `- Lunes 09:00-10:00 | x | y`, `- L 09:00-10:00 | trabajo` (sin título), `- L 22:00-01:00 | x | y` (cruza medianoche), `- [-] texto`.

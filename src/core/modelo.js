@@ -103,6 +103,7 @@ export const minutosHechos = (b) => (b.hecho == null ? 0 : Math.max(0, b.fin - b
 
 export const bloquesDe = (doc) => entidades(doc, 'bloque');
 export const las3De = (doc) => entidades(doc, 'las3');
+export const notasSemana = (doc) => entidades(doc, 'nota').map((n) => n.texto.replace(/^\s*[-*]\s+/, ''));
 export const estadoGuardado = (doc) => doc?.lineas.find((l) => l.t === 'estado')?.valor ?? null;
 
 /** Horas objetivo de esta semana por tema (sección `## Estudio`): { temaNormalizado: horas } */

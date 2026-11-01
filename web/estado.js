@@ -104,12 +104,13 @@ export function enviar(op, args, { mensaje = null } = {}) {
   const respuesta = cola.then(async () => {
     if (gen !== generacion) return null; // una operación anterior falló: esta se basaba en ella
     try {
-      const r = await api.op({ op, args, versiones: st.base.versiones, hoy: hoy(), ahora: ahora(), semana: st.ui.semana });
+      const semanaPedida = st.ui.semana;
+      const r = await api.op({ op, args, versiones: st.base.versiones, hoy: hoy(), ahora: ahora(), semana: semanaPedida });
       pendientes.splice(pendientes.indexOf(pendiente), 1);
       st.base = r.estado;
-      st.ui.semana = r.estado.meta.semana;
       recomponer();
-      avisar();
+      // si mientras tanto se cambió de semana, se carga la que se está viendo
+      if (st.ui.semana !== r.estado.meta.semana) cargar(); else avisar();
       if (mensaje && r.inversaId) toast(mensaje(r.resultado ?? local?.resultado ?? {}, r), { deshacer: () => deshacer(r.inversaId) });
       else if (mensaje) toast(mensaje(r.resultado ?? {}, r));
       return r;

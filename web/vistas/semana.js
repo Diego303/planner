@@ -125,7 +125,9 @@ export function pintarSemana() {
   const raiz = $('#v-semana');
   if (!raiz.firstElementChild) raiz.innerHTML = `<div class="card" id="wk">${TELARANA}<div id="wk-c"></div></div>`;
   const v = modeloSemana();
-  pintar($('#wk-c'), html`${cabecera(v)}${banda(v)}${las3(v)}${cabeceraDias(v)}${rejilla(v)}${leyenda(v)}${avisoLineas(v.d.semanaRuta, v.d.semanaDoc)}`);
+  const notas = m.notasSemana(v.d.semanaDoc);
+  const bloqueNotas = notas.length ? html`<div class="recuadro" style="margin-top:12px;font-size:11.5px"><div class="mut" style="font-size:11px;margin-bottom:2px">Notas de la semana</div>${notas.map((n) => html`<div>${n}</div>`)}</div>` : '';
+  pintar($('#wk-c'), html`${cabecera(v)}${banda(v)}${las3(v)}${cabeceraDias(v)}${rejilla(v)}${leyenda(v)}${bloqueNotas}${avisoLineas(v.d.semanaRuta, v.d.semanaDoc)}`);
 }
 
 // ---------- Interacción ----------

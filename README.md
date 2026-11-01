@@ -71,6 +71,10 @@ Crea `tema.md` en tu carpeta, elige **Personalizado** en Gestión → Tema:
 
 Tokens: `fondo`, `superficie`, `superficie-2`, `texto`, `texto-2`, `texto-3`, `borde`, `acento`, `acento-texto`, `aviso`, `aviso-fondo`, `ok`, `ok-fondo`, `peligro`, `sombra`, `sombra-alta`, `radio`, `fuente`, `fondo-deco`, `enlace`. Si el texto queda con poco contraste, Ajustes lo avisa (pero lo respeta).
 
+## Plugin de Claude Code (opcional)
+
+planner no usa IA. Si quieres, [`plugin/`](plugin/) añade a Claude Code `/planner:ordenar` (inbox → tareas), `/planner:repaso` (4–8 semanas → nota en la semana), `/planner:plan-estudio` (temario + examen → `estudio.md`) y `/planner:dividir` (tarea grande → pasos de menos de 2 h). Siempre con vista previa, confirmación y copia en `.copias/` antes de escribir; nunca tocan semanas cerradas ni el diario. Instrucciones en [`plugin/LEEME.md`](plugin/LEEME.md).
+
 ## Desarrollo
 
 ```bash

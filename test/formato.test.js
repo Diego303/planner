@@ -292,3 +292,11 @@ test('la sección se cierra también en títulos no reconocidos', () => {
   assert.equal(m.finSeccion(doc, i), 3);
   assert.equal(m.finContenido(doc, i), 2);
 });
+
+test('semana: «## Notas» es texto libre reconocido (no se marca)', () => {
+  const t = '# Semana 45\n\n## Bloques\n- L 09:00-10:00 | a | b\n\n## Notas\n- repaso: los jueves rinden poco\ncualquier cosa\n';
+  const doc = parsear('semanas/2026-W45.md', t);
+  assert.equal(serializar(doc), t);
+  assert.equal(m.desconocidas(doc).length, 0);
+  assert.deepEqual(m.notasSemana(doc), ['repaso: los jueves rinden poco', 'cualquier cosa']);
+});

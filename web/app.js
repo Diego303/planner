@@ -126,5 +126,9 @@ export async function iniciar() {
 
 // Las fases registran vistas, pestañas y menús antes de arrancar (módulos importados en extensiones.js).
 import('./extensiones.js')
-  .catch((e) => { console.error(e); document.getElementById('banda').textContent = `⚠ No se pudo cargar una parte del planner: ${e.message}`; })
+  .catch((e) => {
+    console.error(e);
+    const aviso = `No se pudo cargar una parte del planner: ${e.message}`;
+    acciones.avisosExtra = () => [aviso];
+  })
   .finally(iniciar);

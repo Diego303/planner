@@ -7,10 +7,10 @@ import { DIAS, parsearRango, formatoRango, parsearDelta, formatoDelta, lunesDe, 
 
 export const ESTADOS = ['en curso', 'sin cerrar', 'cerrada', 'reabierta', 'planificada', 'solo plantilla'];
 export const SUBTIPOS = ['aprender', 'repasar', 'simulacro'];
-export const SECCIONES = { las3: 'Las 3', bloques: 'Bloques', estudio: 'Estudio', cierre: 'Cierre' };
-export const ORDEN_SECCIONES = ['las3', 'bloques', 'estudio', 'cierre'];
+export const SECCIONES = { las3: 'Las 3', bloques: 'Bloques', estudio: 'Estudio', notas: 'Notas', cierre: 'Cierre' };
+export const ORDEN_SECCIONES = ['las3', 'bloques', 'estudio', 'notas', 'cierre'];
 
-const CLAVE_SECCION = { 'las 3': 'las3', 'bloques': 'bloques', 'estudio': 'estudio', 'cierre': 'cierre' };
+const CLAVE_SECCION = { 'las 3': 'las3', 'bloques': 'bloques', 'estudio': 'estudio', 'notas': 'notas', 'cierre': 'cierre' };
 
 // ---------- Constructores (forma completa de cada elemento) ----------
 
@@ -139,6 +139,7 @@ export function parsear(texto) {
       if (sec === 'las3') return leerLas3(raw);
       if (sec === 'bloques') return leerBloque(raw);
       if (sec === 'estudio') return leerObjetivo(raw);
+      if (sec === 'notas') return { t: 'nota', texto: raw }; // texto libre (lo escribe /planner:repaso o tú)
       return leerCierre(raw, ctx);
     },
     canon,
@@ -175,6 +176,7 @@ export function canon(l) {
     case 'objetivo': return conComentario(`- ${l.tema}: ${formatoNumero(l.horas)} h`, l.comentario);
     case 'leccion': return conComentario(`- ${l.clase === 'funciono' ? 'funcionó' : 'cambio'}: ${l.texto}`, l.comentario);
     case 'resumen': return `- ${l.texto}`;
+    case 'nota': return l.texto;
     default: throw new Error(`línea desconocida en semana: ${l.t}`);
   }
 }
