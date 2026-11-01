@@ -29,6 +29,8 @@ pnpm install
 pnpm add -g /mnt/d/GitHub/planner        # deja el comando `planner` disponible (enlazado al repo)
 ```
 
+Enlazado al repo en `/mnt/d`, arrancar tarda ~1 s; instalado desde un paquete (`pnpm pack --pack-destination ~ && pnpm add -g ~/planner-0.1.0.tgz`), ~0,2 s. Detalles en [`instrucciones.md`](instrucciones.md), paso 2.5.
+
 ## Uso
 
 ```bash

@@ -7,6 +7,15 @@
   "bin": {
     "planner": "./bin/planner.js"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "web/",
+    "ejemplo/",
+    "plugin/",
+    "README.md",
+    "instrucciones.md"
+  ],
   "engines": {
     "node": ">=20"
   },

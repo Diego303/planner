@@ -87,6 +87,16 @@ planner --version
 
 Tiene que salir `0.1.0`. El comando queda **enlazado al repo**: si actualizas el repo (`git pull`), `planner` usa la versión nueva sin reinstalar.
 
+> **¿Quieres que arranque más rápido?** Enlazado al repo, el código se carga desde `/mnt/d` y arrancar tarda alrededor de 1 s (Windows hace lento leer muchos ficheros pequeños desde WSL). Si lo instalas desde un paquete, el código se copia dentro de Linux y arranca en unos 0,2 s, aunque tus datos sigan en `/mnt/d`:
+>
+> ```bash
+> cd /mnt/d/GitHub/planner
+> pnpm pack --pack-destination ~        # crea ~/planner-0.1.0.tgz
+> pnpm add -g ~/planner-0.1.0.tgz
+> ```
+>
+> La contrapartida: después de un `git pull` hay que repetir esos dos comandos para usar la versión nueva.
+
 > **¿`planner: command not found`?** Abre una terminal nueva y repite el paso 2.4. Si `echo $PNPM_HOME` sale vacío, falta el paso 2.3. Como alternativa sin pnpm global, un alias: `echo 'alias planner="node /mnt/d/GitHub/planner/bin/planner.js"' >> ~/.bashrc` (y terminal nueva).
 
 ### Paso 2.6 · Comprobarlo con datos de ejemplo
