@@ -44,8 +44,10 @@ for (const [tema, esquema] of TEMAS) {
         await abrir(page, app);
         await ir(page);
         await page.waitForTimeout(150);
-        if (zona) await expect(page.locator(zona)).toHaveScreenshot(`${nombre}/${pantalla}.png`);
-        else await expect(page).toHaveScreenshot(`${nombre}/${pantalla}.png`, { fullPage: true });
+        // la ruta de la carpeta temporal cambia en cada ejecución: se tapa
+        const mask = [page.locator('.dd > .mut, .mod .mut', { hasText: 'planner-e2e-' })];
+        if (zona) await expect(page.locator(zona)).toHaveScreenshot(`${nombre}/${pantalla}.png`, { mask });
+        else await expect(page).toHaveScreenshot(`${nombre}/${pantalla}.png`, { fullPage: true, mask });
       });
     }
   });
