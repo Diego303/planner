@@ -28,7 +28,8 @@
     "test:zonas": "TZ=UTC node --test test/*.test.js && TZ=Europe/Madrid node --test test/*.test.js && TZ=America/Los_Angeles node --test test/*.test.js",
     "test:e2e": "playwright test",
     "test:visual": "playwright test --config=playwright.visual.config.js",
-    "qa:validar": "node scripts/qa-validar.js"
+    "qa:validar": "node scripts/qa-validar.js",
+    "test:todo": "pnpm check && PLANNER_SIGKILL=200 pnpm test && PLANNER_SESION_MIN=3 pnpm test:e2e && pnpm test:visual"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1"

@@ -6,12 +6,12 @@ Plan en [`QA-PLAN.md`](QA-PLAN.md). Este informe se actualiza al cerrar cada fas
 
 | | Valor | Objetivo |
 |---|---|---|
-| Tests (`pnpm test`) | **179 / 179 en verde** (también con `TZ=UTC`, `Europe/Madrid`, `America/Los_Angeles`) | todo en verde |
+| Tests (`pnpm test`) | **183 / 183 en verde** (también con `TZ=UTC`, `Europe/Madrid`, `America/Los_Angeles`) | todo en verde |
 | Cobertura `src/core` | **99,2 %** líneas · 95,2 % ramas | ≥ 95 % líneas |
 | Cobertura `src/server` | **96,7 %** líneas · 91,3 % ramas (CLI: `sistema.js` 97 %, `bin/planner.js` 88 %) | ≥ 85 % líneas |
 | e2e (`pnpm test:e2e`) | **42 / 42 en verde**, tres veces seguidas | todo en verde, sin intermitentes |
 | Visual (`pnpm test:visual`) | **171 / 171 en verde**, tres veces seguidas (144 capturas + diseño adaptable + temas) | sin regresiones |
-| Fases | Q0 ✓ · Q1 ✓ · Q2 ✓ · Q3 ✓ · Q4 ✓ · Q5 ✓ | Q0–Q8 |
+| Fases | Q0 ✓ · Q1 ✓ · Q2 ✓ · Q3 ✓ · Q4 ✓ · Q5 ✓ · Q6 ✓ · Q7 ✓ · Q8 (falta tu permiso para tus datos) | Q0–Q8 |
 
 ## Bugs
 
@@ -48,6 +48,11 @@ Gravedad: **crítico** = pérdida o corrupción de datos, o seguridad · alto ·
 | B21 | Bajo (accesibilidad) | Al cerrar un modal abierto desde Gestión, el foco se perdía | Gestión ▾ → Ajustes → Esc | El foco volvía a la entrada del menú, que ya no existe | Vuelve a «Gestión ▾» · `f8e2094` | `test/e2e/teclado.spec.js` |
 | B24 | Bajo | Con zoom al 200 % en 1024 o 1280 px, la página de Progreso se desplazaba en horizontal | Ctrl + + hasta 200 % en Progreso | Sparkline de 300 px fijos con la etiqueta fuera del gráfico | Los gráficos encogen con su columna y la etiqueta va dentro · `c68b92b` | `test/visual/adaptable.spec.js` |
 | B23 | Bajo | En «Plan frente a real», con la letra ancha de Papel o del tema personalizado, «proyectos» saltaba debajo de su punto | Tema Papel → Progreso | Columna de 78 px | 96 px, sin saltos y con puntos suspensivos para nombres largos · `ef2492b` | `test/visual/adaptable.spec.js` |
+| B25 | Alto | Con tres años de datos en /mnt/d, la primera escritura del día congelaba el planner 47,7 s (copia síncrona de toda la carpeta): ni el sondeo respondía | Primer cambio del día con años de datos | `cpSync` en el hilo del servidor | La copia va en segundo plano desde el arranque; lo que se escribe mientras tanto se copia antes en su versión vieja (sigue siendo la foto del día) · `64e2695` | `test/copias.test.js` |
+| B27 | Alto | Con el disco lento, lo escrito en Las 3 se perdía y un bloque arrastrado no se guardaba si la respuesta del cambio anterior llegaba en ese momento | Marcar un objetivo y, enseguida, editar otro o arrastrar dos bloques seguidos con los datos en /mnt/d | El repintado sustituía el texto que se editaba o el bloque agarrado | El repintado de esa zona se aplaza hasta que termina la interacción · `64efa9e` | `test/e2e/disco-lento.spec.js` |
+| B30 | Medio | Tras un aviso de recarga (409), repetir el cambio enseguida volvía a dar 409 y se perdía otra vez | Editar a la vez en Obsidian y en el planner con el disco lento | La recarga iba fuera de la cola de operaciones | La recarga va dentro de la cola · `eebb9d8` | `test/e2e/disco-lento.spec.js` |
+| B26 | Medio (rendimiento) | Con tres años de datos en /mnt/d: 380 ms cada estado y 600 ms cada operación (307 y 476 `stat`) | Cualquier uso con años de semanas | Se comprobaban todas las semanas y 56 días de diario en cada petición | Lo lejano (fuera de lo que vigila el sondeo) vale 60 s de la caché, la versión reutiliza lo recién comprobado, `normalizar()` memoriza y la caché se llena al arrancar: 160 ms y 300 ms (en ext4, 20 ms) · `88725c4` | `test/rendimiento.test.js` |
+| B29 | Bajo | Pasar semanas deprisa con el disco lento devolvía la vista a una semana anterior | Siete «›» seguidos desde la 45 acababan en la 51 | Se aplicaba cada respuesta al llegar, aunque fuera de una carga vieja | Solo vale la última carga pedida · `67e4a80` | `test/e2e/disco-lento.spec.js` |
 
 ## Decisiones dudosas (para que decidas)
 
@@ -64,7 +69,8 @@ Las D1–D10 de [`QA-PLAN.md`](QA-PLAN.md) §7 se mantienen como están (aprobad
 
 - **Muerte entre dos `rename`:** cada fichero sigue siendo atómico y lo movido queda repetido, nunca perdido (R4); 200 SIGKILL sin ficheros a medias ni tareas perdidas.
 - **Hueco entre `link` y `rename`:** de microsegundos y sin JavaScript en medio. Si el sistema de ficheros no tiene enlaces duros (en drvfs sí hay), queda la comprobación anterior.
-- **Copia diaria síncrona (R6):** se mide en Q6 con tres años de datos.
+- **Copia diaria en segundo plano:** si paras el planner antes de que termine (5 s de espera al parar), esa copia se rehace al volver a arrancar, ya con lo cambiado ese día dentro.
+- **Semanas lejanas y diario viejo editados a mano:** el planner tarda hasta 60 s en verlos (el sondeo ya no los vigilaba, R13). Escribir siempre comprueba el disco, así que no se pisa nada.
 - **Sin `fsync` del directorio tras el `rename` (R15):** solo afecta a un corte de luz en ext4; en drvfs no aplica. Aceptado.
 - **`SIGINT` asíncrono y PID sin atomicidad (R17):** no se ha podido reproducir un fallo (doble Ctrl+C y `cerrar` repetido funcionan). Aceptado.
 - **El sondeo solo mira las semanas cercanas (R13):** decisión de rendimiento; las escrituras siguen protegidas porque se relee el disco.
@@ -116,3 +122,34 @@ Mapa de funcionalidades, matriz, riesgos y revisión estática en `QA-PLAN.md`. 
 - **Comparación con la maqueta nórdica** (`docs/maquetas/planner-nordico.html`): mismos textos, espaciados y microcopias en Semana y cajón. Diferencias: la ★ en todos los bloques del tema (D14); la maqueta va centrada a unos 1.100 px y la app ocupa todo el ancho. Igual que en la maqueta, un bloque de 30 min mide unos 10 px y su texto sale cortado (23 px por hora).
 - En el Linux de los tests falta el glifo «＋» del campo de captura (sale «▯»); en Windows se ve bien. Las capturas de referencia son de este entorno: si se regeneran en otra máquina, cambiarán las fuentes.
 - Bugs: B23, B24. Decisión dudosa nueva: D14.
+
+### Q6 · Rendimiento y uso prolongado
+Datos: `test/rendimiento/generar.js` crea tres años realistas (157 semanas, 5.000 tareas archivadas en 37 meses, 1.000 días de diario, 1.194 ficheros, 5,1 MB), sin ninguna línea no reconocida.
+
+| Medida | Objetivo | ext4 | /mnt/d (drvfs) |
+|---|---|---|---|
+| Arranque (`planner` hasta la URL) | < 1 s | 0,15 s | código enlazado en /mnt/d: 1,1–1,3 s · instalado desde `.tgz`: 0,22 s |
+| `GET /api/estado` (en caliente) | < 150 ms | 20 ms (antes 77) | 155–165 ms (antes 380) |
+| Primera carga de la página | | caché ya llena al arrancar | ~200 ms (antes 800) |
+| Una operación | | 75 ms | 230–330 ms (antes 600) |
+| Primera escritura del día | | 90 ms | 0,3–0,7 s (antes **47,7 s**, B25) |
+| Sondeo (`/api/version`) | | 6 ms | 40–60 ms |
+| Pintar Semana / Hoy / Progreso | < 50 / – / < 200 ms | 7 / 10 / 11 ms (mediana) | igual (es el navegador) |
+
+- En /mnt/d el suelo es la latencia de cada llamada al sistema (~4 ms): 39 `stat` y 5 `readdir` por estado. Ampliar el pool de hilos de libuv no mejora.
+- El arranque > 1 s solo pasa con el código enlazado al repo en /mnt/d (cargar ~40 módulos desde drvfs): instrucciones.md (paso 2.5) explica cómo instalarlo desde un paquete. `package.json` ya tiene `files` (antes, el paquete metía `test/` con 8,5 MB de capturas).
+- El sondeo cada 2 s solo pide `/api/version`: en 9 s, ninguna escritura en disco y ninguna recarga.
+- Sesión larga: `test/e2e/sesion-larga.spec.js` (3 min en `test:todo`; la de 30 min, abajo).
+- Bugs: B25, B26 (y R6, R12).
+
+### Q7 · Entorno real (WSL, Windows y app instalada)
+- `pnpm add -g /mnt/d/GitHub/planner` (pnpm 12.6) deja un **enlace** al repo: funciona desde cualquier carpeta, pero arranca en ~1,2 s. `pnpm pack` + `pnpm add -g` del `.tgz` copia el código a ext4: 0,22 s con los datos en /mnt/d y `--ejemplo` funciona.
+- **Toda la suite e2e con los datos en /mnt/d** (con 3 servidores a la vez): destapó B27, B29 y B30, que con ext4 no salían. Ahora pasa también ahí.
+- **Instalable:** Chrome no da ningún error de instalabilidad (`Page.getInstallabilityErrors`), el manifest es correcto y los iconos de 192 y 512 cargan como PNG (`test/e2e/instalable.spec.js`).
+- **`.vbs` de arranque:** sintaxis válida con `cscript` (con una copia que solo enseña el comando), ventana oculta (`Run …, 0, False`), CRLF; `bash -lic` encuentra `planner` con el `PNPM_HOME` de tu `.bashrc`.
+- Lista manual para tu Windows: [`QA-CHECKLIST.md`](QA-CHECKLIST.md) (21 puntos: instalar como app, reiniciar, Bloc de notas, Obsidian, temas, zoom, copias y parada a mitad de guardar).
+
+### Q8 · Validación de tus datos
+- `pnpm qa:validar -- --datos <ruta>`: copia la carpeta a un temporal, la parsea entera, comprueba la ida y vuelta byte a byte y lista líneas no reconocidas (con el motivo), ficheros ignorados, solapes, temas huérfanos, tipos sin uso y tipos sin definir. Comprueba al final que la carpeta original no ha cambiado (`test/qa-validar.test.js` lo verifica byte a byte y por fecha de modificación). Salida 0, 1 (avisos) o 2 (ida y vuelta no exacta).
+- Sobre `ejemplo/`: ida y vuelta exacta en 50 ficheros, 1 línea sin casilla (a propósito) y un solape cada domingo pasado («Cerrar semana» 17:00 dentro del bloque de proyectos de 16:00 a 17:30). Es un detalle de los datos de ejemplo, no del planner.
+- **Pendiente: ejecutarlo sobre `/mnt/d/planner` cuando me des permiso.**
