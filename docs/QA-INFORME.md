@@ -6,10 +6,11 @@ Plan en [`QA-PLAN.md`](QA-PLAN.md). Este informe se actualiza al cerrar cada fas
 
 | | Valor | Objetivo |
 |---|---|---|
-| Tests (`pnpm test`) | **174 / 174 en verde** (también con `TZ=UTC`, `Europe/Madrid`, `America/Los_Angeles`) | todo en verde |
+| Tests (`pnpm test`) | **179 / 179 en verde** (también con `TZ=UTC`, `Europe/Madrid`, `America/Los_Angeles`) | todo en verde |
 | Cobertura `src/core` | **99,2 %** líneas · 95,2 % ramas | ≥ 95 % líneas |
 | Cobertura `src/server` | **96,7 %** líneas · 91,3 % ramas (CLI: `sistema.js` 97 %, `bin/planner.js` 88 %) | ≥ 85 % líneas |
-| Fases | Q0 ✓ · Q1 ✓ · Q2 ✓ · Q3 ✓ | Q0–Q8 |
+| e2e (`pnpm test:e2e`) | **42 / 42 en verde**, tres veces seguidas | todo en verde, sin intermitentes |
+| Fases | Q0 ✓ · Q1 ✓ · Q2 ✓ · Q3 ✓ · Q4 ✓ | Q0–Q8 |
 
 ## Bugs
 
@@ -38,6 +39,12 @@ Gravedad: **crítico** = pérdida o corrupción de datos, o seguridad · alto ·
 | B11 | Bajo | Un cuerpo JSON que no era un objeto (`null`) daba un 500 | `POST /api/op` con `null` | Sin comprobar el tipo | 400 · `18897e8` | `test/http-hostil.test.js` |
 | R9 | Bajo | Con más de 256 KB el cliente veía «conexión cortada» en vez del 413 | Cuerpo de 300 KB | `req.destroy()` antes de responder | Se descarta el resto y se responde 413 · `82856e3` | `test/http-hostil.test.js` |
 | B16 | Bajo | Con `wslview` instalado pero roto no se abría el navegador y la CLI no lo decía | wslu sin navegador configurado | Bastaba con que arrancara | Se mira cómo sale (salvo `explorer.exe`, que sale con 1 aunque abra) y se prueba el siguiente · `fd81b5a` | `test/cli-entorno.test.js` |
+| B18 | **Crítico** | Parar el planner (Ctrl+C, `planner stop`) con una escritura en marcha cortaba la operación: `cerrar()` cerraba las conexiones y el CLI salía enseguida | Ctrl+C justo al cerrar el día (varios ficheros) | `closeAllConnections` sin esperar a las peticiones | Deja de aceptar peticiones (503), espera a las que están en marcha (hasta 5 s) y cierra · `cf11e61` | `test/parada.test.js` |
+| B19 | Alto | Lo escrito en un formulario se borraba al repintar: un error de validación, la respuesta de otra operación o un cambio de fuera traído por el sondeo | Escribir un proyecto en Metas mientras se guarda otra cosa, o pulsar Añadir sin el siguiente paso | Repintar sustituía el HTML con los campos vacíos (también en los modales) | `pintar()` y los modales conservan lo escrito (mismo id y mismo valor de partida) y el foco · `886cc37`, `605d4a8` | `test/e2e/cajon.spec.js`, `test/e2e/gestion.spec.js` |
+| B20 | Alto (regresión de esta QA) | El menú Gestión ▾ no se abría: «TEMAS is not defined» | Pulsar Gestión ▾ | Import quitado al sacar la rejilla de miniaturas (`2358570`) | Import repuesto · `9173db6` | `test/e2e/gestion.spec.js` |
+| B17 | Medio (accesibilidad) | `aria-pressed`, `aria-checked` y `aria-selected` salían vacíos al pintar: el lector de pantalla no sabía qué vista, tipo, pestaña, ánimo o tema estaba elegido | Cualquier vista con un lector de pantalla | La plantilla `html` convierte los booleanos en «» | «true»/«false» explícitos · `26006f3` | `test/web-escape.test.js`, `test/e2e/semana.spec.js` |
+| B22 | Medio (accesibilidad) | Con el teclado no se veía el foco en Las 3 ni en los campos | Tab por la Semana o por el cierre del día | `outline: none` y un borde apenas distinto | Anillo con el acento del tema · `90a6587` | `test/e2e/teclado.spec.js` |
+| B21 | Bajo (accesibilidad) | Al cerrar un modal abierto desde Gestión, el foco se perdía | Gestión ▾ → Ajustes → Esc | El foco volvía a la entrada del menú, que ya no existe | Vuelve a «Gestión ▾» · `f8e2094` | `test/e2e/teclado.spec.js` |
 
 ## Decisiones dudosas (para que decidas)
 
@@ -85,3 +92,14 @@ Mapa de funcionalidades, matriz, riesgos y revisión estática en `QA-PLAN.md`. 
 - **Seguridad:** Host (incluidos `localhost.evil.com`, IPv6, sin puerto), Origin (`null`, otro puerto, https), sin cabeceras CORS, 20 rutas de escape (`%2e%2e`, `..%5c`, nulos, doble codificación, absolutas), no responde por la IP de la red local, primitivas internas cerradas y escape en SVG y `style`.
 - **CLI:** PID huérfano, roto o reutilizado, planner colgado, rutas con espacios, tildes y paréntesis, y la cadena de apertura del navegador con programas falsos.
 - Bugs: R4, B8–B16, R5, R7–R10 y R14. Decisiones dudosas nuevas: D12 y D13.
+
+### Q4 · End-to-end (Playwright, Chromium)
+- 42 tests en 9 ficheros (`test/e2e/`). Cada uno arranca su servidor con una copia nueva de `ejemplo/` (o una carpeta vacía o inexistente), falla con cualquier error de consola, excepción o `alert`, y comprueba el Markdown guardado, no solo el DOM. La hora del navegador va fija (lunes 2 de noviembre, 10:00).
+- **Semana:** crear con doble clic, arrastrar (ajuste a 30 min, soltar fuera), estirar (mínimo 30 min, hasta la última hora), editar todos los campos, Hecho con cada duración y nota de simulacro, A medias y su aviso, eliminar y deshacer dentro y fuera de los 10 s, solapes y marcas ↻ ★ ◎ ⟲ ☾, ocupación en sus 3 colores y foco, Las 3, Proponer y aceptar, y navegar por semanas cerradas (solo lectura de verdad), futuras y el cambio de año (W53 → W01).
+- **Hoy, cajón, Gestión y Progreso:** todo lo de la lista del plan, con los números de Metas y Progreso comparados con `core/progreso.js`.
+- **Sincronización:** edición a mano visible en ≤ 3 s, conflicto con una operación en vuelo (409, sin pisar nada), servidor parado (banda de solo lectura, todo bloqueado) y recuperación sin perder nada.
+- **Teclado y accesibilidad:** Esc por capas, Tab por todos los controles con foco visible y nombre accesible, y sin trampas.
+- **XSS:** `<img src=x onerror=alert(1)>` en bloques, tipos, Las 3 («si → entonces»), tareas, proyectos, estudio, «dejado», diario, inbox y lecciones: texto en todas las vistas, el cajón y los modales (también en los 4 pasos del cierre).
+- **Onboarding:** carpeta vacía e inexistente → 3 pasos → primera semana propuesta; la guía no vuelve al recargar.
+- En WSL, Chromium necesita `libnss3`: una vez, `sudo pnpm exec playwright install-deps chromium`.
+- Bugs: B17–B22.
