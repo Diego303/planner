@@ -1,0 +1,30 @@
+/* Alto contraste: negro puro, bordes de 1,5 px y sin transparencias en los bloques. */
+:root[data-tema="alto-contraste"], [data-tema-muestra="alto-contraste"] {
+  --modo: contraste;
+  --fondo: #000000;
+  --superficie: #0A0A0A;
+  --superficie-2: #1A1A1A;
+  --texto: #FFFFFF;
+  --texto-2: #E0E0E0;
+  --texto-3: #BDBDBD;
+  --borde: #FFFFFF;
+  --acento: #FFE500;
+  --acento-texto: #000000;
+  --aviso: #FFB000;
+  --aviso-fondo: #2A1E00;
+  --ok: #00E08A;
+  --ok-fondo: #002A1A;
+  --peligro: #FF5C5C;
+  --enlace: #7FD0FF;
+  --velo: rgba(0, 0, 0, .75);
+  --sombra: 0 0 0 1.5px #FFFFFF;
+  --sombra-alta: 0 0 0 1.5px #FFFFFF;
+  --radio: 18px;
+  --fuente: Inter, "Segoe UI", -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --fondo-deco: none;
+  --borde-ancho: 1.5px;
+  color-scheme: dark;
+}
+:root[data-tema="alto-contraste"] .blk.done { opacity: 1; }
+:root[data-tema="alto-contraste"] .blk.sug { border-width: 2px; }
+:root[data-tema="alto-contraste"] .card { border: 1.5px solid var(--borde); box-shadow: none; }

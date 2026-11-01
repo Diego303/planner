@@ -4,6 +4,9 @@ import { abrirModal, cabecera, cuerpoModal, modalAbierto } from '../ui/modal.js'
 import { st, enviar, derivados, alCambiar } from '../estado.js';
 import { avisoLineas } from '../ui/avisos.js';
 import { entradaMenu, itemMenu, opcionesHora } from './comun.js';
+
+/** Lo que hacen las secciones extra al pintarse (p. ej. colorear las miniaturas de tema): [(mod) → void] */
+export const alPintarAjustes = [];
 import * as f from '/core/fechas.js';
 
 let abierta = false;
@@ -47,6 +50,7 @@ function repintar() {
 
 function enlazar() {
   const mod = cuerpoModal();
+  for (const fn of alPintarAjustes) fn(mod);
   on(mod, 'input', '#aj-capacidad', (_ev, el) => { $('#aj-capacidad-v', mod).textContent = `${el.value} %`; });
   on(mod, 'change', '[data-ajuste]', (_ev, el) => {
     const clave = el.dataset.ajuste, valor = valorDe(el, mod);

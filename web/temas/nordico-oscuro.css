@@ -1,0 +1,50 @@
+/* Nórdico oscuro: mismos tamaños; sombras casi nulas y bordes en su lugar. También es «automático» en oscuro. */
+:root[data-tema="nordico-oscuro"], [data-tema-muestra="nordico-oscuro"] {
+  --modo: oscuro;
+  --fondo: #141716;
+  --superficie: #1C201E;
+  --superficie-2: #252A27;
+  --texto: #E8EBE7;
+  --texto-2: #A4ABA4;
+  --texto-3: #6E756F;
+  --borde: #2A302C;
+  --acento: #E8EBE7;
+  --acento-texto: #141716;
+  --aviso: #E0A25A;
+  --aviso-fondo: color-mix(in srgb, #E0A25A 14%, #1C201E);
+  --ok: #7FC29B;
+  --ok-fondo: color-mix(in srgb, #7FC29B 14%, #1C201E);
+  --peligro: #E07A6B;
+  --enlace: #8FB3E8;
+  --velo: rgba(0, 0, 0, .5);
+  --sombra: 0 0 0 1px #2A302C;
+  --sombra-alta: 0 0 0 1px #343B36, 0 14px 40px rgba(0, 0, 0, .55);
+  --radio: 18px;
+  --fuente: Inter, "Segoe UI", -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --fondo-deco: none;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tema="automatico"] {
+    --modo: oscuro;
+    --fondo: #141716;
+    --superficie: #1C201E;
+    --superficie-2: #252A27;
+    --texto: #E8EBE7;
+    --texto-2: #A4ABA4;
+    --texto-3: #6E756F;
+    --borde: #2A302C;
+    --acento: #E8EBE7;
+    --acento-texto: #141716;
+    --aviso: #E0A25A;
+    --aviso-fondo: color-mix(in srgb, #E0A25A 14%, #1C201E);
+    --ok: #7FC29B;
+    --ok-fondo: color-mix(in srgb, #7FC29B 14%, #1C201E);
+    --peligro: #E07A6B;
+    --enlace: #8FB3E8;
+    --velo: rgba(0, 0, 0, .5);
+    --sombra: 0 0 0 1px #2A302C;
+    --sombra-alta: 0 0 0 1px #343B36, 0 14px 40px rgba(0, 0, 0, .55);
+    color-scheme: dark;
+  }
+}

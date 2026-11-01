@@ -13,6 +13,9 @@ import { avisoLineas } from '../ui/avisos.js';
 
 export const PX = 23; // px por hora (plan §3)
 
+// Decoración de Halloween: telaraña de trazo fino en una esquina (solo se ve con ese tema y la decoración activa).
+const TELARANA = '<svg class="deco-halloween deco-telarana" aria-hidden="true" viewBox="0 0 100 100"><g fill="none" stroke="currentColor" stroke-width=".7"><path d="M100 0L-40 0M100 0L-35 39M100 0L-19 74M100 0L6 104M100 0L39 126M100 0L76 138M100 0L100 140"/><path d="M82 0Q84.5 2.2 82.7 5Q85.7 6.4 84.7 9.5Q88 10.1 88 13.4Q91.2 13 92.1 16.2Q95.2 14.9 96.9 17.7Q98.6 15.7 100 18M66 0Q70.7 4.1 67.3 9.4Q72.9 12.1 71.2 18Q77.3 19 77.2 25.3Q83.4 24.6 85.1 30.6Q90.8 28.2 94.1 33.5Q97.4 29.7 100 34M48 0Q55.1 6.3 50 14.3Q58.6 18.4 55.9 27.6Q65.3 29.1 65.2 38.6Q74.7 37.6 77.2 46.7Q86 43.1 91 51.2Q96 45.4 100 52M28 0Q37.9 8.7 30.8 19.8Q42.7 25.5 38.9 38.2Q51.9 40.3 51.8 53.5Q64.9 52 68.4 64.7Q80.6 59.7 87.5 70.9Q94.5 62.9 100 72M6 0Q18.9 11.4 9.6 25.9Q25.2 33.3 20.3 49.8Q37.2 52.7 37.1 69.9Q54.2 67.9 58.8 84.5Q74.7 77.9 83.7 92.6Q92.8 82.1 100 94"/></g></svg>';
+
 const BANDAS = {
   'cerrada': (id) => [`Semana cerrada · solo lectura · su resumen está en semanas/${id}.md`, 'Reabrir', 'reabrir', 'cerrada'],
   'sin cerrar': () => ['Semana pasada sin cerrar. Puedes editarla y cerrarla cuando quieras.', 'Cerrar ahora', 'cerrar', 'aviso'],
@@ -120,7 +123,7 @@ function leyenda(v) {
 
 export function pintarSemana() {
   const raiz = $('#v-semana');
-  if (!raiz.firstElementChild) raiz.innerHTML = '<div class="card" id="wk"><div id="wk-c"></div></div>';
+  if (!raiz.firstElementChild) raiz.innerHTML = `<div class="card" id="wk">${TELARANA}<div id="wk-c"></div></div>`;
   const v = modeloSemana();
   pintar($('#wk-c'), html`${cabecera(v)}${banda(v)}${las3(v)}${cabeceraDias(v)}${rejilla(v)}${leyenda(v)}${avisoLineas(v.d.semanaRuta, v.d.semanaDoc)}`);
 }

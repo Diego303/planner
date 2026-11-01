@@ -3,12 +3,18 @@ import { iniciarServidor } from './http.js';
 import { valoresAjustes, tiposDe, temasEstudio, diarioDe } from '../core/modelo.js';
 import { constancia, calcularProgreso } from '../core/progreso.js';
 import { factores } from '../core/factor.js';
-import { semanaDe } from '../core/fechas.js';
+import { semanaDe, fechaDe } from '../core/fechas.js';
+import { atributosTema } from '../core/temas.js';
 
-/** Inyecta el tema en <html> para que la primera pintura ya salga con él. */
-async function temaInicial(html, store) {
-  const ajustes = valoresAjustes((await store.leerSeguro('ajustes.md')).doc);
-  return html.replace('<html lang="es"', `<html lang="es" data-tema="${ajustes.tema}"`);
+/** Inyecta el tema en <html> (y el personalizado en <head>) para que la primera pintura ya salga con él. */
+function temaInicial(hoySimulado) {
+  return async (html, store) => {
+    const ajustes = valoresAjustes((await store.leerSeguro('ajustes.md')).doc);
+    const a = atributosTema(ajustes, (await store.leerSeguro('tema.md')).doc, hoySimulado ?? fechaDe(new Date()));
+    let out = html.replace('<html lang="es"', `<html lang="es" data-tema="${a.tema}" data-deco="${a.deco}"${a.personalizado ? ' data-personalizado' : ''}`);
+    if (a.personalizado) out = out.replace('</head>', `<style id="tema-personalizado">:root[data-personalizado][data-tema]{${a.css}}</style>\n</head>`);
+    return out;
+  };
 }
 
 /** Contexto de las operaciones: «lo que tardas de verdad» necesita las últimas 8 semanas. */
@@ -30,5 +36,5 @@ function metricas({ docsSemanas, ficheros, actual, hoy }) {
 }
 
 export function arrancar({ datos, puerto, hoySimulado = null }) {
-  return iniciarServidor({ datos, puerto, hoySimulado, alServirIndex: temaInicial, extrasContexto: [contextoFactores], metricas: [metricas] });
+  return iniciarServidor({ datos, puerto, hoySimulado, alServirIndex: temaInicial(hoySimulado), extrasContexto: [contextoFactores], metricas: [metricas] });
 }

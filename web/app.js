@@ -6,6 +6,7 @@ import { cerrarPopover, popoverAbierto } from './ui/popover.js';
 import { pintarCajon, iniciarCajon } from './ui/cajon.js';
 import { pintarSemana, iniciarSemana } from './vistas/semana.js';
 import './vistas/cajon-hoy.js';
+import { atributosTema, avisoTemaDesconocido } from '/core/temas.js';
 
 /** Vistas principales: { id: { titulo, pintar(), iniciar?() } }. Las fases añaden las suyas. */
 export const vistas = {
@@ -26,9 +27,27 @@ function pintarBarra() {
   pintar($('#gmenu'), menuAbierto ? html`<div class="dd" role="menu">${menuGestion.map((e) => e.pintar(d))}<div class="sep"></div><div class="mut" style="font-size:11px;padding:4px 10px 6px">Guardado en ${d.meta.datos.ruta} · copia ${d.ajustes.copias}</div></div>` : '');
 }
 
+/** Aplica el tema al <html> (atributos y tokens del personalizado). Los colores de tipo se recalculan al pintar. */
+function aplicarTema() {
+  const d = derivados();
+  const a = atributosTema(d.ajustes, st.datos.ficheros['tema.md'], d.meta.hoy);
+  const raiz = document.documentElement;
+  if (raiz.dataset.tema !== a.tema) raiz.dataset.tema = a.tema;
+  if (raiz.dataset.deco !== a.deco) raiz.dataset.deco = a.deco;
+  raiz.toggleAttribute('data-personalizado', a.personalizado);
+  let estilo = document.getElementById('tema-personalizado');
+  if (a.personalizado && !estilo) {
+    estilo = document.createElement('style');
+    estilo.id = 'tema-personalizado';
+    document.head.appendChild(estilo);
+  }
+  if (estilo) estilo.textContent = a.personalizado ? `:root[data-personalizado][data-tema]{${a.css}}` : '';
+}
+
 function pintarBanda() {
   const d = derivados();
-  const avisos = [...d.meta.avisos, ...(acciones.avisosExtra?.() ?? [])];
+  const tema = avisoTemaDesconocido(st.datos.ficheros['ajustes.md']);
+  const avisos = [...d.meta.avisos, ...(tema ? [tema] : []), ...(acciones.avisosExtra?.() ?? [])];
   pintar($('#banda'), html`${st.caido ? html`<div class="banda-global" role="alert"><span>Servidor parado · solo lectura. Reintento cada 5 s.</span></div>` : ''}${avisos.map((a) => html`<div class="banda-global"><span>⚠ ${a}</span></div>`)}`);
 }
 
@@ -36,6 +55,7 @@ export function pintarTodo() {
   if (!st.datos) return;
   const t0 = performance.now();
   if (!vistas[st.ui.vista]) st.ui.vista = 'semana';
+  aplicarTema();
   pintarBarra();
   pintarBanda();
   for (const id of Object.keys(vistas)) $(`#v-${id}`).hidden = id !== st.ui.vista;
@@ -95,6 +115,8 @@ export async function iniciar() {
   iniciarCajon();
   acciones.alIniciar?.();
   alCambiar(pintarTodo);
+  // «Automático» sigue al sistema: al cambiar, se recalculan los colores de los bloques.
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', pintarTodo);
   await cargar();
   iniciarSondeo();
 }

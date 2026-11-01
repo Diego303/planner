@@ -1,0 +1,26 @@
+/* Papel: cálido, con serifa y radios pequeños. */
+:root[data-tema="papel"], [data-tema-muestra="papel"] {
+  --modo: claro;
+  --fondo: #EFE9DE;
+  --superficie: #FBF8F1;
+  --superficie-2: #F3EDE1;
+  --texto: #2B2620;
+  --texto-2: #7A6F5F;
+  --texto-3: #A69B88;
+  --borde: #E7DFD0;
+  --acento: #2B2620;
+  --acento-texto: #FBF8F1;
+  --aviso: #9A5B1E;
+  --aviso-fondo: #F6EADA;
+  --ok: #4C7A5E;
+  --ok-fondo: #EAF0E8;
+  --peligro: #9A3B2E;
+  --enlace: #3E6A8F;
+  --velo: rgba(43, 38, 32, .22);
+  --sombra: 0 1px 2px rgba(60, 45, 20, .06);
+  --sombra-alta: 0 12px 34px rgba(60, 45, 20, .16);
+  --radio: 6px;
+  --fuente: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --fondo-deco: none;
+  color-scheme: light;
+}

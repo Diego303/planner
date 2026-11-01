@@ -275,3 +275,10 @@ El usuario pidió avanzar sin paradas; estas son las preguntas que habría hecho
 4. **Proponer con «sin preferencia»:** prefiere de 9:00 al cierre para no proponer madrugones; «evitar justo después de trabajo > 4 h» = penaliza empezar en los 30 min siguientes.
 5. **`--hoy AAAA-MM-DD`** (solo desarrollo): simula la fecha para probar semana 53, cierres o la maqueta (`--hoy 2026-11-02`).
 6. **Carpeta real `/mnt/d/planner`:** no se toca en ninguna fase sin permiso explícito.
+
+## 7. Temas (F9)
+
+- Un CSS de tokens por tema en `web/temas/`; se cargan todos y el cambio es solo `data-tema` en `<html>` (instantáneo, sin recargar). El servidor lo inyecta al servir `index.html`, así la primera pintura ya sale con el tema (incluido el de temporada y el personalizado).
+- Tokens añadidos a los del plan, necesarios para no tener colores fijos en los componentes: `--modo` (claro | oscuro | contraste, lo usa `core/color.js`), `--velo` (fondo de los modales), `--sombra-alta` (popovers y modales), `--enlace` («+ añadir») y `--borde-ancho` (1,5 px en alto contraste). Los demás matices (`--mut`, `--linea`…) se derivan con `color-mix()` en `styles.css`.
+- Las miniaturas usan `data-tema-muestra="…"` (los selectores de cada tema también lo aceptan) y colorean sus bloques con `core/color.js`.
+- `test/temas.test.js` lee los CSS y comprueba AA (≥ 4,5:1) del texto de bloque en todos los temas × la paleta, además de texto/fondo y acento.
