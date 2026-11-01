@@ -35,17 +35,22 @@ function responder(res, estado, cuerpo, cabeceras = {}) {
 const json = (res, estado, datos) =>
   responder(res, estado, JSON.stringify(datos), { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
 
-/** Lee el cuerpo JSON con límite de tamaño. */
+/**
+ * Lee el cuerpo JSON con límite de tamaño. Lo que pasa del límite se sigue leyendo (sin guardarlo) para poder
+ * responder 413: si se cortara la conexión a mitad, el cliente vería «conexión cortada» en vez del error.
+ * Solo se corta si alguien manda muchísimo más.
+ */
 function leerCuerpo(req) {
   return new Promise((ok, mal) => {
     let tam = 0;
     const trozos = [];
     req.on('data', (t) => {
       tam += t.length;
-      if (tam > LIMITE_CUERPO) { mal(new ErrorHttp(413, 'Petición demasiado grande')); req.destroy(); return; }
-      trozos.push(t);
+      if (tam > LIMITE_CUERPO * 64) { req.destroy(); return; }
+      if (tam <= LIMITE_CUERPO) trozos.push(t);
     });
     req.on('end', () => {
+      if (tam > LIMITE_CUERPO) { mal(new ErrorHttp(413, 'Petición demasiado grande')); return; }
       try { ok(JSON.parse(Buffer.concat(trozos).toString('utf8') || '{}')); } catch { mal(new ErrorHttp(400, 'JSON no válido')); }
     });
     req.on('error', mal);

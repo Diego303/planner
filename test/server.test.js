@@ -72,7 +72,7 @@ test('seguridad: Host ajeno, Origin ajeno, sin JSON, cuerpo grande y rutas fuera
   assert.equal((await cruda({ method: 'POST', path: '/api/op', headers: { host: `127.0.0.1:${app.puerto}`, origin: 'http://evil.example', 'content-type': 'application/json' }, body: op })).estado, 403);
   assert.equal((await cruda({ method: 'POST', path: '/api/op', headers: { host: `127.0.0.1:${app.puerto}`, 'content-type': 'text/plain' }, body: op })).estado, 415);
   const grande = JSON.stringify({ op: 'x', relleno: 'a'.repeat(300 * 1024) });
-  const r = await cruda({ method: 'POST', path: '/api/op', headers: { host: `127.0.0.1:${app.puerto}`, 'content-type': 'application/json' }, body: grande }).catch(() => ({ estado: 413 }));
+  const r = await cruda({ method: 'POST', path: '/api/op', headers: { host: `127.0.0.1:${app.puerto}`, 'content-type': 'application/json' }, body: grande });
   assert.equal(r.estado, 413);
   for (const ruta of ['/%2e%2e/package.json', '/core/%2e%2e/server/store.js', '/..%2fpackage.json', '/core/..%2f..%2fpackage.json']) {
     assert.equal((await cruda({ path: ruta, headers: { host: `127.0.0.1:${app.puerto}` } })).estado, 404, ruta);
