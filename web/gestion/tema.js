@@ -4,7 +4,7 @@ import { abrirModal, cabecera, cuerpoModal, modalAbierto } from '../ui/modal.js'
 import { st, enviar, derivados, alCambiar } from '../estado.js';
 import { seccionesAjustes, alPintarAjustes } from './ajustes.js';
 import { entradaMenu, itemMenu } from './comun.js';
-import { atributosTema } from '/core/temas.js';
+import { TEMAS, atributosTema } from '/core/temas.js';
 import { rejillaTemas } from '../ui/miniaturas.js';
 import { colorBloque, contraste, hexARgb } from '/core/color.js';
 import * as m from '/core/modelo.js';
