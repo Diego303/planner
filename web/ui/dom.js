@@ -29,20 +29,18 @@ export const $ = (sel, raiz = document) => raiz.querySelector(sel);
 export const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)];
 
 /**
- * Sustituye el contenido si cambió, conservando el foco y la selección del campo activo (por id) y lo que se
- * esté escribiendo: un repintado de fondo (otra operación, un cambio de fuera) no borra un formulario a medias.
+ * Sustituye el contenido conservando el foco y la selección del campo activo (por id) y lo que se esté
+ * escribiendo: un repintado de fondo (otra operación, un cambio de fuera) no borra un formulario a medias.
  * Lo escrito solo vuelve a un campo con el mismo id y el mismo valor de partida (no pasa de una tarea a otra).
  */
-export function pintar(el, contenido) {
-  const s = String(contenido);
-  if (el.innerHTML === s) return;
+export function sustituir(el, contenido) {
   const activo = document.activeElement;
   const id = activo && el.contains(activo) ? activo.id : null;
   const sel = id && 'selectionStart' in activo ? [activo.selectionStart, activo.selectionEnd] : null;
   const escritos = [...el.querySelectorAll('input[id], textarea[id]')]
     .filter((x) => x.type !== 'checkbox' && x.type !== 'radio' && x.value !== x.defaultValue)
     .map((x) => [x.id, x.defaultValue, x.value]);
-  el.innerHTML = s;
+  el.innerHTML = String(contenido);
   for (const [cual, base, valor] of escritos) {
     const nuevo = document.getElementById(cual);
     if (nuevo && el.contains(nuevo) && nuevo.defaultValue === base && nuevo.value === base) nuevo.value = valor;
@@ -52,6 +50,12 @@ export function pintar(el, contenido) {
     nuevo?.focus();
     if (sel && nuevo?.setSelectionRange) try { nuevo.setSelectionRange(...sel); } catch { /* no aplica */ }
   }
+}
+
+/** Como sustituir(), pero solo si el contenido cambió. */
+export function pintar(el, contenido) {
+  const s = String(contenido);
+  if (el.innerHTML !== s) sustituir(el, s);
 }
 
 /** Modo y superficie del tema activo (para los colores de tipo de core/color.js). */

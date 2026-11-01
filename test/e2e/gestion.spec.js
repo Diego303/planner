@@ -84,6 +84,36 @@ test('cerrar semana: 4 pasos con todas las decisiones, lecciones en Progreso y L
   await expect(page.locator('#v-progreso')).toContainText('Menos reuniones el jueves');
 });
 
+test('Plantilla: alta, quitar y deshacer; no cambia las semanas que ya existen; un error no borra lo escrito', async ({ page, app }) => {
+  const W45 = app.leer('semanas/2026-W45.md');
+  await abrir(page, app);
+  await menu(page, /Plantilla de semana/);
+  const m = modal(page);
+  await m.getByLabel('Título').fill('Inglés');
+  await m.getByRole('button', { name: 'Añadir a la plantilla' }).click();
+  await expect(m.getByRole('alert')).toHaveText('Pon un título y al menos un día');
+  await expect(m.getByLabel('Título')).toHaveValue('Inglés');
+  await m.locator('[data-dia="1"]').check();
+  await m.locator('[data-dia="3"]').check();
+  await m.locator('#pl-tipo').selectOption('estudio');
+  await m.locator('#pl-inicio').selectOption({ label: '7:30' });
+  await m.locator('#pl-dur').selectOption({ label: '1 h' });
+  await m.getByRole('button', { name: 'Añadir a la plantilla' }).click();
+  await esperarFichero(app, 'plantilla.md', (t) => /^- M,J 07:30-08:30 \| estudio \| Inglés$/m.test(t));
+  await expect(m).toContainText('Inglés');
+  await m.locator('.pend', { hasText: 'Cerrar semana' }).locator('[data-quitar]').click();
+  await expect(page.locator('#toast')).toContainText('«Cerrar semana» quitado de la plantilla');
+  await esperarFichero(app, 'plantilla.md', (t) => !t.includes('Cerrar semana'));
+  await page.locator('#toast [data-deshacer]').click();
+  await esperarFichero(app, 'plantilla.md', (t) => t.includes('- D 17:00-17:30 | personal | Cerrar semana'));
+  expect(app.leer('semanas/2026-W45.md')).toBe(W45);
+  // una semana nueva sí la recibe
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Semana siguiente' }).click();
+  await page.getByRole('button', { name: 'Proponer semana' }).click();
+  await esperarFichero(app, 'semanas/2026-W46.md', (t) => t != null && /- M 07:30-08:30 \| estudio \| Inglés \| plantilla/.test(t));
+});
+
 test('Tipos: color, banderas, alta y quitar bloqueado si está en uso', async ({ page, app }) => {
   await abrir(page, app);
   await menu(page, /Tipos/);
