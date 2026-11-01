@@ -38,6 +38,21 @@ planner --version                 # → 0.1.0
 
 El comando queda **enlazado al repo**: si actualizas el repo (`git pull`), `planner` usa la versión nueva sin reinstalar.
 
+> ¿`pnpm setup` termina con `Text file busy (os error 26)`? Es inofensivo: pnpm se instaló, pero no llegó a escribir su configuración en `~/.bashrc` (falló al sobrescribir su propio ejecutable mientras se usaba). Añádela a mano y abre otra terminal:
+>
+> ```bash
+> cat >> ~/.bashrc <<'FIN'
+>
+> # pnpm
+> export PNPM_HOME="$HOME/.local/share/pnpm"
+> case ":$PATH:" in
+>   *":$PNPM_HOME/bin:"*) ;;
+>   *) export PATH="$PNPM_HOME/bin:$PATH" ;;
+> esac
+> # pnpm end
+> FIN
+> ```
+
 > ¿`planner: command not found`? Abre una terminal nueva, o comprueba que `~/.bashrc` tiene la línea de `PNPM_HOME` que añadió `pnpm setup`. Como alternativa, sin pnpm global: `echo 'alias planner="node /mnt/d/GitHub/planner/bin/planner.js"' >> ~/.bashrc`.
 
 ## 3. Probarlo sin tocar nada tuyo
@@ -195,6 +210,7 @@ Tus datos no se tocan: viven fuera del repo.
 
 | Síntoma | Solución |
 |---|---|
+| `pnpm setup` → `Text file busy (os error 26)` | Añade a mano las líneas de `PNPM_HOME` del punto 2 a `~/.bashrc` y abre otra terminal |
 | `planner: command not found` | Terminal nueva; o repite `pnpm setup` y `pnpm add -g /mnt/d/GitHub/planner`; o usa el alias del punto 2 |
 | «Ya hay un planner en marcha con otra carpeta» | `planner stop` y vuelve a arrancar con la carpeta que quieras |
 | No se abre el navegador | Abre `http://localhost:4321/` a mano. (Con `sudo apt install wslu` se usa `wslview`) |
