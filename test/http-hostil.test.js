@@ -89,3 +89,62 @@ test('método que no toca: 405 con Allow; ruta de la API desconocida: 404', asyn
   assert.equal((await cruda({ path: '/api/nada' })).estado, 404);
   assert.equal((await cruda({ method: 'PUT', path: '/index.html', body: 'x' })).estado, 405);
 });
+
+test('Host: solo localhost o 127.0.0.1 con nuestro puerto (contra DNS rebinding)', async () => {
+  for (const host of [null, '', `localhost.evil.com:${P}`, `127.0.0.1:${P}.evil.com`, `evil.com:${P}`, `127.0.0.1`, `localhost:${P + 1}`, `[::1]:${P}`, `0.0.0.0:${P}`, `127.0.0.2:${P}`]) {
+    const r = await cruda({ path: '/api/estado', headers: host == null ? {} : { host } });
+    // sin Host, el propio Node responde 400 (requireHostHeader); con uno ajeno, el planner responde 403
+    assert.ok(host ? r.estado === 403 : [400, 403].includes(r.estado), `Host ${host} → ${r.estado}`);
+  }
+  for (const host of [`localhost:${P}`, `127.0.0.1:${P}`]) assert.equal((await cruda({ path: '/api/salud', headers: { host } })).estado, 200, host);
+});
+
+test('Origin en POST: solo el propio; sin cabeceras CORS en ninguna respuesta', async () => {
+  for (const origin of ['null', `http://localhost:${P + 1}`, `https://localhost:${P}`, `http://127.0.0.1.evil.com:${P}`, 'http://evil.com', `http://localhost:${P}.evil.com`]) {
+    const r = await cruda({ method: 'POST', path: '/api/op', headers: { ...JSON_(), origin }, body: JSON.stringify({ op: 'ajustes.cambiar', hoy: HOY, args: { clave: 'foco_max', valor: 5 } }) });
+    assert.equal(r.estado, 403, origin);
+  }
+  const respuestas = [
+    await cruda({ method: 'OPTIONS', path: '/api/op', headers: { host: `127.0.0.1:${P}`, origin: 'http://evil.com', 'access-control-request-method': 'POST' } }),
+    await cruda({ path: '/api/estado', headers: { host: `127.0.0.1:${P}`, origin: 'http://evil.com' } }),
+    await cruda({ path: '/', headers: { host: `127.0.0.1:${P}` } }),
+  ];
+  for (const r of respuestas) {
+    assert.ok(!Object.keys(r.cabeceras).some((k) => k.startsWith('access-control-')), 'sin CORS');
+    assert.equal(r.cabeceras['x-frame-options'], 'DENY');
+  }
+  assert.ok(!(await import('node:fs')).readFileSync(`${c.dir}/ajustes.md`, 'utf8').includes('foco_max: 5'));
+});
+
+test('rutas: nada fuera de web/ y src/core/ (codificadas, barras invertidas, nulos, absolutas)', async () => {
+  const fuera = ['/..%2fpackage.json', '/%2e%2e/package.json', '/%2e%2e%2f%2e%2e%2fpackage.json', '/..%5c..%5cpackage.json', '/%2e%2e%5cpackage.json',
+    '//etc/passwd', '/%2fetc%2fpasswd', '/core/%2e%2e/server/store.js', '/core/..%2f..%2fpackage.json', '/core/%2e%2e%5cserver%5cstore.js',
+    '/%00', '/index.html%00.js', '/core/', '/.%2e/package.json', '/%252e%252e/package.json', '/core/../../package.json', '/web/index.html',
+    '/core/%2e%2e/%2e%2e/.git/config', '/%E0%A4%A', '/core/formato/%2e%2e/%2e%2e/%2e%2e/bin/planner.js'];
+  for (const path of fuera) {
+    const r = await cruda({ path });
+    assert.ok([400, 404].includes(r.estado), `${path} → ${r.estado}`);
+    assert.ok(!r.datos.includes('"name": "planner"') && !r.datos.includes('crearStore'), path);
+  }
+  assert.equal((await cruda({ path: '/core/formato/index.js' })).estado, 200);
+  assert.equal((await cruda({ path: '/index.html' })).estado, 200);
+});
+
+test('no responde por la IP de la red local, solo por 127.0.0.1', async (t) => {
+  const { networkInterfaces } = await import('node:os');
+  const ips = Object.values(networkInterfaces()).flat().filter((i) => i.family === 'IPv4' && !i.internal).map((i) => i.address);
+  if (!ips.length) { t.skip('sin interfaz de red'); return; }
+  for (const ip of ips) {
+    await assert.rejects(cruda({ host: ip, path: '/api/salud', headers: { host: `127.0.0.1:${P}` } }), (e) => e.code === 'ECONNREFUSED', ip);
+  }
+});
+
+test('parámetros raros en la consulta: nunca un 500', async () => {
+  const rutas = ['/api/estado?semana=../../x&hoy=9999-99-99&ahora=abc', '/api/estado?semana=2026-W99&ahora=-5', '/api/estado?hoy=2026-02-30&semana=__proto__',
+    '/api/semanas?desde=x&hasta=y', '/api/semanas?desde=2026-W50&hasta=2026-W40', '/api/semanas?desde=2000-W01&hasta=2100-W52', '/api/cierre?semana=2026-W99',
+    '/api/cierre', '/api/cierre?semana=1999-W01', '/api/version?hoy=nada', `/api/estado?${'a=1&'.repeat(2000)}`];
+  for (const path of rutas) {
+    const r = await cruda({ path });
+    assert.ok(r.estado < 500, `${path.slice(0, 80)} → ${r.estado} ${r.datos.slice(0, 120)}`);
+  }
+});
