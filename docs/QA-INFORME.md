@@ -10,7 +10,8 @@ Plan en [`QA-PLAN.md`](QA-PLAN.md). Este informe se actualiza al cerrar cada fas
 | Cobertura `src/core` | **99,2 %** líneas · 95,2 % ramas | ≥ 95 % líneas |
 | Cobertura `src/server` | **96,7 %** líneas · 91,3 % ramas (CLI: `sistema.js` 97 %, `bin/planner.js` 88 %) | ≥ 85 % líneas |
 | e2e (`pnpm test:e2e`) | **42 / 42 en verde**, tres veces seguidas | todo en verde, sin intermitentes |
-| Fases | Q0 ✓ · Q1 ✓ · Q2 ✓ · Q3 ✓ · Q4 ✓ | Q0–Q8 |
+| Visual (`pnpm test:visual`) | **171 / 171 en verde**, tres veces seguidas (144 capturas + diseño adaptable + temas) | sin regresiones |
+| Fases | Q0 ✓ · Q1 ✓ · Q2 ✓ · Q3 ✓ · Q4 ✓ · Q5 ✓ | Q0–Q8 |
 
 ## Bugs
 
@@ -45,6 +46,8 @@ Gravedad: **crítico** = pérdida o corrupción de datos, o seguridad · alto ·
 | B17 | Medio (accesibilidad) | `aria-pressed`, `aria-checked` y `aria-selected` salían vacíos al pintar: el lector de pantalla no sabía qué vista, tipo, pestaña, ánimo o tema estaba elegido | Cualquier vista con un lector de pantalla | La plantilla `html` convierte los booleanos en «» | «true»/«false» explícitos · `26006f3` | `test/web-escape.test.js`, `test/e2e/semana.spec.js` |
 | B22 | Medio (accesibilidad) | Con el teclado no se veía el foco en Las 3 ni en los campos | Tab por la Semana o por el cierre del día | `outline: none` y un borde apenas distinto | Anillo con el acento del tema · `90a6587` | `test/e2e/teclado.spec.js` |
 | B21 | Bajo (accesibilidad) | Al cerrar un modal abierto desde Gestión, el foco se perdía | Gestión ▾ → Ajustes → Esc | El foco volvía a la entrada del menú, que ya no existe | Vuelve a «Gestión ▾» · `f8e2094` | `test/e2e/teclado.spec.js` |
+| B24 | Bajo | Con zoom al 200 % en 1024 o 1280 px, la página de Progreso se desplazaba en horizontal | Ctrl + + hasta 200 % en Progreso | Sparkline de 300 px fijos con la etiqueta fuera del gráfico | Los gráficos encogen con su columna y la etiqueta va dentro · `c68b92b` | `test/visual/adaptable.spec.js` |
+| B23 | Bajo | En «Plan frente a real», con la letra ancha de Papel o del tema personalizado, «proyectos» saltaba debajo de su punto | Tema Papel → Progreso | Columna de 78 px | 96 px, sin saltos y con puntos suspensivos para nombres largos · `ef2492b` | `test/visual/adaptable.spec.js` |
 
 ## Decisiones dudosas (para que decidas)
 
@@ -54,6 +57,7 @@ Las D1–D10 de [`QA-PLAN.md`](QA-PLAN.md) §7 se mantienen como están (aprobad
 |---|---|---|---|
 | D12 | Un fichero de datos que es un enlace simbólico se lee a través del enlace, pero al guardar el enlace se sustituye por un fichero normal: el fichero de fuera ya no recibe cambios (no se escribe nunca fuera de la carpeta) | Quien enlace `tareas.md` a otra carpeta (Dropbox, otro vault) deja de sincronizarlo sin aviso | (a) dejarlo; (b) avisar en la banda («tareas.md es un enlace: al guardar se convertirá en fichero»); (c) escribir a través del enlace (sale de la carpeta) |
 | D13 | Si la carpeta de datos desaparece con el planner en marcha (disco D sin montar en WSL), la web enseña la bienvenida para crearla | Si se acepta, se crea `/mnt/d/planner` vacía dentro de Linux; al montar D: queda tapada y lo escrito ahí no se ve | (a) dejarlo; (b) si la carpeta existía al arrancar, decir «La carpeta ha desaparecido: ¿está el disco conectado?» sin ofrecer crearla; (c) no ofrecer crearla si su carpeta padre está vacía |
+| D14 | La ★ «avanza las 3» sale en todos los bloques del tema relacionado (con «Entregar el lab de RAG · rel: Curso», en «Curso · lab RAG» y en «Curso · módulo 6») | En la maqueta solo la lleva el simulacro de MLA-C01; con un tema de muchos bloques, la ★ deja de destacar | (a) dejarlo (todo lo que avanza el tema cuenta); (b) solo si el título del bloque coincide con el del objetivo; (c) solo en el primer bloque de la semana de ese tema |
 | D11 | En captura rápida, un día de la semana dentro del título se toma como fecha: «Martes de carnaval» → tarea «de carnaval» para el próximo martes; «Ir al mar» → «Ir al» para el martes (`mar` es la abreviatura) | El plan (§4.2) dice que los días de la semana se reconocen, sin distinguir si son palabra suelta al principio o al final | (a) dejarlo; (b) reconocer solo la abreviatura al final o con `@`/`el` delante; (c) solo con un prefijo explícito (`@mar`) |
 
 ## Riesgos restantes
@@ -103,3 +107,12 @@ Mapa de funcionalidades, matriz, riesgos y revisión estática en `QA-PLAN.md`. 
 - **Onboarding:** carpeta vacía e inexistente → 3 pasos → primera semana propuesta; la guía no vuelve al recargar.
 - En WSL, Chromium necesita `libnss3`: una vez, `sudo pnpm exec playwright install-deps chromium`.
 - Bugs: B17–B22.
+
+### Q5 · Visual, temas y diseño adaptable
+- **Capturas de referencia** (`test/visual/capturas/`, 8,5 MB): 16 pantallas (Semana, Hoy, Progreso, editor, Hecho, Metas, Diario, menú y los modales Semanas, Cerrar semana pasos 1, 2 y 4, Plantilla, Tipos, Ajustes y Tema) en los 6 temas, en automático claro y oscuro y en el personalizado: 144. Revisadas en hojas de contactos por pantalla. Las vistas son de página completa; lo demás, solo el elemento (para no pesar el doble). Si un cambio visual es intencionado: `pnpm test:visual --update-snapshots` y revisar.
+- **Diseño adaptable:** 1024, 1280, 1440 y 1920 px al 80, 100, 125 y 200 % (zoom Z en W px = ventana W/Z con densidad Z): sin scroll horizontal, sin solapes en las cabeceras, popovers del editor (a izquierda, derecha y abajo) y modales enteros a la vista.
+- **Sin parpadeo:** con `app.js` retenido, la primera pintura ya lleva el tema y el fondo definitivos en los 7 temas (también el personalizado).
+- **Decoración** de Universo (fondo) y Halloween (murciélago y telaraña): se activa y se desactiva al momento. **Halloween de temporada** con la fecha simulada: del 25 al 31 de octubre se ve sin cambiar el tema elegido; fuera, el elegido.
+- **Comparación con la maqueta nórdica** (`docs/maquetas/planner-nordico.html`): mismos textos, espaciados y microcopias en Semana y cajón. Diferencias: la ★ en todos los bloques del tema (D14); la maqueta va centrada a unos 1.100 px y la app ocupa todo el ancho. Igual que en la maqueta, un bloque de 30 min mide unos 10 px y su texto sale cortado (23 px por hora).
+- En el Linux de los tests falta el glifo «＋» del campo de captura (sale «▯»); en Windows se ve bien. Las capturas de referencia son de este entorno: si se regeneran en otra máquina, cambiarán las fuentes.
+- Bugs: B23, B24. Decisión dudosa nueva: D14.
