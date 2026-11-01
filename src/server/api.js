@@ -21,7 +21,8 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
   };
 
   const hoyServidor = () => hoySimulado ?? fechaDe(new Date());
-  const leerHoy = (v) => (esFecha(v) ? v : hoyServidor());
+  // La fecha simulada (--hoy) manda sobre la del navegador.
+  const leerHoy = (v) => hoySimulado ?? (esFecha(v) ? v : hoyServidor());
   const leerAhora = (v) => (Number.isInteger(v) && v >= 0 && v < 1440 ? v : null);
 
   async function modoCopias() {

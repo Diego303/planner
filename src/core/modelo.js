@@ -34,6 +34,21 @@ export function desconocidas(doc) {
   return out;
 }
 
+/**
+ * Huella de un elemento: lo que lo identifica para la UI. Las operaciones que apuntan a una línea por índice
+ * pueden mandarla; si la línea ya no es esa (el fichero cambió mientras se editaba), se rechaza.
+ */
+export function huellaDe(l) {
+  if (!l) return null;
+  switch (l.t) {
+    case 'bloque': return `${l.dia}|${l.inicio}|${l.fin}|${l.titulo}`;
+    case 'tarea': case 'las3': return `${l.texto}`;
+    case 'plantilla': return `${l.dias.join(',')}|${l.inicio}|${l.titulo}`;
+    case 'h2': return l.texto;
+    default: return l.t;
+  }
+}
+
 export const esTitulo = (l) => l.t === 'h2' || (l.t === '?' && l.h2);
 
 /** Índice de la primera sección `clave` (o -1). */
@@ -58,6 +73,27 @@ export function finContenido(doc, i) {
 /** Tema de un bloque = texto antes del primer « · » del título. */
 export const temaDe = (titulo) => String(titulo ?? '').split(' · ')[0].trim();
 export const mismoTema = (a, b) => !!a && !!b && normalizar(a) === normalizar(b);
+
+/** ¿Aparece `nombre` como palabra dentro de `texto`? (sin tildes ni mayúsculas) */
+export function contieneNombre(texto, nombre) {
+  const k = normalizar(nombre);
+  if (!k) return false;
+  const re = new RegExp(`(^|[^\\p{L}\\p{N}])${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}\\p{N}])`, 'u');
+  return re.test(normalizar(texto));
+}
+
+/** `rel` de una de Las 3 deducido del texto: el nombre más largo de tema o proyecto que aparezca. */
+export function relDeTexto(texto, nombres) {
+  let mejor = null;
+  for (const n of nombres) if (contieneNombre(texto, n) && (!mejor || n.length > mejor.length)) mejor = n;
+  return mejor;
+}
+
+/** ★: el tema del bloque coincide con el `rel` de alguna de Las 3. */
+export const avanzaLas3 = (titulo, las3) => las3.some((o) => o.rel && mismoTema(temaDe(titulo), o.rel));
+
+/** ★ en tareas: el texto contiene el `rel` de alguna de Las 3, o la bandera `las3`. */
+export const tareaAvanzaLas3 = (tarea, las3) => tarea.las3 || las3.some((o) => o.rel && contieneNombre(tarea.texto, o.rel));
 
 export const duracion = (b) => b.fin - b.inicio;
 /** Minutos reales de un bloque hecho (duración + diferencia); 0 si no está hecho. */

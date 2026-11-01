@@ -12,7 +12,7 @@ import { entradaPlantilla, tipo as nuevoTipo, tiposVacio, plantillaVacia } from 
 import { ajustes as fajustes, estudio as festudio, proyectos as fproyectos, vacio as listaVacia } from './formato/listas.js';
 import {
   indiceSeccion, finContenido, finSeccion, entidades, bloquesDe, tareasDe, valoresAjustes, tiposDe, TIPOS_DEFECTO,
-  seccionesDe, temaDe, mismoTema, temasEstudio, proyectosDe, buscarTema, tipoPorNombre, las3De,
+  seccionesDe, temaDe, mismoTema, temasEstudio, proyectosDe, buscarTema, tipoPorNombre, las3De, huellaDe,
 } from './modelo.js';
 import { estadoSemana, crearDesdePlantilla, soloLectura } from './semanas.js';
 
@@ -138,10 +138,11 @@ function exigirHoy(tx) {
   return tx.ctx.hoy;
 }
 
-/** Elemento `t` en la línea `id` del fichero. */
-function elemento(tx, ruta, id, t, que) {
+/** Elemento `t` en la línea `id` del fichero (y, si se da, con esa huella). */
+function elemento(tx, ruta, id, t, que, huella = null) {
   const l = tx.doc(ruta)?.lineas[id];
   exigir(l && l.t === t, `${que} ya no existe: recarga`);
+  exigir(huella == null || huellaDe(l) === huella, `${que} cambió mientras lo editabas: vuelve a abrirlo`);
   return l;
 }
 
@@ -235,7 +236,7 @@ registrar('bloque.crear', (tx, a) => {
 /** Cambios de un bloque (mover, estirar, editar, aceptar). `plantilla: true` además lo añade a plantilla.md. */
 registrar('bloque.editar', (tx, a) => {
   const ruta = semanaEditable(tx, a.semana);
-  const b = elemento(tx, ruta, a.id, 'bloque', 'El bloque');
+  const b = elemento(tx, ruta, a.id, 'bloque', 'El bloque', a.huella);
   const cambios = validarCamposBloque(a.cambios ?? {}, true);
   const inicio = cambios.inicio ?? b.inicio, fin = cambios.fin ?? b.fin;
   exigir(fin > inicio, 'El bloque termina antes de empezar');
@@ -250,7 +251,7 @@ registrar('bloque.editar', (tx, a) => {
 
 registrar('bloque.eliminar', (tx, a) => {
   const ruta = semanaEditable(tx, a.semana);
-  elemento(tx, ruta, a.id, 'bloque', 'El bloque');
+  elemento(tx, ruta, a.id, 'bloque', 'El bloque', a.huella);
   tx.quitar(ruta, a.id);
 });
 
@@ -264,7 +265,7 @@ registrar('las3.crear', (tx, a) => {
 
 registrar('las3.editar', (tx, a) => {
   const ruta = semanaEditable(tx, a.semana);
-  elemento(tx, ruta, a.id, 'las3', 'Ese objetivo');
+  elemento(tx, ruta, a.id, 'las3', 'Ese objetivo', a.huella);
   const c = a.cambios ?? {}, cambios = {};
   if (Object.hasOwn(c, 'texto')) cambios.texto = textoObligatorio(c.texto, 'el texto');
   if (Object.hasOwn(c, 'hecha')) cambios.hecha = !!c.hecha;
@@ -274,7 +275,7 @@ registrar('las3.editar', (tx, a) => {
 
 registrar('las3.eliminar', (tx, a) => {
   const ruta = semanaEditable(tx, a.semana);
-  elemento(tx, ruta, a.id, 'las3', 'Ese objetivo');
+  elemento(tx, ruta, a.id, 'las3', 'Ese objetivo', a.huella);
   tx.quitar(ruta, a.id);
 });
 
@@ -361,7 +362,7 @@ registrar('plantilla.crear', (tx, a) => {
 });
 
 registrar('plantilla.eliminar', (tx, a) => {
-  elemento(tx, 'plantilla.md', a.id, 'plantilla', 'Esa entrada de la plantilla');
+  elemento(tx, 'plantilla.md', a.id, 'plantilla', 'Esa entrada de la plantilla', a.huella);
   tx.quitar('plantilla.md', a.id);
 });
 
@@ -416,19 +417,19 @@ registrar('tarea.crear', (tx, a) => {
 });
 
 registrar('tarea.editar', (tx, a) => {
-  elemento(tx, 'tareas.md', a.id, 'tarea', 'La tarea');
+  elemento(tx, 'tareas.md', a.id, 'tarea', 'La tarea', a.huella);
   tx.cambiar('tareas.md', a.id, camposTarea(a.cambios ?? {}));
 });
 
 registrar('tarea.marcar', (tx, a) => {
   const hoy = exigirHoy(tx);
-  elemento(tx, 'tareas.md', a.id, 'tarea', 'La tarea');
+  elemento(tx, 'tareas.md', a.id, 'tarea', 'La tarea', a.huella);
   tx.cambiar('tareas.md', a.id, { hecha: !!a.hecha, fechaHecha: a.hecha ? hoy : null });
 });
 
 /** Mueve una tarea al final de otra sección (↑ hoy, ↓ luego, más adelante…). */
 registrar('tarea.mover', (tx, a) => {
-  const t = elemento(tx, 'tareas.md', a.id, 'tarea', 'La tarea');
+  const t = elemento(tx, 'tareas.md', a.id, 'tarea', 'La tarea', a.huella);
   exigir(SECCIONES_TAREA.includes(a.seccion), 'Sección no válida');
   if (t.seccion === a.seccion) return { id: a.id };
   if (a.seccion === 'hoy' && !t.hecha) {
@@ -440,7 +441,7 @@ registrar('tarea.mover', (tx, a) => {
 });
 
 registrar('tarea.eliminar', (tx, a) => {
-  elemento(tx, 'tareas.md', a.id, 'tarea', 'La tarea');
+  elemento(tx, 'tareas.md', a.id, 'tarea', 'La tarea', a.huella);
   tx.quitar('tareas.md', a.id);
 });
 

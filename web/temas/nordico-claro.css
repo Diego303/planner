@@ -1,0 +1,26 @@
+/* Nórdico claro (por defecto): es la maqueta. */
+:root[data-tema="nordico-claro"],
+:root:not([data-tema]) {
+  --modo: claro;
+  --fondo: #F6F6F3;
+  --superficie: #FFFFFF;
+  --superficie-2: #F3F3EF;
+  --texto: #1E2320;
+  --texto-2: #6B706B;
+  --texto-3: #A3A8A2;
+  --borde: #EEEEEA;
+  --acento: #1E2320;
+  --acento-texto: #FFFFFF;
+  --aviso: #A9681E;
+  --aviso-fondo: #FBF1E2;
+  --ok: #2F6B4F;
+  --ok-fondo: #EDF4EF;
+  --peligro: #C2493A;
+  --enlace: #4A6FA5;
+  --sombra: 0 1px 2px rgba(0, 0, 0, .04);
+  --sombra-alta: 0 12px 34px rgba(0, 0, 0, .13);
+  --radio: 18px;
+  --fuente: Inter, "Segoe UI", -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --fondo-deco: none;
+  color-scheme: light;
+}

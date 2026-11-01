@@ -4,11 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>planner</title>
+<link rel="stylesheet" href="/temas/nordico-claro.css">
+<link rel="stylesheet" href="/styles.css">
+<script type="module" src="/app.js"></script>
 </head>
 <body>
-<h1>hola · planner</h1>
-<p>Servidor local en marcha. Estado leído de tu carpeta de datos:</p>
-<pre id="estado">cargando…</pre>
-<script type="module" src="/app.js"></script>
+<div class="app" id="app">
+  <div id="banda"></div>
+  <header class="top">
+    <span class="logo" id="logo">planner</span>
+    <nav class="seg" id="seg" aria-label="Vista"></nav>
+    <div class="capw">
+      <label class="sr" for="cap">Apunta algo</label>
+      <input id="cap" autocomplete="off" placeholder="＋ apunta algo…  (#área · mañana · ! · 45m · algún día)">
+      <span id="capp" aria-live="polite"></span>
+    </div>
+    <div class="gm"><button type="button" class="gbtn" id="gbtn" aria-haspopup="menu" aria-expanded="false">Gestión ▾</button><div id="gmenu"></div></div>
+  </header>
+  <main class="principal" id="maingrid">
+    <div>
+      <section id="v-semana" aria-label="Semana"></section>
+      <section id="v-hoy" aria-label="Hoy" hidden></section>
+      <section id="v-progreso" aria-label="Progreso" hidden></section>
+    </div>
+    <aside class="card" id="drawer" aria-label="Cajón"></aside>
+  </main>
+  <div id="modal"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+</div>
 </body>
 </html>
