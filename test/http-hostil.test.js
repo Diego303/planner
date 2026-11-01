@@ -42,3 +42,39 @@ test('cuerpo JSON que no es un objeto: 400 claro', async () => {
   }
   for (const body of ['null', '[1]']) assert.equal((await cruda({ method: 'POST', path: '/api/deshacer', headers: JSON_(), body })).estado, 400, body);
 });
+
+test('fichero sin permiso de lectura o que es una carpeta: aviso claro, sin rutas internas, y lo demás funciona', { skip: process.getuid?.() === 0 && 'como root no hay permisos' }, async () => {
+  const { chmodSync, mkdirSync, rmSync } = await import('node:fs');
+  chmodSync(`${c.dir}/tareas.md`, 0o000);
+  mkdirSync(`${c.dir}/inbox.md.d`);
+  rmSync(`${c.dir}/inbox.md`);
+  mkdirSync(`${c.dir}/inbox.md`);
+  try {
+    const r = await cruda({ path: `/api/estado?hoy=${HOY}` });
+    assert.equal(r.estado, 200, r.datos);
+    const avisos = JSON.parse(r.datos).meta.avisos.join(' · ');
+    assert.match(avisos, /tareas\.md ignorado: sin permiso para leerlo/);
+    assert.match(avisos, /inbox\.md ignorado: es una carpeta/);
+    const op = await cruda({ method: 'POST', path: '/api/op', headers: JSON_(), body: JSON.stringify({ op: 'tarea.crear', hoy: HOY, args: { seccion: 'mas', tarea: { texto: 'x' } } }) });
+    assert.equal(op.estado, 422, op.datos);
+    assert.match(JSON.parse(op.datos).error, /tareas\.md.*sin permiso/);
+    for (const x of [avisos, op.datos]) assert.ok(!x.includes(c.dir), 'sin la ruta absoluta'); // (meta.datos.ruta sí la lleva: se enseña en Gestión)
+  } finally {
+    chmodSync(`${c.dir}/tareas.md`, 0o644);
+    rmSync(`${c.dir}/inbox.md`, { recursive: true });
+    rmSync(`${c.dir}/inbox.md.d`, { recursive: true });
+  }
+});
+
+test('un error inesperado da 500 sin el mensaje interno', async (t) => {
+  const fsp = (await import('node:fs/promises')).default;
+  const { syncBuiltinESMExports } = await import('node:module');
+  t.mock.method(fsp, 'readdir', async () => { throw new Error(`fallo raro en ${c.dir}/semanas con detalles internos`); });
+  syncBuiltinESMExports();
+  try {
+    const r = await cruda({ path: `/api/semanas?hoy=${HOY}` });
+    assert.equal(r.estado, 500);
+    assert.ok(!r.datos.includes(c.dir) && !r.datos.includes('detalles internos'), r.datos);
+    assert.match(JSON.parse(r.datos).error, /Error interno/);
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); }
+});

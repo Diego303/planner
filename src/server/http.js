@@ -101,8 +101,8 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
         return json(res, 200, await ruta(url.searchParams, cuerpo));
       } catch (e) {
         if (e instanceof ErrorHttp) return json(res, e.estado, { error: e.message, ...e.extra });
-        console.error(e);
-        return json(res, 500, { error: `Error interno: ${e.message}` });
+        console.error(e); // el detalle (con rutas y trazas) solo en la consola del servidor
+        return json(res, 500, { error: 'Error interno del planner. El detalle está en la terminal donde corre.' });
       }
     }
 

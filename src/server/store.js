@@ -58,16 +58,22 @@ export function crearStore(carpeta) {
   /** Lee y parsea un fichero: { doc, version } (doc null si no existe). Lanza FicheroIgnorado si es enorme o binario. */
   async function leer(ruta) {
     const abs = absoluta(ruta);
-    let st;
-    try { st = await stat(abs); } catch (e) {
+    const ignorar = (motivo) => { cache.delete(ruta); avisos.set(ruta, motivo); return new FicheroIgnorado(ruta, motivo); };
+    let st, buf;
+    try {
+      st = await stat(abs);
+      if (st.isDirectory()) throw ignorar('es una carpeta, no un fichero');
+      const enCache = cache.get(ruta);
+      if (enCache && enCache.firma === firma(st)) return enCache;
+      if (st.size > TAMANO_MAXIMO) throw ignorar('muy grande (más de 1 MB)');
+      buf = await readFile(abs);
+    } catch (e) {
+      if (e instanceof FicheroIgnorado) throw e;
       if (e.code === 'ENOENT') { cache.delete(ruta); avisos.delete(ruta); return { doc: null, version: null }; }
-      throw e;
+      // sin permiso u otro fallo del disco: se avisa (sin rutas absolutas) y el resto sigue funcionando
+      throw ignorar(['EACCES', 'EPERM'].includes(e.code) ? 'sin permiso para leerlo' : `no se puede leer (${e.code ?? 'error'})`);
     }
-    const enCache = cache.get(ruta);
-    if (enCache && enCache.firma === firma(st)) return enCache;
-    if (st.size > TAMANO_MAXIMO) { avisos.set(ruta, 'muy grande (más de 1 MB)'); throw new FicheroIgnorado(ruta, 'muy grande (más de 1 MB)'); }
-    const buf = await readFile(abs);
-    if (buf.includes(0)) { avisos.set(ruta, 'parece binario'); throw new FicheroIgnorado(ruta, 'parece binario'); }
+    if (buf.includes(0)) throw ignorar('parece binario');
     avisos.delete(ruta);
     const texto = buf.toString('utf8');
     const entrada = { firma: firma(st), version: versionDe(texto), doc: parsear(ruta, texto) };
