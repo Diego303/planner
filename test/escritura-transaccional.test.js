@@ -43,7 +43,7 @@ test('disco lleno al escribir el archivo mensual: no se escribe nada (ni tareas.
   await assert.rejects(p.op({ op: 'dia.cerrar', hoy: '2026-11-03', args: { animo: 4, linea: 'x', manana: 'y' } }), (err) => {
     assert.equal(err.estado, 507);
     assert.match(err.message, /espacio/);
-    assert.match(err.message, /no se ha guardado nada/);
+    assert.match(err.message, /no se ha guardado nada/i);
     return true;
   });
   assert.equal(leer(p.dir, 'tareas.md'), antes);

@@ -131,23 +131,31 @@ export function crearStore(carpeta) {
         await descartar();
         throw new ErrorEscritura(actual, e);
       }
+      // Lo que hay ahora en disco: para comprobar que nadie lo ha editado y para poder volver atrás.
       for (const p of preparados) {
-        if (p.esperada === undefined) continue;
-        if ((await versionEnDisco(p.abs)) !== p.esperada) {
+        p.original = await leerOriginal(p.abs);
+        if (p.esperada !== undefined && (p.original == null ? null : versionDe(p.original.toString('utf8'))) !== p.esperada) {
           cache.delete(p.ruta);
           await descartar();
           throw new ConflictoEscritura(p.ruta);
         }
       }
+      // Primero los que ganan contenido y al final los que pierden: si el proceso muere entre dos rename,
+      // lo que se mueve de un fichero a otro (archivar, mover) queda repetido, nunca perdido.
+      const gana = (p) => (p.texto == null ? -Infinity : Buffer.byteLength(p.texto) - (p.original?.length ?? 0));
+      const orden = preparados.slice().sort((a, b) => gana(b) - gana(a));
+      const hechos = [];
       const versiones = {};
-      for (const p of preparados) {
+      for (const p of orden) {
         try {
           if (p.texto == null) await unlink(p.abs).catch((e) => { if (e.code !== 'ENOENT') throw e; });
           else { await renombrar(p.tmp, p.abs); p.tmp = null; }
         } catch (e) {
           await descartar();
-          throw new ErrorEscritura(p.ruta, e);
+          const parcial = !(await volverAtras(hechos));
+          throw Object.assign(new ErrorEscritura(p.ruta, e), { parcial });
         }
+        hechos.push(p);
         if (p.texto == null) { cache.delete(p.ruta); versiones[p.ruta] = null; continue; }
         const st = await stat(p.abs);
         const entrada = { firma: firma(st), version: versionDe(p.texto), doc: parsear(p.ruta, p.texto) };
@@ -158,11 +166,29 @@ export function crearStore(carpeta) {
     });
   }
 
-  async function versionEnDisco(abs) {
-    try { return versionDe((await readFile(abs)).toString('utf8')); } catch (e) {
+  async function leerOriginal(abs) {
+    try { return await readFile(abs); } catch (e) {
       if (e.code === 'ENOENT') return null;
       throw e;
     }
+  }
+
+  /** Deja como estaban los ficheros ya escritos de una operación que ha fallado a medias. ¿Lo consiguió? */
+  async function volverAtras(hechos) {
+    let ok = true;
+    for (const p of hechos.reverse()) {
+      cache.delete(p.ruta);
+      try {
+        if (p.original == null) await unlink(p.abs).catch((e) => { if (e.code !== 'ENOENT') throw e; });
+        else {
+          const tmp = join(dirname(p.abs), `.${basename(p.abs)}.tmp-${process.pid}-${++contador}`);
+          const fh = await open(tmp, 'w');
+          try { await fh.writeFile(p.original); await fh.sync(); } finally { await fh.close(); }
+          await renombrar(tmp, p.abs);
+        }
+      } catch { ok = false; }
+    }
+    return ok;
   }
 
   async function escribir(ruta, doc) {

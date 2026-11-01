@@ -13,9 +13,10 @@ export class ErrorHttp extends Error {
 
 /** Errores del disco en palabras claras (sin rutas absolutas). En todos, la operación no ha cambiado nada. */
 export function errorDeEscritura(e) {
-  const nada = 'No se ha guardado nada.';
+  // si ni siquiera se pudo volver atrás, se dice tal cual
+  const nada = e.parcial ? 'Puede haber quedado a medias: tienes la copia de hoy en .copias/.' : 'No se ha guardado nada.';
   switch (e.code) {
-    case 'ENOSPC': return new ErrorHttp(507, `No queda espacio en el disco: no se ha guardado nada (${e.ruta}).`);
+    case 'ENOSPC': return new ErrorHttp(507, `No queda espacio en el disco (${e.ruta}). ${nada}`);
     case 'EACCES': case 'EPERM': case 'EROFS': return new ErrorHttp(500, `No se pudo guardar ${e.ruta}: no hay permiso de escritura. ${nada}`);
     case 'ENOENT': return new ErrorHttp(500, `No se pudo guardar ${e.ruta}: la carpeta de datos ya no existe o se ha movido. ${nada}`);
     default: return new ErrorHttp(500, `No se pudo guardar ${e.ruta} (${e.code ?? 'error del disco'}). ${nada}`);
