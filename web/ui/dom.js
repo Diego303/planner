@@ -28,9 +28,19 @@ export function html(partes, ...valores) {
 export const $ = (sel, raiz = document) => raiz.querySelector(sel);
 export const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)];
 
+/** Sustituye el contenido si cambió, conservando el foco y la selección del campo activo (por id). */
 export function pintar(el, contenido) {
   const s = String(contenido);
-  if (el.innerHTML !== s) el.innerHTML = s;
+  if (el.innerHTML === s) return;
+  const activo = document.activeElement;
+  const id = activo && el.contains(activo) ? activo.id : null;
+  const sel = id && 'selectionStart' in activo ? [activo.selectionStart, activo.selectionEnd] : null;
+  el.innerHTML = s;
+  if (id) {
+    const nuevo = document.getElementById(id);
+    nuevo?.focus();
+    if (sel && nuevo?.setSelectionRange) try { nuevo.setSelectionRange(...sel); } catch { /* no aplica */ }
+  }
 }
 
 /** Modo y superficie del tema activo (para los colores de tipo de core/color.js). */

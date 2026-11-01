@@ -63,10 +63,14 @@ export function colorBloque(base, { modo = 'claro', superficie = '#FFFFFF' } = {
 }
 
 /** Color de serie para gráficos y puntos: el base en claro, aclarado en oscuro. */
-export function colorSerie(base, { modo = 'claro', superficie = '#FFFFFF' } = {}) {
+export function colorSerie(base, tema = {}) {
+  const modo = tema.modo ?? 'claro', superficie = superficieDe(tema);
+  if (!hexARgb(base)) base = '#888780';
   if (modo === 'claro') return ajustarContraste(base, superficie, '#000000', 3);
   return ajustarContraste(mezclar('#FFFFFF', base, 0.3), superficie, '#FFFFFF', 3);
 }
 
-/** Variante suave de un color (pistas de barras, zonas): `peso` del color sobre la superficie. */
-export const suave = (base, superficie, peso) => mezclar(base, superficie, peso);
+const superficieDe = ({ modo = 'claro', superficie } = {}) => (hexARgb(superficie) ? superficie : modo === 'claro' ? '#FFFFFF' : '#1C201E');
+
+/** Variante suave del color de un tipo (puntos, pistas de barras, zonas): `peso` del color sobre la superficie. */
+export const tono = (base, tema, peso) => mezclar(colorSerie(hexARgb(base) ? base : '#888780', tema), superficieDe(tema), peso);

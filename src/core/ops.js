@@ -9,7 +9,7 @@ import { normalizar, limpiarTexto } from './formato/comun.js';
 import * as fsem from './formato/semana.js';
 import * as ftar from './formato/tareas.js';
 import { entradaPlantilla, tipo as nuevoTipo, tiposVacio, plantillaVacia } from './formato/tipos.js';
-import { ajustes as fajustes, estudio as festudio, proyectos as fproyectos, vacio as listaVacia } from './formato/listas.js';
+import { ajustes as fajustes, estudio as festudio, proyectos as fproyectos, diario as fdiario, vacio as listaVacia } from './formato/listas.js';
 import {
   indiceSeccion, finContenido, finSeccion, entidades, bloquesDe, tareasDe, valoresAjustes, tiposDe, TIPOS_DEFECTO,
   seccionesDe, temaDe, mismoTema, temasEstudio, proyectosDe, buscarTema, tipoPorNombre, las3De, huellaDe,
@@ -445,6 +445,63 @@ registrar('tarea.eliminar', (tx, a) => {
   tx.quitar('tareas.md', a.id);
 });
 
+/** Mueve tareas (referencias a sus líneas) al archivo del mes de su fecha de hecha (o de hoy). */
+function archivarTareas(tx, lineas, hoy) {
+  for (const l of lineas) {
+    const i = tx.doc('tareas.md').lineas.indexOf(l);
+    if (i < 0) continue;
+    tx.quitar('tareas.md', i);
+    const mes = (l.fechaHecha ?? hoy).slice(0, 7);
+    const ruta = `archivo/tareas-${mes}.md`;
+    const doc = tx.asegurar(ruta, () => ftar.archivoVacio(mes));
+    const pos = doc.lineas.some((x) => x.t === 'tarea') ? finUltimo(doc, 'tarea') : doc.lineas.length;
+    tx.insertar(ruta, pos, [{ ...l, seccion: 'archivo' }]);
+  }
+}
+
+/** Líneas de tarea a partir de [{ id, huella }] del cliente (antes de mover nada, los índices cambian). */
+function lineasDeTareas(tx, lista = []) {
+  return lista.map((x) => elemento(tx, 'tareas.md', x.id, 'tarea', 'La tarea', x.huella ?? null));
+}
+
+/** Mueve una tarea (por referencia de línea) al final de una sección. */
+function moverLinea(tx, l, seccion, cambios = {}) {
+  const i = tx.doc('tareas.md').lineas.indexOf(l);
+  if (i < 0) return;
+  tx.quitar('tareas.md', i);
+  anadirTarea(tx, seccion, { ...l, ...cambios });
+}
+
+/**
+ * Cierre del día: escribe diario/AAAA-MM-DD.md, aplaza a «Más adelante» lo elegido, pone fecha a las tareas
+ * marcadas a mano sin fecha y archiva las hechas antes de hoy.
+ */
+registrar('dia.cerrar', (tx, a) => {
+  const hoy = exigirHoy(tx);
+  const ruta = `diario/${hoy}.md`;
+  tx.asegurar(ruta, () => listaVacia('diario'));
+  const fijar = (clave, valor) => {
+    const i = tx.doc(ruta).lineas.findIndex((l) => l.t === 'kv' && l.clave === clave);
+    const vacio = valor == null || valor === '' || (Array.isArray(valor) && !valor.length);
+    if (vacio) { if (i >= 0) tx.quitar(ruta, i); return; }
+    if (i >= 0) tx.cambiar(ruta, i, { valor });
+    else tx.insertar(ruta, finUltimo(tx.doc(ruta), 'kv'), [fdiario.kv(clave, valor)]);
+  };
+  if (a.animo != null) exigir(esEntero(a.animo, 1, 5), 'El ánimo va de 1 a 5');
+  fijar('animo', a.animo ?? null);
+  fijar('linea', textoOpcional(a.linea));
+  fijar('avanzado', (a.avanzado ?? []).map((x) => limpiarTexto(x).replace(/;/g, ',')).filter(Boolean));
+  fijar('manana', textoOpcional(a.manana));
+
+  if (tx.doc('tareas.md')) {
+    const aplazar = lineasDeTareas(tx, a.aplazar);
+    for (const l of aplazar) if (!l.hecha) moverLinea(tx, l, 'mas');
+    const lineas = tx.doc('tareas.md').lineas;
+    lineas.forEach((l, i) => { if (l.t === 'tarea' && l.hecha && !l.fechaHecha) tx.cambiar('tareas.md', i, { fechaHecha: hoy }); });
+    archivarTareas(tx, tx.doc('tareas.md').lineas.filter((l) => l.t === 'tarea' && l.hecha && l.fechaHecha && l.fechaHecha < hoy), hoy);
+  }
+});
+
 // ---------- Estudio y proyectos ----------
 
 const LISTAS = {
@@ -528,5 +585,6 @@ registrar('proyecto.eliminar', (tx, a) => eliminarSeccionLista(tx, 'proyecto', a
 export const util = {
   exigir, exigirHoy, textoObligatorio, textoOpcional, elemento, rutaSemana, semanaEditable, crearSemanaSiFalta,
   anadirBloque, anadirEnSeccion, anadirTarea, asegurarTareas, cambiarEstadoSemana, fijarClave, tipos, finUltimo,
+  archivarTareas, lineasDeTareas, moverLinea,
 };
 export { DIAS, sumarSemanas, lunesDe, sumarDias, temaDe, mismoTema, bloquesDe, las3De, temasEstudio, proyectosDe };
