@@ -6,11 +6,12 @@ Especificación en [`docs/PLAN.md`](docs/PLAN.md) · diseño técnico (gramátic
 
 ## Instalación (WSL o Linux)
 
-Requisitos: Node ≥ 20 y pnpm.
+Requisitos: Node ≥ 20 y pnpm. Paso a paso, desde cero, en [`instrucciones.md`](instrucciones.md).
 
 ```bash
+pnpm setup                               # una vez: carpeta global de pnpm (abre otra terminal después)
 pnpm install
-pnpm link --global      # deja el comando `planner` disponible
+pnpm add -g /mnt/d/GitHub/planner        # deja el comando `planner` disponible (enlazado al repo)
 ```
 
 ## Uso
