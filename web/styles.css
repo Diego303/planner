@@ -275,3 +275,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .circulo[data-animo="3"] { background: var(--animo-3); }
 .circulo[data-animo="4"] { background: var(--animo-4); }
 .circulo[data-animo="5"] { background: var(--animo-5); }
+
+/* ---------- Gestión ---------- */
+.paleta { width: 14px; height: 14px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; }
+.paleta.on { outline: 2px solid var(--texto); outline-offset: 1px; }
+.paleta:hover { opacity: .85; }

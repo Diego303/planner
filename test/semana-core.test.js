@@ -73,3 +73,20 @@ test('★ y relación de Las 3', () => {
   assert.equal(m.relDeTexto('Simulacro MLA-C01 ≥ 70 %', ['AI-102', 'MLA-C01', 'Curso']), 'MLA-C01');
   assert.equal(m.relDeTexto('Ir al concurso', ['Curso']), null);
 });
+
+test('metas: constancia sin rachas, objetivo semanal, encuadre y proyectos parados', async () => {
+  const { constancia, estudioDeSemana, semanasSinSimulacro, encuadre, actualizadoHace } = await import('../src/core/progreso.js');
+  const mu = mundoEjemplo().ficheros;
+  const docs = Object.fromEntries(Object.entries(mu).filter(([r]) => r.startsWith('semanas/')).map(([r, d]) => [r.slice(8, -3), d]));
+  const tipos = m.tiposDe(mu['tipos.md']);
+  assert.deepEqual(constancia(docs, tipos, '2026-W45'), { dias: 1, semanas: 7, de: 7 });
+  const [ai, mla, curso] = m.temasEstudio(mu['estudio.md']);
+  assert.deepEqual(estudioDeSemana(ai, docs['2026-W45'], tipos), { planificado: 180, hecho: 120, objetivo: 300 });
+  assert.equal(estudioDeSemana(curso, docs['2026-W45'], tipos).planificado, 210);
+  assert.equal(semanasSinSimulacro(mla, '2026-11-02'), 2);
+  assert.equal(semanasSinSimulacro(ai, '2026-11-02'), 1);
+  assert.equal(encuadre(120, 300), 'llevas');
+  assert.equal(encuadre(150, 300), 'faltan');
+  assert.deepEqual(actualizadoHace('2026-10-21', '2026-11-02'), { texto: 'hace 12 d', parado: true, dias: 12 });
+  assert.equal(actualizadoHace('2026-11-01', '2026-11-02').texto, 'ayer');
+});
