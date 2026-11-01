@@ -148,3 +148,35 @@ test('parámetros raros en la consulta: nunca un 500', async () => {
     assert.ok(r.estado < 500, `${path.slice(0, 80)} → ${r.estado} ${r.datos.slice(0, 120)}`);
   }
 });
+
+test('cada ruta de la API: caso feliz, método incorrecto y, en las POST, JSON roto, cuerpo grande, op desconocida y versión antigua', async () => {
+  const G = (path) => cruda({ path });
+  const P_ = (path, body) => cruda({ method: 'POST', path, headers: JSON_(), body: typeof body === 'string' ? body : JSON.stringify(body) });
+  const felices = {
+    '/api/salud': (j) => j.app === 'planner',
+    [`/api/version?hoy=${HOY}`]: (j) => /^[0-9a-f]{12}$/.test(j.version),
+    [`/api/estado?hoy=${HOY}`]: (j) => j.meta.semanaActual === '2026-W45',
+    [`/api/semanas?hoy=${HOY}`]: (j) => j.semanas.length > 5,
+    [`/api/cierre?semana=2026-W44&hoy=${HOY}`]: (j) => j && typeof j === 'object',
+  };
+  for (const [path, ok] of Object.entries(felices)) {
+    const r = await G(path);
+    assert.equal(r.estado, 200, path);
+    assert.ok(ok(JSON.parse(r.datos)), path);
+    assert.equal((await P_(path.split('?')[0], {})).estado, 405, `POST ${path}`);
+  }
+  const e = JSON.parse((await G(`/api/estado?hoy=${HOY}`)).datos);
+  const op = { op: 'tarea.crear', hoy: HOY, versiones: e.versiones, args: { seccion: 'mas', tarea: { texto: 'feliz' } } };
+  const feliz = await P_('/api/op', op);
+  assert.equal(feliz.estado, 200);
+  assert.equal((await P_('/api/op', op)).estado, 409, 'misma versión otra vez: ya es antigua');
+  assert.equal((await P_('/api/deshacer', { inversaId: JSON.parse(feliz.datos).inversaId, hoy: HOY })).estado, 200);
+  assert.equal((await P_('/api/deshacer', { inversaId: 'no-existe', hoy: HOY })).estado, 410);
+  for (const path of ['/api/op', '/api/deshacer']) {
+    assert.equal((await P_(path, '{"op":')).estado, 400, `${path} JSON roto`);
+    assert.equal((await P_(path, { relleno: 'x'.repeat(300 * 1024) })).estado, 413, `${path} > 256 KB`);
+    assert.equal((await G(path)).estado, 405, `GET ${path}`);
+  }
+  assert.equal((await P_('/api/op', { op: 'no.existe', hoy: HOY })).estado, 422);
+  assert.equal((await G('/api/no-existe')).estado, 404);
+});

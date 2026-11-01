@@ -58,7 +58,10 @@ test(`${MUERTES} SIGKILL a mitad de escritura: nada a medias ni perdido`, { time
         confirmadas.push(...creadas);
         siguiente = Math.max(siguiente, ...creadas.map((i) => i + 1)) + 1; // día nuevo para el siguiente hijo
         const fs = ficheros(c.dir);
-        for (const [ruta, texto] of Object.entries(fs)) assert.equal(serializar(parsear(ruta, texto)), texto, ruta);
+        for (const [ruta, texto] of Object.entries(fs)) {
+          assert.ok(texto.length > 0, `${ruta} vacío`);
+          assert.equal(serializar(parsear(ruta, texto)), texto, ruta);
+        }
         assert.equal(desconocidas(fs), base, 'ninguna línea a medias');
         const todo = Object.entries(fs).filter(([r]) => r === 'tareas.md' || r.startsWith('archivo/')).map(([, t]) => t).join('\n');
         for (const i of confirmadas) assert.ok(todo.includes(`T${i} tarea de prueba`), `T${i} se ha perdido (muerte ${k})`);

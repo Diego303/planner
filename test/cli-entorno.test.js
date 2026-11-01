@@ -124,3 +124,19 @@ test('abrir el navegador en WSL: wslview, si no explorer.exe, si no cmd.exe; si 
   const vacio = programas({});
   try { assert.equal(await abrirCon(vacio.dir), false, 'sin ninguno: lo dice'); } finally { vacio.borrar(); }
 });
+
+test('sin ningún navegador que abrir, la CLI dice la URL', async () => {
+  const vacio = programas({});
+  const home = temporal('planner-home-');
+  const datos = temporal('planner-datos-');
+  const hijo = spawn(process.execPath, [BIN, '--datos', datos, '--puerto', '0'], { env: { ...process.env, PATH: vacio.dir, WSL_DISTRO_NAME: 'Prueba', PLANNER_HOME: home }, stdio: ['ignore', 'pipe', 'pipe'] });
+  try {
+    const salida = await new Promise((ok, mal) => {
+      let s = '';
+      const t = setTimeout(() => mal(new Error(s)), 10000);
+      hijo.stdout.on('data', (d) => { s += d; if (/Abre http:\/\/localhost:\d+\/ en el navegador/.test(s)) { clearTimeout(t); ok(s); } });
+      hijo.on('exit', (c) => mal(new Error(`salió con ${c}: ${s}`)));
+    });
+    assert.match(salida, /Abre http:\/\/localhost:\d+\/ en el navegador/);
+  } finally { hijo.kill(); vacio.borrar(); rmSync(home, { recursive: true, force: true }); rmSync(datos, { recursive: true, force: true }); }
+});
