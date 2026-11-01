@@ -52,6 +52,7 @@ test('restaurar una copia de .copias/ deja los datos como estaban ese día', asy
   const p = apiDirecta(c.dir, { copias, hoySimulado: HOY });
   const original = readFileSync(join(c.dir, 'tareas.md'), 'utf8');
   await p.op(CREAR('después de la copia'));
+  await copias.esperar(); // la copia va en segundo plano
   assert.notEqual(readFileSync(join(c.dir, 'tareas.md'), 'utf8'), original);
   // restaurar a mano, como explica instrucciones.md: copiar la carpeta del día encima
   const copia = join(c.dir, '.copias', HOY);

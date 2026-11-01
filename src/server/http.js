@@ -77,6 +77,7 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
   if (store.existe()) store.limpiarTemporales();
   const copias = crearCopias(store.raiz, { avisar: (m) => console.warn(m) });
   const api = crearApi({ store, copias, deshacer: crearDeshacer(), hoySimulado, extrasContexto, metricas });
+  api.alArrancar();
   let puertoReal = puerto;
 
   const hostValido = (h) => h === `localhost:${puertoReal}` || h === `127.0.0.1:${puertoReal}`;
@@ -137,7 +138,7 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
   await new Promise((ok, mal) => { servidor.once('error', mal); servidor.listen(puerto, host, ok); });
   puertoReal = servidor.address().port;
   return {
-    servidor, store, api, puerto: puertoReal, url: `http://localhost:${puertoReal}/`,
+    servidor, store, api, copias, puerto: puertoReal, url: `http://localhost:${puertoReal}/`,
     /** Deja de aceptar peticiones, espera a las que están en marcha (como mucho `espera` ms) y cierra. */
     async cerrar({ espera = 5000 } = {}) {
       parando = true;
@@ -145,6 +146,9 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
       servidor.closeIdleConnections?.();
       let plazo;
       await Promise.race([Promise.allSettled([...enCurso]), new Promise((ok) => { plazo = setTimeout(ok, espera); })]);
+      clearTimeout(plazo);
+      // y a la copia de seguridad en marcha (si no, quedaría una carpeta temporal a medias)
+      await Promise.race([copias.esperar(), new Promise((ok) => { plazo = setTimeout(ok, espera); })]);
       clearTimeout(plazo);
       servidor.closeAllConnections?.();
       await cerrado;

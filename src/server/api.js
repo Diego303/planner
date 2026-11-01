@@ -24,6 +24,7 @@ export function errorDeEscritura(e) {
 }
 
 const MOTIVO_COPIA = { ENOSPC: 'no queda espacio en el disco', EACCES: 'sin permiso de escritura', EPERM: 'sin permiso de escritura', EROFS: 'disco de solo lectura' };
+const mensajeCopia = (e) => `No se pudo hacer la copia de seguridad de hoy (${MOTIVO_COPIA[e.code] ?? e.code ?? 'error del disco'}). Lo demás se ha guardado; se reintentará en el próximo cambio.`;
 
 export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasContexto = [], metricas = [] }) {
   // Las operaciones se aplican de una en una: así cada fichero tiene una única escritura en curso.
@@ -83,9 +84,10 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
       if (!store.existe()) throw new ErrorHttp(422, 'La carpeta de datos no existe');
       const modo = await modoCopias();
       // Si la copia falla se guarda igual (no copiar no debe impedir trabajar), pero el usuario lo sabe.
-      try { copias.antesDeEscribir(modo, peticion.op); avisoCopia = null; } catch (e) {
+      // (y si la copia del día está en marcha, antes guarda en ella la versión de ahora de lo que se va a escribir)
+      try { await copias.antesDeEscribir(modo, peticion.op, cambiados); avisoCopia = null; } catch (e) {
         console.error('copia:', e);
-        aviso = avisoCopia = `No se pudo hacer la copia de seguridad de hoy (${MOTIVO_COPIA[e.code] ?? e.code ?? 'error del disco'}). Lo demás se ha guardado; se reintentará en el próximo cambio.`;
+        aviso = avisoCopia = mensajeCopia(e);
       }
       // todos o ninguno: si falla uno, no se escribe nada
       const doc = (ruta) => res.mundo.ficheros[ruta];
@@ -102,7 +104,9 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
   const ctxDe = (cuerpo) => ({ hoy: leerHoy(cuerpo.hoy), ahora: leerAhora(cuerpo.ahora) });
   const estadoPara = async (ctx, semana) => {
     const e = await construirEstado(store, { ...ctx, semana, hoySimulado, metricas });
-    if (avisoCopia) e.meta.avisos = [...e.meta.avisos, avisoCopia];
+    // el fallo de una copia en segundo plano también se enseña (hasta que una sale bien)
+    const fallo = avisoCopia ?? (copias.error?.() ? mensajeCopia(copias.error()) : null);
+    if (fallo) e.meta.avisos = [...e.meta.avisos, fallo];
     return e;
   };
 
@@ -166,5 +170,11 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
     })),
   };
 
-  return { rutas, ejecutar, hoyServidor };
+  /** Al arrancar: la copia del día empieza ya, en segundo plano, con los datos aún sin tocar. */
+  async function alArrancar() {
+    if (!store.existe()) return;
+    try { if ((await modoCopias()) === 'diaria') copias.empezar?.(); } catch { /* sin ajustes legibles: ya se copiará al escribir */ }
+  }
+
+  return { rutas, ejecutar, hoyServidor, alArrancar };
 }

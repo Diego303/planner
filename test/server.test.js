@@ -95,6 +95,7 @@ test('POST /api/op escribe de forma atómica, cambia la versión y hace la copia
   assert.notEqual((await get(`/api/version?hoy=${HOY}`)).json.version, v0);
   assert.ok(!readdirSync(join(dir, 'semanas')).some((n) => n.includes('.tmp-')), 'sin temporales');
   // la copia lleva la fecha real del día (no la simulada); sin depender de la hora a la que corre el test
+  await app.copias.esperar(); // va en segundo plano
   const copias = readdirSync(join(dir, '.copias'));
   assert.equal(copias.length, 1);
   assert.match(copias[0], /^\d{4}-\d{2}-\d{2}$/);
