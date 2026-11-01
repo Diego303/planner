@@ -1,6 +1,6 @@
 // Gráficos de Progreso (Few): sparklines, barras, bullet graph y rejilla. Sin tartas ni velocímetros.
 // Líneas de referencia con --texto-3; series con el color del tipo (que llega ya calculado por core/color.js).
-import { html, raw } from './dom.js';
+import { html, raw, esc } from './dom.js';
 
 const n2 = (x) => Math.round(x * 10) / 10;
 
@@ -19,7 +19,7 @@ export function sparkline(valores, ancho, alto, o = {}) {
   let cuerpo = '';
   if (o.ref != null) {
     cuerpo += `<line x1="0" x2="${ancho}" y1="${n2(Y(o.ref))}" y2="${n2(Y(o.ref))}" style="stroke:var(--texto-3)" stroke-dasharray="3 3"/>`;
-    cuerpo += `<text x="${ancho + 4}" y="${n2(Y(o.ref) + 3)}" font-size="9" style="fill:var(--texto-3)">${o.refEtiqueta ?? o.ref}</text>`;
+    cuerpo += `<text x="${ancho + 4}" y="${n2(Y(o.ref) + 3)}" font-size="9" style="fill:var(--texto-3)">${esc(o.refEtiqueta ?? o.ref)}</text>`;
   }
   if (o.barras) {
     cuerpo += vs.map((v, i) => (v == null ? '' : `<rect x="${n2(X(i) - 3)}" y="${n2(Y(v))}" width="6" height="${n2(alto - 3 - Y(v))}" rx="1.5" style="fill:${i === n - 1 ? o.color : o.colorSuave ?? o.color}"/>`)).join('');
@@ -33,7 +33,7 @@ export function sparkline(valores, ancho, alto, o = {}) {
     const ultimo = vs.map((v, i) => [v, i]).filter(([v]) => v != null).at(-1);
     cuerpo += `<circle cx="${n2(X(ultimo[1]))}" cy="${n2(Y(ultimo[0]))}" r="2.6" style="fill:${o.color}"/>`;
   }
-  return raw(`<svg width="${ancho}" height="${alto}" viewBox="0 0 ${ancho} ${alto}" style="display:block;overflow:visible" role="img" aria-label="${o.etiqueta ?? 'gráfico'}">${cuerpo}</svg>`);
+  return raw(`<svg width="${ancho}" height="${alto}" viewBox="0 0 ${ancho} ${alto}" style="display:block;overflow:visible" role="img" aria-label="${esc(o.etiqueta ?? 'gráfico')}">${cuerpo}</svg>`);
 }
 
 /** Bullet graph: relleno = hecho; zona clara y marca = donde deberías ir hoy. Valores en las mismas unidades. */
