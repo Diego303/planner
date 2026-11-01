@@ -190,3 +190,15 @@ test('datos.inicializar: ajustes, tipos y plantilla por defecto sin pisar lo que
   const otra = aplicar(r.mundo, { op: 'datos.inicializar', args: { plantillas: ['trabajo'] } }, CTX);
   assert.deepEqual(otra.tocados, []);
 });
+
+test('bloque.mover entre semanas y tipo.banderas, con inversa exacta', () => {
+  const mu = mundo();
+  const curso = bloque(mu, 'Curso · módulo 6');
+  const r = idaYVuelta(mu, { op: 'bloque.mover', args: { semana: S, id: curso.id, destino: '2026-W46', cambios: { dia: 6, inicio: 600, fin: 720 } } });
+  assert.ok(!m.bloquesDe(r.mundo.ficheros[RS]).some((b) => b.titulo === 'Curso · módulo 6'));
+  const movido = m.bloquesDe(r.mundo.ficheros['semanas/2026-W46.md']).find((b) => b.titulo === 'Curso · módulo 6');
+  assert.deepEqual([movido.dia, movido.inicio, movido.subtipo], [6, 600, 'aprender']);
+  assert.throws(() => aplicar(mu, { op: 'bloque.mover', args: { semana: S, id: curso.id, destino: '2026-W43', cambios: { dia: 6 } } }, CTX), /cerrada/);
+  const t = idaYVuelta(mu, { op: 'tipo.banderas', args: { nombre: 'proyectos', estudio: true } });
+  assert.equal(serializar(t.mundo.ficheros['tipos.md']).split('\n')[3], '- proyectos | #2F6B4F | estudio');
+});

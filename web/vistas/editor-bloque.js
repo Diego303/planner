@@ -39,7 +39,8 @@ function contenido(b, d) {
   for (let t = h0; t < h1; t += 30) inicios.push(t);
   if (!inicios.includes(b.inicio)) inicios.push(b.inicio), inicios.sort((x, y) => x - y);
   const duraciones = DURACIONES.includes(b.fin - b.inicio) ? DURACIONES : [...DURACIONES, b.fin - b.inicio].sort((x, y) => x - y);
-  const fechas = f.diasDeSemana(st.ui.semana);
+  const columnas = f.columnasSemana(st.ui.semana, d.ajustes.inicio_semana);
+  if (!columnas.some((c) => c.semana === ed.semana && c.dia === b.dia)) columnas.push({ semana: ed.semana, dia: b.dia, fecha: f.fechaDeDia(ed.semana, b.dia) });
   const paso = ed.modo && pasosEditor[ed.modo];
   return html`<div class="pop-cab"><b>${b.sugerido ? 'Sugerencia' : 'Bloque'}${m.avanzaLas3(b.titulo, las3) ? html` <span class="pill" style="margin-left:4px">★ avanza las 3</span>` : ''}</b><button type="button" class="cerrar" data-ed="cerrar" aria-label="Cerrar">×</button></div>
 ${dej && b.hecho == null ? html`<div class="nota-dejado">La última vez lo dejaste en: <b>${dej}</b></div>` : ''}
@@ -50,7 +51,7 @@ ${dej && b.hecho == null ? html`<div class="nota-dejado">La última vez lo dejas
   })}</div>
 <div data-subtipos ${esEstudio ? '' : 'hidden'}><label>Cómo vas a estudiar</label><div class="chips">${[['aprender', 'aprender'], ['repasar', '⟲ repasar'], ['simulacro', '◎ simulacro']].map(([k, t]) => html`<button type="button" class="ac ${ed.subtipo === k ? 'on' : ''}" data-subtipo="${k}" aria-pressed="${ed.subtipo === k}">${t}</button>`)}</div></div>
 <label>Cuándo</label><div class="cuando">
-  <select id="ed-dia" aria-label="Día">${f.DIAS.map((l, i) => html`<option value="${i}" ${i === b.dia ? 'selected' : ''}>${l} ${+fechas[i].slice(8)}</option>`)}</select>
+  <select id="ed-dia" aria-label="Día">${columnas.map((c) => html`<option value="${c.semana}|${c.dia}" ${c.semana === ed.semana && c.dia === b.dia ? 'selected' : ''}>${f.DIAS[c.dia]} ${+c.fecha.slice(8)}</option>`)}</select>
   <select id="ed-inicio" aria-label="Hora de inicio">${inicios.map((t) => html`<option value="${t}" ${t === b.inicio ? 'selected' : ''}>${f.horaCorta(t)}</option>`)}</select>
   <select id="ed-dur" aria-label="Duración">${duraciones.map((x) => html`<option value="${x}" ${x === b.fin - b.inicio ? 'selected' : ''}>${etiquetaDuracion(x)}</option>`)}</select>
 </div>
@@ -62,35 +63,46 @@ ${paso ? paso.cuerpo(b, ed) : html`<div class="pie">${b.sugerido
 ${b.plantilla ? html`<div class="mut pista">Los cambios aquí solo afectan a esta semana. La plantilla se edita en Gestión → Plantilla.</div>` : ''}`}`;
 }
 
-/** Lee el formulario del editor → cambios para bloque.editar. */
+/** Lee el formulario del editor → { cambios, destino } (destino = semana del día elegido). */
 export function leerCambios(el, b) {
   const d = derivados();
+  const [destino, dia] = $('#ed-dia', el).value.split('|');
   const inicio = +$('#ed-inicio', el).value;
   const fin = Math.min(d.ajustes.horas.hasta * 60, inicio + +$('#ed-dur', el).value);
   const cambios = {
     titulo: $('#ed-titulo', el).value.trim() || 'Sin título',
     tipo: ed.tipo,
     subtipo: m.esEstudio(d.tipos, ed.tipo) ? ed.subtipo : null,
-    dia: +$('#ed-dia', el).value, inicio, fin: Math.max(fin, inicio + 30),
+    dia: +dia, inicio, fin: Math.max(fin, inicio + 30),
     paso: $('#ed-paso', el).value.trim() || null,
   };
   const plantilla = $('#ed-plantilla', el).checked;
   if (plantilla !== b.plantilla) cambios.plantilla = plantilla;
-  return cambios;
+  return { cambios, destino };
 }
 
-const bloqueActual = () => m.bloquesDe(derivados().semanaDoc).find((x) => x.id === ed?.id);
+const docDe = (semana) => st.datos.ficheros[`semanas/${semana}.md`];
+const bloqueActual = () => (ed ? m.bloquesDe(docDe(ed.semana)).find((x) => x.id === ed.id) : null);
 
 /** Guarda lo que haya en el formulario (sin cerrar si `seguir`). */
 export function guardarFormulario(el, extra = {}) {
   const b = bloqueActual();
   if (!b) return null;
-  const cambios = { ...leerCambios(el, b), ...extra };
-  const igual = Object.entries(cambios).every(([k, v]) => b[k] === v);
-  if (!igual) enviar('bloque.editar', { semana: st.ui.semana, id: ed.id, huella: ed.huella, cambios });
+  const leido = leerCambios(el, b);
+  const cambios = { ...leido.cambios, ...extra };
+  if (leido.destino !== ed.semana) {
+    // otro día de otra semana (la vista que empieza en domingo): el bloque cambia de fichero
+    const { local } = enviar('bloque.mover', { semana: ed.semana, id: ed.id, huella: ed.huella, destino: leido.destino, cambios });
+    if (local?.id == null) return null;
+    ed.semana = leido.destino;
+    ed.id = local.id;
+  } else {
+    const igual = Object.entries(cambios).every(([k, v]) => b[k] === v);
+    if (!igual) enviar('bloque.editar', { semana: ed.semana, id: ed.id, huella: ed.huella, cambios });
+  }
   if (cambios.plantilla === false) toast('Solo en esta semana: la plantilla se cambia en Gestión → Plantilla');
   // tras editar, la huella cambia: la del bloque ya actualizado en local
-  const nuevo = m.bloquesDe(derivados().semanaDoc).find((x) => x.id === ed.id);
+  const nuevo = bloqueActual();
   if (nuevo) ed.huella = m.huellaDe(nuevo);
   return nuevo ?? b;
 }
@@ -100,13 +112,13 @@ export function cerrarEditor() {
   cerrarPopover();
 }
 
-export function abrirEditor(id, { modo = null } = {}) {
+export function abrirEditor(id, { semana = st.ui.semana, modo = null } = {}) {
   const d = derivados();
-  const b = m.bloquesDe(d.semanaDoc).find((x) => x.id === id);
+  const b = m.bloquesDe(docDe(semana)).find((x) => x.id === id);
   const card = $('#wk');
-  const ancla = card?.querySelector(`.blk[data-id="${id}"]`);
+  const ancla = card?.querySelector(`.blk[data-semana="${semana}"][data-id="${id}"]`);
   if (!b || !ancla) return;
-  ed = { id, huella: m.huellaDe(b), tipo: b.tipo, subtipo: b.subtipo, modo };
+  ed = { semana, id, huella: m.huellaDe(b), tipo: b.tipo, subtipo: b.subtipo, modo };
   const el = abrirPopover(card, ancla, contenido(b, d));
   enlazar(el, b);
   (modo ? el.querySelector('[data-paso-foco]') : $('#ed-titulo', el))?.focus();
@@ -146,7 +158,7 @@ function enlazar(el, b) {
     else if (t.dataset.ed === 'eliminar') {
       const actual = bloqueActual();
       if (!actual) return cerrarEditor();
-      enviar('bloque.eliminar', { semana: st.ui.semana, id: ed.id, huella: m.huellaDe(actual) }, { mensaje: () => `Bloque «${actual.titulo}» eliminado` });
+      enviar('bloque.eliminar', { semana: ed.semana, id: ed.id, huella: m.huellaDe(actual) }, { mensaje: () => `Bloque «${actual.titulo}» eliminado` });
       cerrarEditor();
     } else if (t.dataset.paso) {
       cambiarPaso(el, t.dataset.paso);

@@ -153,6 +153,23 @@ export function numero(n, decimales = 1) {
 /** minutos → '1,5' horas */
 export const horas = (min) => numero(min / 60);
 
+/**
+ * Columnas de la vista de una semana ISO: lunes → domingo, o con `inicio = 'domingo'` el domingo anterior
+ * (que pertenece a la semana ISO anterior) y de lunes a sábado. → [{ semana, dia, fecha }]
+ */
+export function columnasSemana(id, inicio = 'lunes') {
+  const dias = DIAS.map((_, dia) => ({ semana: id, dia, fecha: fechaDeDia(id, dia) }));
+  if (inicio !== 'domingo') return dias;
+  const previa = sumarSemanas(id, -1);
+  return [{ semana: previa, dia: 6, fecha: fechaDeDia(previa, 6) }, ...dias.slice(0, 6)];
+}
+
+/** '2026-11-01', '2026-11-07' → '1 – 7 nov' */
+export function rangoFechas(a, b) {
+  const [ma, mb] = [+a.slice(5, 7) - 1, +b.slice(5, 7) - 1];
+  return `${+a.slice(8)}${ma !== mb ? ' ' + MESES_CORTOS[ma] : ''} – ${+b.slice(8)} ${MESES_CORTOS[mb]}`;
+}
+
 /** '2026-W45' → '2 – 8 nov' · '2026-W53' → '28 dic – 3 ene' */
 export function rangoSemana(id) {
   const a = lunesDe(id), b = sumarDias(a, 6);

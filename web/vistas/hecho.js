@@ -18,7 +18,7 @@ botonesPie.push((b) => (b.hecho != null
   : html`<button type="button" class="dark" data-paso="hecho">Hecho ✓</button>${puedeAMedias(b) ? html`<button type="button" data-paso="medias">A medias</button>` : html`<button type="button" disabled title="Solo para temas de estudio o proyectos: el título tiene que empezar por su nombre">A medias</button>`}`));
 
 accionesEditor.desmarcar = (_el, b) => {
-  if (b) enviar('bloque.desmarcar', { semana: st.ui.semana, id: b.id, huella: m.huellaDe(b) }, { mensaje: () => `«${b.titulo}» ya no está hecho` });
+  if (b) enviar('bloque.desmarcar', { semana: editorAbierto().semana, id: b.id, huella: m.huellaDe(b) }, { mensaje: () => `«${b.titulo}» ya no está hecho` });
   cerrarEditor();
 };
 
@@ -39,7 +39,7 @@ ${b.subtipo === 'simulacro' ? html`<label for="ed-nota">Nota del simulacro</labe
       if (!boton) return;
       const nota = $('#ed-nota', el)?.value;
       const ed = editorAbierto();
-      enviar('bloque.hecho', { semana: st.ui.semana, id: ed.id, huella: ed.huella, delta: +boton.dataset.real, nota: nota === '' || nota == null ? null : Number(nota) },
+      enviar('bloque.hecho', { semana: ed.semana, id: ed.id, huella: ed.huella, delta: +boton.dataset.real, nota: nota === '' || nota == null ? null : Number(nota) },
         { mensaje: (_r, resp) => `Hecho ✓ · ${textoFactor(b.tipo, resp)}` });
       cerrarEditor();
     });
@@ -53,7 +53,7 @@ pasosEditor.medias = {
       const dejado = $('#ed-dejado', el).value.trim();
       if (!dejado) { $('#ed-dejado', el).focus(); return; }
       const ed = editorAbierto();
-      enviar('bloque.aMedias', { semana: st.ui.semana, id: ed.id, huella: ed.huella, dejado }, { mensaje: (r) => `Nota guardada: «${r.tema ?? m.temaDe(b.titulo)}» · ${dejado}` });
+      enviar('bloque.aMedias', { semana: ed.semana, id: ed.id, huella: ed.huella, dejado }, { mensaje: (r) => `Nota guardada: «${r.tema ?? m.temaDe(b.titulo)}» · ${dejado}` });
       cerrarEditor();
     };
     el.addEventListener('click', (ev) => { if (ev.target.closest('[data-guardar-dejado]')) guardar(); });

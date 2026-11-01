@@ -251,6 +251,19 @@ registrar('bloque.editar', (tx, a) => {
   tx.cambiar(ruta, a.id, cambios);
 });
 
+/** Mueve un bloque a otra semana (la columna del domingo anterior cuando la semana empieza en domingo). */
+registrar('bloque.mover', (tx, a) => {
+  if (a.destino === a.semana) return tx.aplicar('bloque.editar', a);
+  const origen = semanaEditable(tx, a.semana);
+  const b = elemento(tx, origen, a.id, 'bloque', 'El bloque', a.huella);
+  const destino = semanaEditable(tx, a.destino);
+  const c = validarCamposBloque(a.cambios ?? {}, true);
+  const nuevo = fsem.bloque({ ...b, ...c, extra: b.extra, comentario: b.comentario });
+  exigir(nuevo.fin > nuevo.inicio, 'El bloque termina antes de empezar');
+  tx.quitar(origen, a.id);
+  return { id: anadirBloque(tx, destino, nuevo), semana: a.destino };
+});
+
 registrar('bloque.eliminar', (tx, a) => {
   const ruta = semanaEditable(tx, a.semana);
   elemento(tx, ruta, a.id, 'bloque', 'El bloque', a.huella);
@@ -562,6 +575,16 @@ registrar('tipo.color', (tx, a) => {
   const t = tipoPorNombre(tipos(tx), a.nombre);
   exigir(t, 'Ese tipo ya no existe');
   tx.cambiar('tipos.md', t.id, { color: a.color.toUpperCase() });
+});
+
+/** Banderas de un tipo: «trabajo» (hora de desconexión) y «estudio» (subtipos, foco y simulacros). */
+registrar('tipo.banderas', (tx, a) => {
+  asegurarTipos(tx);
+  const t = tipoPorNombre(tipos(tx), a.nombre);
+  exigir(t, 'Ese tipo ya no existe');
+  const cambios = {};
+  for (const k of ['trabajo', 'estudio']) if (Object.hasOwn(a, k)) cambios[k] = !!a[k];
+  tx.cambiar('tipos.md', t.id, cambios);
 });
 
 /** Cuántos usos tiene un tipo: semanas (ctx.usoTipos, lo calcula quien llama), plantilla y tareas. */

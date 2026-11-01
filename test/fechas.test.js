@@ -82,3 +82,13 @@ test('horas, rangos, duraciones y diferencias', () => {
   assert.equal(f.numero(1.25), '1,3');
   assert.equal(f.numero(2), '2');
 });
+
+test('columnas de la semana: de lunes o desde el domingo anterior', () => {
+  assert.deepEqual(f.columnasSemana('2026-W45').map((c) => c.fecha), f.diasDeSemana('2026-W45'));
+  const dom = f.columnasSemana('2026-W45', 'domingo');
+  assert.deepEqual(dom[0], { semana: '2026-W44', dia: 6, fecha: '2026-11-01' });
+  assert.deepEqual(dom.slice(1).map((c) => `${c.semana}:${c.dia}`), [0, 1, 2, 3, 4, 5].map((d) => `2026-W45:${d}`));
+  assert.equal(f.columnasSemana('2027-W01', 'domingo')[0].semana, '2026-W53');
+  assert.equal(f.rangoFechas('2026-11-01', '2026-11-07'), '1 – 7 nov');
+  assert.equal(f.rangoFechas('2026-12-27', '2027-01-02'), '27 dic – 2 ene');
+});

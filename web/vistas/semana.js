@@ -30,10 +30,18 @@ export function modeloSemana() {
   const d = derivados();
   const id = st.ui.semana;
   const estado = estadoSemana(id, d.semanaDoc, d.meta.semanaActual);
+  const ro = soloLectura(estado) || st.caido || !d.semanaDoc;
+  // Columnas: de lunes a domingo de la semana ISO, o con «domingo» el domingo anterior (otro fichero) + lunes–sábado.
+  const columnas = f.columnasSemana(id, d.ajustes.inicio_semana).map((c, i) => {
+    if (c.semana === id) return { ...c, i, doc: d.semanaDoc, ro };
+    const doc = st.datos.ficheros[`semanas/${c.semana}.md`];
+    const roCol = st.caido || doc === undefined || soloLectura(estadoSemana(c.semana, doc ?? null, d.meta.semanaActual));
+    return { ...c, i, doc: doc ?? null, ro: roCol };
+  });
+  for (const c of columnas) c.bloques = m.bloquesDe(c.doc).filter((b) => b.dia === c.dia).map((b) => ({ ...b, semana: c.semana }));
   return {
-    d, id, estado,
-    ro: soloLectura(estado) || st.caido || !d.semanaDoc,
-    bloques: m.bloquesDe(d.semanaDoc),
+    d, id, estado, ro, columnas,
+    bloques: columnas.flatMap((c) => c.bloques),
     las3: m.las3De(d.semanaDoc),
     tema: temaActual(),
     esActual: id === d.meta.semanaActual,
@@ -51,7 +59,7 @@ function cabecera(v) {
   const mas = d.tareas.mas.filter((t) => !t.hecha).length + d.tareas.algun.filter((t) => !t.hecha).length;
   const clasePill = estado === 'sin cerrar' || estado === 'reabierta' ? 'aviso' : estado === 'en curso' ? 'ok' : '';
   return html`<div class="wk-cab">
-    <div class="wk-titulo"><span class="wk-rango">${f.rangoSemana(id)}</span><button type="button" class="wk-num" data-accion="semanas" title="Elegir semana">semana ${f.numeroSemana(id)}</button><span class="pill ${clasePill}">${estado}</span></div>
+    <div class="wk-titulo"><span class="wk-rango">${f.rangoFechas(v.columnas[0].fecha, v.columnas[6].fecha)}</span><button type="button" class="wk-num" data-accion="semanas" title="Elegir semana">semana ${f.numeroSemana(id)}</button><span class="pill ${clasePill}">${estado}</span></div>
     <div class="wk-acciones"><span class="wk-plan mut"><button type="button" data-accion="ir-hoy">más adelante · ${mas}</button>${sug ? ` · ${sug} sugerencia${sug === 1 ? '' : 's'}` : ''}${solapes ? html` · <span class="peligro-texto">⚠ ${solapes} solape${solapes === 1 ? '' : 's'}</span>` : ''}</span>
       <button type="button" data-accion="anterior" aria-label="Semana anterior" style="padding:4px 10px">‹</button><button type="button" data-accion="hoy">hoy</button><button type="button" data-accion="siguiente" aria-label="Semana siguiente" style="padding:4px 10px">›</button>${acciones.proponer && !v.pasada ? html`<button type="button" class="dark" data-accion="proponer" ${v.ro ? 'disabled' : ''}>Proponer semana</button>` : ''}</div>
   </div>`;
@@ -73,17 +81,16 @@ function las3(v) {
 }
 
 function cabeceraDias(v) {
-  const { d, bloques, hoyIdx } = v;
-  const fechas = f.diasDeSemana(v.id);
-  return html`<div class="dias"><div></div>${f.DIAS.map((letra, i) => {
-    const o = ocupacionDia(bloques, i, d.ajustes);
-    const e = estudioDia(bloques, i, d.tipos, d.ajustes);
+  const { d } = v;
+  return html`<div class="dias"><div></div>${v.columnas.map((c) => {
+    const o = ocupacionDia(c.bloques, c.dia, d.ajustes);
+    const e = estudioDia(c.bloques, c.dia, d.tipos, d.ajustes);
     const titulo = `${f.horas(o.minutos)} h de ${f.horas(o.disponibles)} h (${Math.round(o.pct)} %) · capacidad ${d.ajustes.capacidad} %`;
-    return html`<div title="${titulo}"><div class="dia-cab ${i === hoyIdx ? 'hoy' : 'mut'}">${letra} ${+fechas[i].slice(8)}</div><div class="capb"><div class="${o.nivel}" style="width:${Math.min(100, o.pct)}%"></div></div>${e.aviso ? html`<div class="foco" title="Más de ${f.numero(d.ajustes.foco_max)} h de estudio intenso en un día">${f.horas(e.minutos)} h estudio</div>` : ''}</div>`;
+    return html`<div title="${titulo}"><div class="dia-cab ${c.fecha === d.meta.hoy ? 'hoy' : 'mut'}">${f.DIAS[c.dia]} ${+c.fecha.slice(8)}</div><div class="capb"><div class="${o.nivel}" style="width:${Math.min(100, o.pct)}%"></div></div>${e.aviso ? html`<div class="foco" title="Más de ${f.numero(d.ajustes.foco_max)} h de estudio intenso en un día">${f.horas(e.minutos)} h estudio</div>` : ''}</div>`;
   })}</div>`;
 }
 
-function bloqueHtml(b, carril, v) {
+function bloqueHtml(b, carril, v, ro) {
   const { d } = v;
   const h0 = d.ajustes.horas.desde * 60, h1 = d.ajustes.horas.hasta * 60;
   const c = colorBloque(m.colorDeTipo(d.tipos, b.tipo), v.tema);
@@ -98,8 +105,8 @@ function bloqueHtml(b, carril, v) {
     + `${noche ? ' · trabajo después de tu hora de cierre' : ''}${carril.solapa ? ' · se solapa con otro bloque' : ''}`
     + `${b.sugerido ? ' · sugerencia: arrástrala o ábrela para aceptarla' : ''}${b.hecho != null ? ' · hecho' : ''}`;
   const marcas = `${noche ? '☾ ' : ''}${estrella ? '★ ' : ''}${b.subtipo === 'simulacro' ? '◎ ' : b.subtipo === 'repasar' ? '⟲ ' : ''}${b.plantilla ? '↻ ' : ''}`;
-  return html`<div class="${clases}" data-id="${b.id}" role="button" tabindex="0" aria-label="${titulo}" title="${titulo}"
-    style="left:calc(${carril.carril * ancho}% + 2px);width:calc(${ancho}% - 4px);top:${top}px;height:${alto}px;${raw(estilo)}">${marcas}${carril.solapa ? html`<span class="alerta">⚠ </span>` : ''}${b.titulo}${v.ro ? '' : html`<div class="rs" aria-hidden="true"></div>`}</div>`;
+  return html`<div class="${clases}" data-id="${b.id}" data-semana="${b.semana}" role="button" tabindex="0" aria-label="${titulo}" title="${titulo}"
+    style="left:calc(${carril.carril * ancho}% + 2px);width:calc(${ancho}% - 4px);top:${top}px;height:${alto}px;${raw(estilo)}">${marcas}${carril.solapa ? html`<span class="alerta">⚠ </span>` : ''}${b.titulo}${ro ? '' : html`<div class="rs" aria-hidden="true"></div>`}</div>`;
 }
 
 function rejilla(v) {
@@ -108,12 +115,12 @@ function rejilla(v) {
   const alto = horas * PX;
   const etiquetas = Array.from({ length: horas }, (_, i) => (i % 2 === 0 ? html`<span style="top:${i * PX - 7}px">${h0 + i}</span>` : ''));
   const lineas = raw(Array.from({ length: horas }, (_, i) => `<div class="hl" style="top:${i * PX}px"></div>`).join(''));
-  const cols = f.DIAS.map((letra, dia) => {
-    const delDia = v.bloques.filter((b) => b.dia === dia && b.fin > h0 * 60 && b.inicio < h1 * 60);
+  const cols = v.columnas.map((c) => {
+    const delDia = c.bloques.filter((b) => b.fin > h0 * 60 && b.inicio < h1 * 60);
     const lanes = carriles(delDia);
-    return html`<div class="col" data-dia="${dia}" style="height:${alto}px" aria-label="${f.NOMBRES_DIA[dia]}">${lineas}${delDia.map((b, i) => bloqueHtml(b, lanes[i], v))}</div>`;
+    return html`<div class="col ${c.ro ? 'ro' : ''}" data-col="${c.i}" data-semana="${c.semana}" data-dia="${c.dia}" style="height:${alto}px" aria-label="${f.fechaLarga(c.fecha)}">${lineas}${delDia.map((b, i) => bloqueHtml(b, lanes[i], v, c.ro))}</div>`;
   });
-  return html`<div class="rejilla ${v.ro ? 'ro' : ''}" id="rejilla"><div class="horas" style="height:${alto}px">${etiquetas}</div>${cols}</div>`;
+  return html`<div class="rejilla ${v.columnas.every((c) => c.ro) ? 'ro' : ''}" id="rejilla"><div class="horas" style="height:${alto}px">${etiquetas}</div>${cols}</div>`;
 }
 
 function leyenda(v) {
@@ -132,29 +139,31 @@ export function pintarSemana() {
 
 // ---------- Interacción ----------
 
-const bloquePorId = (id) => m.bloquesDe(derivados().semanaDoc).find((b) => b.id === id);
+const bloqueDe = (semana, id) => m.bloquesDe(st.datos.ficheros[`semanas/${semana}.md`]).find((b) => b.id === id);
 const tipoPorDefecto = (tipos) => (m.tipoPorNombre(tipos, 'personal') ?? tipos[0])?.nombre ?? 'personal';
 
 function crearEnHueco(col, ev) {
   const v = modeloSemana();
-  if (v.ro) return;
+  const c = v.columnas[+col.dataset.col];
+  if (!c || c.ro) return;
   const h0 = v.d.ajustes.horas.desde * 60, h1 = v.d.ajustes.horas.hasta * 60;
   const r = col.getBoundingClientRect();
   const inicio = Math.max(h0, Math.min(h1 - 60, h0 + Math.floor(((ev.clientY - r.top) / PX) * 2) * 30));
-  const { local } = enviar('bloque.crear', { semana: v.id, bloque: { dia: +col.dataset.dia, inicio, fin: inicio + 60, tipo: tipoPorDefecto(v.d.tipos), titulo: 'Nuevo bloque' } });
-  if (local?.id != null) requestAnimationFrame(() => abrirEditor(local.id, { nuevo: true }));
+  const { local } = enviar('bloque.crear', { semana: c.semana, bloque: { dia: c.dia, inicio, fin: inicio + 60, tipo: tipoPorDefecto(v.d.tipos), titulo: 'Nuevo bloque' } });
+  if (local?.id != null) requestAnimationFrame(() => abrirEditor(local.id, { semana: c.semana, nuevo: true }));
 }
 
 /** Arrastrar para mover (ajuste a 30 min y a día) o estirar desde el borde inferior; sin moverse = abrir editor. */
 function empezarArrastre(ev, el) {
   if (ev.button !== 0) return;
   const v = modeloSemana();
-  const id = +el.dataset.id;
-  if (v.ro) { return; }
-  const b = bloquePorId(id);
+  const id = +el.dataset.id, semana = el.dataset.semana;
+  const col = el.parentElement;
+  const origen = v.columnas[+col.dataset.col];
+  if (!origen || origen.ro) return;
+  const b = bloqueDe(semana, id);
   if (!b) return;
   const estirar = ev.target.classList.contains('rs');
-  const col = el.parentElement;
   const anchoCol = col.getBoundingClientRect().width + 4;
   const sx = ev.clientX, sy = ev.clientY;
   const altoInicial = el.getBoundingClientRect().height;
@@ -172,22 +181,26 @@ function empezarArrastre(ev, el) {
   };
   el.onpointerup = (up) => {
     el.onpointermove = el.onpointerup = null;
-    if (!movido) { abrirEditor(id); return; }
+    if (!movido) { abrirEditor(id, { semana }); return; }
     const h0 = v.d.ajustes.horas.desde * 60, h1 = v.d.ajustes.horas.hasta * 60;
     const dy = ((up.clientY - sy) / PX) * 60;
     const cambios = {};
+    let destino = origen;
     if (estirar) {
       cambios.fin = Math.max(b.inicio + 30, Math.min(h1, Math.round((b.fin + dy) / 30) * 30));
     } else {
       const largo = b.fin - b.inicio;
-      cambios.dia = Math.max(0, Math.min(6, b.dia + Math.round((up.clientX - sx) / anchoCol)));
+      destino = v.columnas[Math.max(0, Math.min(6, origen.i + Math.round((up.clientX - sx) / anchoCol)))];
+      if (destino.ro) { pintarSemana(); toast('Ese día es de una semana cerrada: reábrela para mover ahí'); return; }
+      cambios.dia = destino.dia;
       cambios.inicio = Math.max(h0, Math.min(h1 - largo, Math.round((b.inicio + dy) / 30) * 30));
       cambios.fin = cambios.inicio + largo;
     }
     if (b.sugerido) cambios.sugerido = false; // mover una sugerencia es aceptarla
-    const igual = Object.entries(cambios).every(([k, x]) => b[k] === x);
+    const igual = destino.semana === semana && Object.entries(cambios).every(([k, x]) => b[k] === x);
     if (igual) { pintarSemana(); return; }
-    enviar('bloque.editar', { semana: v.id, id, huella: m.huellaDe(b), cambios });
+    if (destino.semana !== semana) enviar('bloque.mover', { semana, id, huella: m.huellaDe(b), destino: destino.semana, cambios });
+    else enviar('bloque.editar', { semana, id, huella: m.huellaDe(b), cambios });
   };
 }
 
@@ -234,7 +247,7 @@ export function iniciarSemana() {
   on(raiz, 'dblclick', '.col', (ev, col) => { if (ev.target === col) crearEnHueco(col, ev); });
   on(raiz, 'pointerdown', '.blk', (ev, el) => empezarArrastre(ev, el));
   on(raiz, 'keydown', '.blk', (ev, el) => {
-    if ((ev.key === 'Enter' || ev.key === ' ') && !modeloSemana().ro) { ev.preventDefault(); abrirEditor(+el.dataset.id); }
+    if ((ev.key === 'Enter' || ev.key === ' ') && !el.parentElement.classList.contains('ro')) { ev.preventDefault(); abrirEditor(+el.dataset.id, { semana: el.dataset.semana }); }
   });
   // Las 3
   on(raiz, 'click', '[data-las3-marcar]', (ev, el) => {

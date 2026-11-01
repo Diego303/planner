@@ -34,9 +34,48 @@ function las3Hoy(d) {
   return html`<div class="card"><div class="lab">Las 3 de la semana</div>${d.las3Actual.length ? d.las3Actual.map((o) => html`<div class="b3h ${o.hecha ? 'hecha' : ''}"><div class="t" style="font-size:12.5px">${o.hecha ? '✓' : '○'} ${o.texto}</div>${o.si ? html`<div class="mut" style="font-size:11px;margin-left:16px">si ${o.si} → ${o.entonces ?? '…'}</div>` : ''}</div>`) : html`<div class="vacio">Aún no has elegido Las 3 de esta semana: escríbelas en la vista Semana.</div>`}</div>`;
 }
 
+// ---------- Editar y borrar tareas ----------
+
+let editando = null; // id de la tarea que se está editando
+const DURACIONES = [15, 30, 45, 60, 90, 120, 180, 240];
+const SECCIONES = [['hoy', 'Hoy'], ['mas', 'Más adelante'], ['algun', 'Algún día']];
+
+function formularioTarea(d, t) {
+  const durs = t.dur && !DURACIONES.includes(t.dur) ? [...DURACIONES, t.dur].sort((a, b) => a - b) : DURACIONES;
+  return html`<div class="frm" data-form-tarea="${t.id}" style="margin:6px 0">
+<input id="et-texto" value="${t.texto}" maxlength="200" aria-label="Texto de la tarea">
+<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+  <select id="et-tipo" aria-label="Tipo" style="font-size:11.5px"><option value="">sin tipo</option>${d.tipos.map((x) => html`<option ${m.normalizar(x.nombre) === m.normalizar(t.tipo ?? '') ? 'selected' : ''}>${x.nombre}</option>`)}</select>
+  <select id="et-seccion" aria-label="Sección" style="font-size:11.5px">${SECCIONES.map(([k, n]) => html`<option value="${k}" ${k === t.seccion ? 'selected' : ''}>${n}</option>`)}</select>
+  <input id="et-fecha" type="date" value="${t.fecha ?? ''}" aria-label="Fecha (opcional)" style="font-size:11.5px">
+  <select id="et-dur" aria-label="Duración" style="font-size:11.5px"><option value="">sin duración</option>${durs.map((x) => html`<option value="${x}" ${x === t.dur ? 'selected' : ''}>${f.formatoDuracion(x)}</option>`)}</select>
+  <label class="fila" style="margin:0"><input type="checkbox" id="et-prioridad" ${t.prioridad ? 'checked' : ''}> prioridad</label>
+</div>
+<div class="pie" style="margin-top:4px"><button type="button" class="dark" data-et="guardar">Guardar</button><button type="button" data-et="cancelar">Cancelar</button><button type="button" class="peligro-texto" data-et="eliminar">Eliminar</button></div></div>`;
+}
+
+const botonEditar = (t) => html`<button type="button" class="mv" data-editar-tarea aria-label="Editar: ${t.texto}" title="Editar o borrar">✎</button>`;
+
+function guardarTarea(form) {
+  const t = m.entidades(st.datos.ficheros['tareas.md'], 'tarea').find((x) => x.id === +form.dataset.formTarea);
+  editando = null;
+  if (!t) { pintarHoy(); return; }
+  const texto = $('#et-texto', form).value.trim();
+  if (!texto) { $('#et-texto', form).focus(); editando = t.id; return; }
+  const cambios = {
+    texto, tipo: $('#et-tipo', form).value || null, fecha: $('#et-fecha', form).value || null,
+    dur: $('#et-dur', form).value ? +$('#et-dur', form).value : null, prioridad: $('#et-prioridad', form).checked,
+  };
+  const seccion = $('#et-seccion', form).value;
+  if (seccion !== t.seccion) enviar('tarea.mover', { id: t.id, huella: m.huellaDe(t), seccion, cambios });
+  else if (Object.entries(cambios).some(([k, v]) => (t[k] ?? null) !== v)) enviar('tarea.editar', { id: t.id, huella: m.huellaDe(t), cambios });
+  else pintarHoy();
+}
+
 function filaTarea(d, t, tema) {
+  if (editando === t.id) return formularioTarea(d, t);
   const estrella = m.tareaAvanzaLas3(t, d.las3Actual);
-  return html`<div class="task ${t.hecha ? 'done' : ''}" data-tarea="${t.id}"><button type="button" class="cb ${t.hecha ? 'on' : ''}" data-marcar aria-label="${t.hecha ? 'Desmarcar' : 'Marcar como hecha'}: ${t.texto}">${t.hecha ? '✓' : ''}</button><span class="tx">${punto(d, t.tipo, tema)}${t.prioridad ? html`<b class="peligro-texto">! </b>` : ''}${estrella ? html`<span title="avanza las 3" class="aviso-texto">★ </span>` : ''}${t.texto}${t.dur ? html` <span class="mut" style="font-size:10.5px">${f.formatoDuracion(t.dur)}</span>` : ''}</span>${tareaVencida(t, d.meta.hoy) ? html`<span style="font-size:10.5px" class="peligro-texto">vencida</span>` : html`<span></span>`}<button type="button" class="mv" data-bajar aria-label="Bajar a más adelante: ${t.texto}">↓ luego</button></div>`;
+  return html`<div class="task ${t.hecha ? 'done' : ''}" data-tarea="${t.id}"><button type="button" class="cb ${t.hecha ? 'on' : ''}" data-marcar aria-label="${t.hecha ? 'Desmarcar' : 'Marcar como hecha'}: ${t.texto}">${t.hecha ? '✓' : ''}</button><span class="tx">${punto(d, t.tipo, tema)}${t.prioridad ? html`<b class="peligro-texto">! </b>` : ''}${estrella ? html`<span title="avanza las 3" class="aviso-texto">★ </span>` : ''}${t.texto}${t.dur ? html` <span class="mut" style="font-size:10.5px">${f.formatoDuracion(t.dur)}</span>` : ''}</span>${tareaVencida(t, d.meta.hoy) ? html`<span style="font-size:10.5px" class="peligro-texto">vencida</span>` : html`<span></span>`}<span style="display:flex;gap:4px">${botonEditar(t)}<button type="button" class="mv" data-bajar aria-label="Bajar a más adelante: ${t.texto}">↓ luego</button></span></div>`;
 }
 
 function tareasHoy(d, tema) {
@@ -57,7 +96,7 @@ function masAdelante(d, tema) {
   ];
   const total = grupos.reduce((s, [, l]) => s + l.length, 0);
   const recordatorio = d.las3Actual.length ? html`<div class="recuadro" style="font-size:11.5px;margin-bottom:12px;line-height:1.5"><span class="mut">Antes de subir algo a Hoy, recuerda tus 3:</span><br>${raw(d.las3Actual.map((o) => String(html`<b style="font-weight:500">★ ${o.texto}</b>`)).join(' · '))}</div>` : '';
-  return html`<div class="card">${recordatorio}<div class="fila-lab"><span class="lab">Más adelante</span><span class="mut" style="font-size:12px">${total}</span></div>${grupos.map(([nombre, lista]) => (lista.length ? html`<div class="grp ${nombre === 'Vencidas' ? 'vencidas' : ''}">${nombre} · ${lista.length}</div>${lista.map((t) => html`<div class="lt" data-tarea="${t.id}" style="${nombre === 'Algún día' ? 'opacity:.7' : ''}"><span>${punto(d, t.tipo, tema)}${t.prioridad ? html`<b class="peligro-texto">! </b>` : ''}${m.tareaAvanzaLas3(t, d.las3Actual) ? html`<span title="avanza las 3" class="aviso-texto">★ </span>` : ''}${t.texto}${t.dur ? html` <span class="mut" style="font-size:10.5px">${f.formatoDuracion(t.dur)}</span>` : ''}</span><span class="mut" style="font-size:10.5px">${t.fecha && nombre !== 'Vencidas' ? etiquetaFecha(t.fecha, hoy) : ''}</span><button type="button" class="mv" data-subir ${lleno ? raw('disabled title="Hoy está lleno"') : ''} aria-label="Subir a hoy: ${t.texto}">↑ hoy</button></div>`)}` : ''))}${total ? '' : html`<div class="mut">Vacío</div>`}${avisoLineas('tareas.md', st.datos.ficheros['tareas.md'])}</div>`;
+  return html`<div class="card">${recordatorio}<div class="fila-lab"><span class="lab">Más adelante</span><span class="mut" style="font-size:12px">${total}</span></div>${grupos.map(([nombre, lista]) => (lista.length ? html`<div class="grp ${nombre === 'Vencidas' ? 'vencidas' : ''}">${nombre} · ${lista.length}</div>${lista.map((t) => (editando === t.id ? formularioTarea(d, t) : html`<div class="lt" data-tarea="${t.id}" style="${nombre === 'Algún día' ? 'opacity:.7' : ''}"><span>${punto(d, t.tipo, tema)}${t.prioridad ? html`<b class="peligro-texto">! </b>` : ''}${m.tareaAvanzaLas3(t, d.las3Actual) ? html`<span title="avanza las 3" class="aviso-texto">★ </span>` : ''}${t.texto}${t.dur ? html` <span class="mut" style="font-size:10.5px">${f.formatoDuracion(t.dur)}</span>` : ''}</span><span class="mut" style="font-size:10.5px">${t.fecha && nombre !== 'Vencidas' ? etiquetaFecha(t.fecha, hoy) : ''}</span><span style="display:flex;gap:4px">${botonEditar(t)}<button type="button" class="mv" data-subir ${lleno ? raw('disabled title="Hoy está lleno"') : ''} aria-label="Subir a hoy: ${t.texto}">↑ hoy</button></span></div>`))}` : ''))}${total ? '' : html`<div class="mut">Vacío</div>`}${avisoLineas('tareas.md', st.datos.ficheros['tareas.md'])}</div>`;
 }
 
 // ---------- Cierre del día ----------
@@ -138,9 +177,22 @@ function iniciarHoy() {
   on(raiz, 'click', '[data-tarea]', (ev, el) => {
     const t = tareaDe(el);
     if (!t) return;
+    if (ev.target.closest('[data-editar-tarea]')) { editando = t.id; pintarHoy(); $('#et-texto')?.focus(); return; }
     if (ev.target.closest('[data-bajar]')) { enviar('tarea.mover', { id: t.id, huella: m.huellaDe(t), seccion: 'mas' }); return; }
     if (ev.target.closest('[data-subir]')) { enviar('tarea.mover', { id: t.id, huella: m.huellaDe(t), seccion: 'hoy' }); return; }
     if (el.classList.contains('task')) enviar('tarea.marcar', { id: t.id, huella: m.huellaDe(t), hecha: !t.hecha });
+  });
+  on(raiz, 'click', '[data-et]', (_ev, el) => {
+    const form = el.closest('[data-form-tarea]');
+    if (el.dataset.et === 'guardar') return guardarTarea(form);
+    const t = m.entidades(st.datos.ficheros['tareas.md'], 'tarea').find((x) => x.id === +form.dataset.formTarea);
+    editando = null;
+    if (el.dataset.et === 'eliminar' && t) enviar('tarea.eliminar', { id: t.id, huella: m.huellaDe(t) }, { mensaje: () => `Tarea «${t.texto}» eliminada` });
+    else pintarHoy();
+  });
+  on(raiz, 'keydown', '[data-form-tarea]', (ev, form) => {
+    if (ev.key === 'Escape') { ev.stopPropagation(); editando = null; pintarHoy(); }
+    if (ev.key === 'Enter' && ev.target.id === 'et-texto') { ev.preventDefault(); guardarTarea(form); }
   });
   on(raiz, 'click', '[data-decidir]', (_ev, el) => {
     const c = estadoCierre(derivados().meta.hoy);

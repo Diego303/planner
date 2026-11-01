@@ -97,7 +97,7 @@ Sin dependencias de runtime ni de desarrollo.
 | `tareas_hoy` | entero 1–20 | 5 |
 | `horas` | `H-H`, 0 ≤ desde < hasta ≤ 24 | `7-24` |
 | `cierre` | `HH:MM` | `22:30` |
-| `inicio_semana` | `lunes` · `domingo` | `lunes` |
+| `inicio_semana` | `lunes` · `domingo` (solo la vista: con domingo se ve el domingo anterior, que vive en la semana ISO anterior) | `lunes` |
 | `foco_max` | número de horas > 0 | 3 |
 | `mejores_horas` | `sin preferencia` · `mañanas` · `tardes` · `noches` | `sin preferencia` |
 | `margen` | `auto` · `fijo` | `auto` |
@@ -231,6 +231,7 @@ Todas son puras: `aplicar(mundo, op, ctx) → { mundo, inversa, tocados, resulta
 | `bloque.crear {semana, bloque}` | semana | Añade al final de `## Bloques` (crea la sección si falta) |
 | `bloque.editar {semana, id, cambios}` | semana (+ plantilla si se marca ↻) | Mover, estirar, aceptar sugerencia, título, tipo, subtipo, paso |
 | `bloque.eliminar {semana, id}` | semana | Quita la línea |
+| `bloque.mover {semana, id, destino, cambios}` | dos semanas | Lleva un bloque a otra semana (vista que empieza en domingo) |
 | `bloque.hecho {semana, id, delta, nota?, cambios?}` | semana, estudio, proyectos | Marca hecho, guarda nota del simulacro, borra el `dejado` del tema, actualiza el proyecto |
 | `bloque.desmarcar {semana, id}` | semana | Quita `hecho` y `nota` |
 | `bloque.aMedias {semana, id, dejado, cambios?}` | estudio o proyectos | Guarda dónde lo dejaste |
@@ -243,7 +244,7 @@ Todas son puras: `aplicar(mundo, op, ctx) → { mundo, inversa, tocados, resulta
 | `estudio.crear / cambiar / eliminar` | estudio | Metas de estudio |
 | `proyecto.crear / cambiar / eliminar` | proyectos | Siguiente paso, pausar |
 | `plantilla.crear / eliminar` | plantilla | Gestión → Plantilla |
-| `tipo.crear / color / eliminar` | tipos | Bloqueado si el tipo está en uso |
+| `tipo.crear / color / banderas / eliminar` | tipos | Banderas trabajo/estudio; quitar bloqueado si está en uso |
 | `ajustes.cambiar {clave, valor}` | ajustes | Cualquier ajuste |
 | `datos.inicializar {plantilla?}` | ajustes, tipos, plantilla | Onboarding |
 

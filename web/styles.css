@@ -125,7 +125,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .b3 .cb { width: 13px; height: 13px; cursor: pointer; }
 .b3 [contenteditable] { outline: none; min-width: 2ch; }
 .b3.hecha [contenteditable] { text-decoration: line-through; color: var(--texto-3); }
-.b3 input { border: 0; background: transparent; padding: 0; font-size: 12px; width: 150px; }
+.b3 input { border: 0; background: transparent; padding: 0; font-size: 12px; width: 330px; max-width: 60vw; }
 .cb {
   width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--casilla); display: flex; align-items: center;
   justify-content: center; font-size: 9px; flex: none; background: transparent; padding: 0; color: var(--acento-texto);
@@ -145,8 +145,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .horas span { position: absolute; font-size: 10.5px; color: var(--texto-3); }
 .col { position: relative; border-radius: 8px; cursor: copy; }
 .col .hl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--linea); pointer-events: none; }
-.rejilla.ro { opacity: .75; }
-.rejilla.ro .col { cursor: default; }
+.rejilla.ro .col, .col.ro { cursor: default; }
+.col.ro { opacity: .75; }
 .blk {
   position: absolute; border-radius: var(--radio-bloque); padding: 4px 7px; font-size: 11px; line-height: 1.3; font-weight: 500;
   overflow: hidden; cursor: grab; user-select: none; border: 0; text-align: left; touch-action: none;
@@ -159,7 +159,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .blk .rs { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; cursor: ns-resize; }
 .blk .alerta { color: var(--peligro); }
 .blk.drag { opacity: .9; box-shadow: var(--sombra-alta); z-index: 5; }
-.rejilla.ro .blk { cursor: pointer; }
+.rejilla.ro .blk, .col.ro .blk { cursor: pointer; }
 .leyenda { font-size: 11px; margin-top: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
 .desconocidas { margin-top: 12px; font-size: 11.5px; color: var(--aviso-texto); background: var(--aviso-fondo); border-radius: 12px; padding: 8px 12px; }
 .desconocidas summary { cursor: pointer; }
