@@ -51,7 +51,10 @@ function leerCuerpo(req) {
     });
     req.on('end', () => {
       if (tam > LIMITE_CUERPO) { mal(new ErrorHttp(413, 'Petición demasiado grande')); return; }
-      try { ok(JSON.parse(Buffer.concat(trozos).toString('utf8') || '{}')); } catch { mal(new ErrorHttp(400, 'JSON no válido')); }
+      let v;
+      try { v = JSON.parse(Buffer.concat(trozos).toString('utf8') || '{}'); } catch { mal(new ErrorHttp(400, 'JSON no válido')); return; }
+      if (v === null || typeof v !== 'object' || Array.isArray(v)) mal(new ErrorHttp(400, 'Se espera un objeto JSON'));
+      else ok(v);
     });
     req.on('error', mal);
   });

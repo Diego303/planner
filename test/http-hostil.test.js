@@ -34,3 +34,11 @@ test('cuerpo de más de 256 KB: el cliente recibe el 413 (no una conexión corta
   // y el servidor sigue atendiendo
   assert.equal((await cruda({ path: `/api/version?hoy=${HOY}` })).estado, 200);
 });
+
+test('cuerpo JSON que no es un objeto: 400 claro', async () => {
+  for (const body of ['null', '[]', '"op"', '5', 'true', '{', '{"op":5}']) {
+    const r = await cruda({ method: 'POST', path: '/api/op', headers: JSON_(), body });
+    assert.equal(r.estado, 400, `${body} → ${r.datos}`);
+  }
+  for (const body of ['null', '[1]']) assert.equal((await cruda({ method: 'POST', path: '/api/deshacer', headers: JSON_(), body })).estado, 400, body);
+});
