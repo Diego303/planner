@@ -21,39 +21,81 @@ planner no tiene dependencias: no descarga nada más.
 
 ## 2. Instalarlo (una vez)
 
-El repo está en `D:\GitHub\planner`, que en WSL es `/mnt/d/GitHub/planner`.
+El repo está en `D:\GitHub\planner`, que en WSL es `/mnt/d/GitHub/planner`. Haz estos pasos en orden, en la terminal de WSL.
+
+### Paso 2.1 · Preparar el proyecto
 
 ```bash
 cd /mnt/d/GitHub/planner
-pnpm install                      # no instala paquetes: prepara el proyecto
-pnpm setup                        # crea la carpeta global de pnpm y la añade a ~/.bashrc
+pnpm install
 ```
 
-**Cierra la terminal y abre otra** (para que cargue el `PATH` nuevo) y después:
+No descarga paquetes (planner no tiene dependencias): solo prepara el proyecto.
+
+### Paso 2.2 · Configurar la carpeta global de pnpm
 
 ```bash
-pnpm add -g /mnt/d/GitHub/planner # deja el comando «planner» disponible en cualquier carpeta
-planner --version                 # → 0.1.0
+pnpm setup
 ```
 
-El comando queda **enlazado al repo**: si actualizas el repo (`git pull`), `planner` usa la versión nueva sin reinstalar.
+Crea la carpeta donde pnpm guarda los comandos globales y la apunta en `~/.bashrc`.
 
-> ¿`pnpm setup` termina con `Text file busy (os error 26)`? Es inofensivo: pnpm se instaló, pero no llegó a escribir su configuración en `~/.bashrc` (falló al sobrescribir su propio ejecutable mientras se usaba). Añádela a mano y abre otra terminal:
->
-> ```bash
-> cat >> ~/.bashrc <<'FIN'
->
-> # pnpm
-> export PNPM_HOME="$HOME/.local/share/pnpm"
-> case ":$PATH:" in
->   *":$PNPM_HOME/bin:"*) ;;
->   *) export PATH="$PNPM_HOME/bin:$PATH" ;;
-> esac
-> # pnpm end
-> FIN
-> ```
+> **Si termina con `Error: × create the pnpm alias scripts ╰─▶ Text file busy (os error 26)`**: no pasa nada grave. pnpm se ha instalado, pero falló justo al final (intentó sobrescribir su propio ejecutable mientras lo estaba usando) y **no llegó a escribir su configuración en `~/.bashrc`**. No vuelvas a ejecutar `pnpm setup` (daría el mismo error); haz el paso 2.3.
 
-> ¿`planner: command not found`? Abre una terminal nueva, o comprueba que `~/.bashrc` tiene la línea de `PNPM_HOME` que añadió `pnpm setup`. Como alternativa, sin pnpm global: `echo 'alias planner="node /mnt/d/GitHub/planner/bin/planner.js"' >> ~/.bashrc`.
+### Paso 2.3 · Solo si `pnpm setup` dio el error: añadir la configuración a mano
+
+Pega estas dos líneas tal cual (cada una añade una línea al final de `~/.bashrc`):
+
+```bash
+echo 'export PNPM_HOME="$HOME/.local/share/pnpm"' >> ~/.bashrc
+echo 'export PATH="$PNPM_HOME/bin:$PATH"' >> ~/.bashrc
+```
+
+Comprueba que se han añadido:
+
+```bash
+tail -2 ~/.bashrc
+```
+
+Tienen que salir exactamente estas dos líneas:
+
+```
+export PNPM_HOME="$HOME/.local/share/pnpm"
+export PATH="$PNPM_HOME/bin:$PATH"
+```
+
+Si salen repetidas (por haberlas pegado dos veces), no pasa nada malo.
+
+> **Si al pegar algo la terminal se queda con `>` y te pide escribir más**, es que el bloque se pegó a medias o con espacios delante. Pulsa **`Ctrl + C`** para cancelar (no se escribe nada) y vuelve a pegar las dos líneas `echo` de arriba, que no dependen de los espacios.
+
+### Paso 2.4 · Cerrar la terminal y abrir una nueva
+
+Así se carga la configuración. Comprueba que está bien:
+
+```bash
+echo $PNPM_HOME
+```
+
+Tiene que salir `/home/<tu-usuario>/.local/share/pnpm` (por ejemplo `/home/diego/.local/share/pnpm`). Si sale una línea vacía, repite el paso 2.3.
+
+### Paso 2.5 · Instalar el comando `planner`
+
+```bash
+pnpm add -g /mnt/d/GitHub/planner
+planner --version
+```
+
+Tiene que salir `0.1.0`. El comando queda **enlazado al repo**: si actualizas el repo (`git pull`), `planner` usa la versión nueva sin reinstalar.
+
+> **¿`planner: command not found`?** Abre una terminal nueva y repite el paso 2.4. Si `echo $PNPM_HOME` sale vacío, falta el paso 2.3. Como alternativa sin pnpm global, un alias: `echo 'alias planner="node /mnt/d/GitHub/planner/bin/planner.js"' >> ~/.bashrc` (y terminal nueva).
+
+### Paso 2.6 · Comprobarlo con datos de ejemplo
+
+```bash
+planner --ejemplo --hoy 2026-11-02
+```
+
+Se abre el navegador en `http://localhost:4321` con datos inventados en una carpeta temporal (tus datos no se tocan). Para pararlo: **`Ctrl + C`**. Si todo se ve bien, ya está instalado: sigue en el punto 4 para usarlo con tus datos.
 
 ## 3. Probarlo sin tocar nada tuyo
 
@@ -210,8 +252,9 @@ Tus datos no se tocan: viven fuera del repo.
 
 | Síntoma | Solución |
 |---|---|
-| `pnpm setup` → `Text file busy (os error 26)` | Añade a mano las líneas de `PNPM_HOME` del punto 2 a `~/.bashrc` y abre otra terminal |
-| `planner: command not found` | Terminal nueva; o repite `pnpm setup` y `pnpm add -g /mnt/d/GitHub/planner`; o usa el alias del punto 2 |
+| `pnpm setup` → `Text file busy (os error 26)` | No repitas `pnpm setup`: haz los pasos 2.3 a 2.5 |
+| Al pegar algo, la terminal se queda con `>` pidiendo más | `Ctrl + C` y pega las dos líneas `echo` del paso 2.3 |
+| `planner: command not found` | Terminal nueva y `echo $PNPM_HOME` (paso 2.4); si sale vacío, paso 2.3; luego paso 2.5. O usa el alias del paso 2.5 |
 | «Ya hay un planner en marcha con otra carpeta» | `planner stop` y vuelve a arrancar con la carpeta que quieras |
 | No se abre el navegador | Abre `http://localhost:4321/` a mano. (Con `sudo apt install wslu` se usa `wslview`) |
 | La app instalada dice que no puede acceder | El servidor no está en marcha: `planner` o el arranque con Windows |

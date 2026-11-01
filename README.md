@@ -24,7 +24,7 @@ Con los datos inventados de [`ejemplo/`](ejemplo/) (`planner --ejemplo --hoy 202
 Requisitos: Node ≥ 20 y pnpm. Paso a paso, desde cero, en [`instrucciones.md`](instrucciones.md).
 
 ```bash
-pnpm setup                               # una vez: carpeta global de pnpm (abre otra terminal después)
+pnpm setup                               # una vez (si da «Text file busy», mira instrucciones.md, paso 2.3)
 pnpm install
 pnpm add -g /mnt/d/GitHub/planner        # deja el comando `planner` disponible (enlazado al repo)
 ```
