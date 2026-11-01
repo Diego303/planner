@@ -4,11 +4,22 @@ import { serializar } from '../core/formato/index.js';
 import { esFecha, fechaDe, esSemana, sumarSemanas, semanaDe, diasDeSemana } from '../core/fechas.js';
 import { listaSemanas, prepararCierre } from '../core/semanas.js';
 import { valoresAjustes, tiposDe } from '../core/modelo.js';
-import { FicheroIgnorado } from './store.js';
+import { FicheroIgnorado, ErrorEscritura } from './store.js';
 import { construirEstado, contexto, todasLasSemanas, FIJOS } from './estado.js';
 
 export class ErrorHttp extends Error {
   constructor(estado, mensaje, extra = {}) { super(mensaje); this.estado = estado; this.extra = extra; }
+}
+
+/** Errores del disco en palabras claras (sin rutas absolutas). En todos, la operación no ha cambiado nada. */
+export function errorDeEscritura(e) {
+  const nada = 'No se ha guardado nada.';
+  switch (e.code) {
+    case 'ENOSPC': return new ErrorHttp(507, `No queda espacio en el disco: no se ha guardado nada (${e.ruta}).`);
+    case 'EACCES': case 'EPERM': case 'EROFS': return new ErrorHttp(500, `No se pudo guardar ${e.ruta}: no hay permiso de escritura. ${nada}`);
+    case 'ENOENT': return new ErrorHttp(500, `No se pudo guardar ${e.ruta}: la carpeta de datos ya no existe o se ha movido. ${nada}`);
+    default: return new ErrorHttp(500, `No se pudo guardar ${e.ruta} (${e.code ?? 'error del disco'}). ${nada}`);
+  }
 }
 
 export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasContexto = [], metricas = [] }) {
@@ -65,7 +76,9 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
       if (!store.existe()) throw new ErrorHttp(422, 'La carpeta de datos no existe');
       const modo = await modoCopias();
       try { copias.antesDeEscribir(modo, peticion.op); } catch (e) { console.error('copia:', e.message); }
-      for (const ruta of cambiados) versiones[ruta] = await store.escribir(ruta, res.mundo.ficheros[ruta]);
+      // todos o ninguno: si falla uno, no se escribe nada
+      const doc = (ruta) => res.mundo.ficheros[ruta];
+      Object.assign(versiones, await store.escribirVarios(cambiados.map((ruta) => ({ ruta, texto: doc(ruta) == null ? null : serializar(doc(ruta)) }))));
       await copias.despuesDeEscribir(modo, peticion.op, ctx);
     }
     const inversaId = cambiados.length ? deshacer.guardar(res.inversa, versiones, peticion.op) : null;
@@ -79,6 +92,7 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
     try { return await fn(); } catch (e) {
       if (e instanceof ErrorOp) throw new ErrorHttp(422, e.message);
       if (e instanceof FicheroIgnorado) throw new ErrorHttp(422, `${e.ruta} está ignorado: ${e.motivo}`);
+      if (e instanceof ErrorEscritura) throw errorDeEscritura(e);
       throw e;
     }
   }

@@ -13,6 +13,15 @@ const DIRECTORIOS = ['semanas', 'diario', 'archivo'];
 export const versionDe = (texto) => createHash('sha1').update(texto).digest('hex').slice(0, 12);
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** No se pudo escribir: lleva la ruta relativa y el código del sistema (ENOSPC, EACCES…), nunca rutas absolutas. */
+export class ErrorEscritura extends Error {
+  constructor(ruta, causa) {
+    super(`${ruta}: ${causa?.code ?? 'error'}`);
+    this.ruta = ruta;
+    this.code = causa?.code ?? null;
+  }
+}
+
 export class FicheroIgnorado extends Error {
   constructor(ruta, motivo) { super(`${ruta}: ${motivo}`); this.ruta = ruta; this.motivo = motivo; }
 }
@@ -20,7 +29,6 @@ export class FicheroIgnorado extends Error {
 export function crearStore(carpeta) {
   const raiz = resolve(carpeta);
   const cache = new Map(); // ruta → { mtimeMs, size, version, doc }
-  const colas = new Map(); // ruta → promesa de la última escritura
   const avisos = new Map(); // ruta → motivo (ficheros ignorados)
   let contador = 0;
 
@@ -63,49 +71,75 @@ export function crearStore(carpeta) {
     }
   }
 
-  function enCola(ruta, tarea) {
-    const previa = colas.get(ruta) ?? Promise.resolve();
-    const siguiente = previa.catch(() => {}).then(tarea);
-    colas.set(ruta, siguiente);
-    return siguiente;
+  // Todas las escrituras van de una en una: una operación de varios ficheros es una sola unidad.
+  let cola = Promise.resolve();
+  const enSerie = (tarea) => {
+    const p = cola.then(tarea, tarea);
+    cola = p.catch(() => {});
+    return p;
+  };
+
+  async function renombrar(tmp, abs) {
+    for (let intento = 0; ; intento++) {
+      try { return await rename(tmp, abs); } catch (e) {
+        // Windows (antivirus, indexador, OneDrive) puede bloquear el fichero un momento
+        if (intento < 3 && ['EBUSY', 'EPERM', 'EACCES'].includes(e.code)) { await esperar(60 * (intento + 1)); continue; }
+        throw e;
+      }
+    }
   }
 
-  /** Escritura atómica: temporal → fsync → rename (con reintentos si Windows bloquea el fichero). */
-  async function escribirTexto(ruta, texto) {
-    const abs = absoluta(ruta);
-    if (!existe()) throw new Error('La carpeta de datos no existe');
-    return enCola(ruta, async () => {
-      await mkdir(dirname(abs), { recursive: true });
-      const tmp = join(dirname(abs), `.${basename(abs)}.tmp-${process.pid}-${++contador}`);
-      const fh = await open(tmp, 'w');
-      try { await fh.writeFile(texto, 'utf8'); await fh.sync(); } finally { await fh.close(); }
-      for (let intento = 0; ; intento++) {
-        try { await rename(tmp, abs); break; } catch (e) {
-          if (intento < 3 && ['EBUSY', 'EPERM', 'EACCES'].includes(e.code)) { await esperar(60 * (intento + 1)); continue; }
-          await unlink(tmp).catch(() => {});
-          throw e;
+  /**
+   * Escribe varios ficheros como una unidad: primero todos a sus temporales (con fsync) y, solo si todos
+   * se han escrito, los renombra seguidos. Si falla un temporal (disco lleno, permisos…) se borran los
+   * demás y no cambia nada.
+   * cambios: [{ ruta, texto }] (texto null = borrar el fichero) → { ruta: versión nueva | null }
+   */
+  async function escribirVarios(cambios) {
+    if (!existe()) throw new ErrorEscritura(cambios[0]?.ruta ?? '', Object.assign(new Error('sin carpeta'), { code: 'ENOENT' }));
+    return enSerie(async () => {
+      const preparados = [];
+      const descartar = () => Promise.all(preparados.map((p) => (p.tmp ? unlink(p.tmp).catch(() => {}) : null)));
+      let actual = null;
+      try {
+        for (const c of cambios) {
+          actual = c.ruta;
+          const p = { ...c, abs: absoluta(c.ruta), tmp: null };
+          preparados.push(p);
+          if (c.texto == null) continue;
+          await mkdir(dirname(p.abs), { recursive: true });
+          p.tmp = join(dirname(p.abs), `.${basename(p.abs)}.tmp-${process.pid}-${++contador}`);
+          const fh = await open(p.tmp, 'w');
+          try { await fh.writeFile(c.texto, 'utf8'); await fh.sync(); } finally { await fh.close(); }
         }
+      } catch (e) {
+        await descartar();
+        throw new ErrorEscritura(actual, e);
       }
-      const st = await stat(abs);
-      const entrada = { mtimeMs: st.mtimeMs, size: st.size, version: versionDe(texto), doc: parsear(ruta, texto) };
-      cache.set(ruta, entrada);
-      return entrada.version;
+      const versiones = {};
+      for (const p of preparados) {
+        try {
+          if (p.texto == null) await unlink(p.abs).catch((e) => { if (e.code !== 'ENOENT') throw e; });
+          else { await renombrar(p.tmp, p.abs); p.tmp = null; }
+        } catch (e) {
+          await descartar();
+          throw new ErrorEscritura(p.ruta, e);
+        }
+        if (p.texto == null) { cache.delete(p.ruta); versiones[p.ruta] = null; continue; }
+        const st = await stat(p.abs);
+        const entrada = { mtimeMs: st.mtimeMs, size: st.size, version: versionDe(p.texto), doc: parsear(p.ruta, p.texto) };
+        cache.set(p.ruta, entrada);
+        versiones[p.ruta] = entrada.version;
+      }
+      return versiones;
     });
   }
 
   async function escribir(ruta, doc) {
-    if (doc == null) return borrar(ruta);
-    return escribirTexto(ruta, serializar(doc));
+    return (await escribirVarios([{ ruta, texto: doc == null ? null : serializar(doc) }]))[ruta];
   }
 
-  async function borrar(ruta) {
-    const abs = absoluta(ruta);
-    return enCola(ruta, async () => {
-      await unlink(abs).catch((e) => { if (e.code !== 'ENOENT') throw e; });
-      cache.delete(ruta);
-      return null;
-    });
-  }
+  const borrar = (ruta) => escribir(ruta, null);
 
   /** Nombres de los ficheros del planner en un subdirectorio ('semanas' → ['2026-W45.md', …]). */
   async function listar(dir) {
@@ -148,5 +182,5 @@ export function crearStore(carpeta) {
     }
   }
 
-  return { raiz, existe, crearCarpeta, leer, leerSeguro, escribir, escribirTexto, borrar, listar, versionGlobal, limpiarTemporales, avisos, absoluta };
+  return { raiz, existe, crearCarpeta, leer, leerSeguro, escribir, escribirVarios, borrar, listar, versionGlobal, limpiarTemporales, avisos, absoluta };
 }
