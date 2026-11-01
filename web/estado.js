@@ -87,7 +87,8 @@ function manejarError(e) {
   if (e instanceof ErrorApi && e.estado === 0) { st.caido = true; recomponer(); avisar(); toastError('Servidor parado · solo lectura'); return; }
   if (e instanceof ErrorApi && e.estado === 409) toast(e.message);
   else toastError(e.message);
-  cargar();
+  // dentro de la cola: la siguiente operación sale ya con las versiones recargadas (si no, otro 409)
+  return cargar();
 }
 
 /**
@@ -122,7 +123,7 @@ export function enviar(op, args, { mensaje = null } = {}) {
       else if (mensaje) toast(mensaje(r.resultado ?? {}, r));
       return r;
     } catch (e) {
-      manejarError(e);
+      await manejarError(e);
       return null;
     }
   });
@@ -139,8 +140,8 @@ export function deshacer(inversaId) {
       avisar();
       toast('Deshecho', { duracion: 2500 });
     } catch (e) {
-      if (e instanceof ErrorApi && e.estado === 0) manejarError(e);
-      else { toastError(e.message); cargar(); }
+      if (e instanceof ErrorApi && e.estado === 0) await manejarError(e);
+      else { toastError(e.message); await cargar(); }
     }
   });
   return cola;

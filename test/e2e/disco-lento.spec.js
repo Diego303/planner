@@ -51,3 +51,20 @@ test('pasar semanas rápido: una respuesta lenta de antes no devuelve la vista a
   await expect(page.locator('.wk-num')).toHaveText('semana 48');
 });
 
+test('tras un 409, repetir el cambio enseguida (con la recarga aún en camino) se guarda', async ({ page, app }) => {
+  page.permitirErrores(/status of 409/);
+  await abrir(page, app);
+  let soltar;
+  const retenida = new Promise((r) => { soltar = r; });
+  await page.route('**/api/op', async (ruta) => { await retenida; await ruta.continue(); });
+  await page.locator('#cap').fill('Comprar pilas');
+  await page.keyboard.press('Enter');
+  app.escribir('tareas.md', `${app.leer('tareas.md')}- [ ] escrita en Obsidian\n`);
+  await page.route('**/api/estado?*', async (r) => { await new Promise((ok) => setTimeout(ok, 800)); await r.continue(); });
+  soltar();
+  await expect(page.locator('#toast')).toContainText('Cambiaste el fichero fuera del planner, recargado');
+  await page.unroute('**/api/op');
+  await page.locator('#cap').fill('Comprar pilas');
+  await page.keyboard.press('Enter');
+  await esperarFichero(app, 'tareas.md', (t) => t.includes('Comprar pilas') && t.includes('escrita en Obsidian'));
+});
