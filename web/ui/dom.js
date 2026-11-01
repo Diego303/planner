@@ -52,10 +52,27 @@ export function sustituir(el, contenido) {
   }
 }
 
-/** Como sustituir(), pero solo si el contenido cambió. */
+// Zonas que no se repintaron porque había una interacción en marcha: se repintan al terminar (ver app.js).
+const aplazadas = new Set();
+export const hayRepintadoAplazado = () => aplazadas.size > 0;
+export const olvidarAplazados = () => aplazadas.clear();
+
+/** ¿Se está escribiendo en un texto editable o se tiene un bloque agarrado dentro de `el`? */
+function ocupado(el) {
+  const a = document.activeElement;
+  return (a && a.isContentEditable && el.contains(a)) || !!el.querySelector('.agarrado');
+}
+
+/**
+ * Como sustituir(), pero solo si el contenido cambió. Si hay una interacción en marcha dentro (con el disco lento,
+ * la respuesta de una operación llega mientras haces la siguiente), se aplaza: repintar en ese momento borraría lo
+ * que escribes o soltaría el bloque que arrastras.
+ */
 export function pintar(el, contenido) {
   const s = String(contenido);
-  if (el.innerHTML !== s) sustituir(el, s);
+  if (el.innerHTML === s) return;
+  if (ocupado(el)) { aplazadas.add(el); return; }
+  sustituir(el, s);
 }
 
 /** Modo y superficie del tema activo (para los colores de tipo de core/color.js). */

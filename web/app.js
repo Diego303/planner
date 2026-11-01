@@ -1,5 +1,5 @@
 // Arranque y orquestación: barra superior, cambio de vista, menú Gestión, teclado y repintado.
-import { html, $, on, pintar } from './ui/dom.js';
+import { html, $, on, pintar, hayRepintadoAplazado, olvidarAplazados } from './ui/dom.js';
 import { st, cargar, alCambiar, iniciarSondeo, derivados, acciones } from './estado.js';
 import { iniciarModal, cerrarModal, modalAbierto } from './ui/modal.js';
 import { cerrarPopover, popoverAbierto } from './ui/popover.js';
@@ -103,6 +103,11 @@ function iniciarBarra() {
   document.addEventListener('pointerdown', (ev) => {
     if (popoverAbierto() && !ev.target.closest('.pop') && !ev.target.closest('.blk')) cerrarPopover();
   });
+  // Lo que no se repintó durante una interacción (escribir en Las 3, arrastrar), se repinta al terminarla.
+  const alTerminar = () => setTimeout(() => { if (hayRepintadoAplazado()) { olvidarAplazados(); pintarTodo(); } });
+  document.addEventListener('focusout', alTerminar);
+  document.addEventListener('pointerup', alTerminar);
+  document.addEventListener('pointercancel', alTerminar);
   // Esc cierra lo de más arriba: popover, modal, menú
   document.addEventListener('keydown', (ev) => {
     if (ev.key !== 'Escape') return;

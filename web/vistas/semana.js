@@ -169,6 +169,7 @@ function empezarArrastre(ev, el) {
   const altoInicial = el.getBoundingClientRect().height;
   let movido = false;
   el.setPointerCapture(ev.pointerId);
+  el.classList.add('agarrado'); // mientras se tiene en la mano, no se repinta la semana (ui/dom.js)
   ev.preventDefault();
 
   el.onpointermove = (mv) => {
@@ -179,8 +180,11 @@ function empezarArrastre(ev, el) {
     if (estirar) el.style.height = `${Math.max(PX / 2, altoInicial + dy)}px`;
     else el.style.transform = `translate(${dx}px,${dy}px)`;
   };
+  // si el navegador cancela el gesto (otra ventana, el sistema), se suelta sin mover nada
+  el.onpointercancel = () => { el.onpointermove = el.onpointerup = el.onpointercancel = null; el.classList.remove('agarrado'); pintarSemana(); };
   el.onpointerup = (up) => {
-    el.onpointermove = el.onpointerup = null;
+    el.onpointermove = el.onpointerup = el.onpointercancel = null;
+    el.classList.remove('agarrado');
     if (!movido) { abrirEditor(id, { semana }); return; }
     const h0 = v.d.ajustes.horas.desde * 60, h1 = v.d.ajustes.horas.hasta * 60;
     const dy = ((up.clientY - sy) / PX) * 60;
