@@ -125,6 +125,11 @@ registrar('lote', (tx, a) => { for (const o of a.ops ?? []) tx.aplicar(o.op, o.a
 // ---------- Validación ----------
 
 const exigir = (cond, mensaje) => { if (!cond) throw new ErrorOp(mensaje); };
+/** Lista que llega del cliente: nada = vacía; cualquier otra cosa que no sea una lista es un error claro. */
+const listaDe = (v, que) => { if (v == null) return []; exigir(Array.isArray(v), `${que}: se esperaba una lista`); return v; };
+const esObjeto = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
+/** Lista de objetos del cliente ([{ clase, id… }]). */
+const objetosDe = (v, que) => { const l = listaDe(v, que); exigir(l.every(esObjeto), `${que}: elemento no válido`); return l; };
 
 function textoObligatorio(v, que) {
   const t = limpiarTexto(v);
@@ -460,7 +465,9 @@ registrar('semana.cerrar', (tx, a) => {
   exigir(estadoSemana(id, tx.doc(ruta), actual) !== 'cerrada', 'La semana ya está cerrada');
   const nueva = semanaNueva(id, actual);
   const rutaNueva = rutaSemana(nueva);
-  const decisiones = a.decisiones ?? [];
+  const decisiones = objetosDe(a.decisiones, 'Las decisiones');
+  for (const k of ['lecciones', 'siguiente']) exigir(a[k] == null || esObjeto(a[k]), `${k}: no válido`);
+  exigir(a.siguiente?.horas == null || esObjeto(a.siguiente.horas), 'Las horas: no válidas');
 
   // Referencias antes de mover nada (los índices cambian al quitar y poner líneas)
   const bloques = decisiones.filter((d) => d.clase === 'bloque').map((d) => ({ d, l: elemento(tx, ruta, d.id, 'bloque', 'El bloque', d.huella) }));
@@ -500,7 +507,7 @@ registrar('semana.cerrar', (tx, a) => {
     if (d.opcion === 'pausar') fijarClave(tx, 'proyecto', proyecto(d.nombre).id, 'estado', 'pausado');
     if (d.opcion === 'mantener') fijarClave(tx, 'proyecto', proyecto(d.nombre).id, 'actualizado', hoy);
   }
-  for (const p of a.proyectos ?? []) {
+  for (const p of objetosDe(a.proyectos, 'Los proyectos')) {
     const siguiente = limpiarTexto(p.siguiente);
     if (!proyecto(p.nombre) || !siguiente || siguiente === proyecto(p.nombre).siguiente) continue;
     fijarClave(tx, 'proyecto', proyecto(p.nombre).id, 'siguiente', siguiente);
@@ -526,7 +533,7 @@ registrar('semana.cerrar', (tx, a) => {
   // 3. Semana nueva: Las 3, horas de estudio y Proponer (solo lo que falte)
   if (!nuevaAbierta()) return { nueva, n: 0, noCaben: [], nuevaCerrada: true, resumen: res.texto };
   crearSemanaSiFalta(tx, nueva);
-  if (a.siguiente?.las3) reemplazarLas3(tx, rutaNueva, a.siguiente.las3);
+  if (a.siguiente?.las3) reemplazarLas3(tx, rutaNueva, objetosDe(a.siguiente.las3, 'Las 3'));
   const temas = temasEstudio(tx.doc('estudio.md'));
   if (a.siguiente?.horas) fijarObjetivos(tx, rutaNueva, a.siguiente.horas, temas);
   const r = proponerEn(tx, rutaNueva, nueva);
@@ -724,8 +731,11 @@ function archivarTareas(tx, lineas, hoy) {
 }
 
 /** Líneas de tarea a partir de [{ id, huella }] del cliente (antes de mover nada, los índices cambian). */
-function lineasDeTareas(tx, lista = []) {
-  return lista.map((x) => elemento(tx, 'tareas.md', x.id, 'tarea', 'La tarea', x.huella ?? null));
+function lineasDeTareas(tx, lista) {
+  return listaDe(lista, 'Las tareas').map((x) => {
+    exigir(x && typeof x === 'object', 'Tarea no válida');
+    return elemento(tx, 'tareas.md', x.id, 'tarea', 'La tarea', x.huella ?? null);
+  });
 }
 
 /** Mueve una tarea (por referencia de línea) al final de una sección. */
@@ -754,7 +764,9 @@ registrar('dia.cerrar', (tx, a) => {
   if (a.animo != null) exigir(esEntero(a.animo, 1, 5), 'El ánimo va de 1 a 5');
   fijar('animo', a.animo ?? null);
   fijar('linea', textoOpcional(a.linea));
-  fijar('avanzado', (a.avanzado ?? []).map((x) => limpiarTexto(x).replace(/;/g, ',')).filter(Boolean));
+  const avanzado = listaDe(a.avanzado, 'Lo avanzado');
+  exigir(avanzado.every((x) => typeof x === 'string'), 'Lo avanzado: se esperaban textos');
+  fijar('avanzado', avanzado.map((x) => limpiarTexto(x).replace(/;/g, ',')).filter(Boolean));
   fijar('manana', textoOpcional(a.manana));
 
   if (tx.doc('tareas.md')) {
@@ -861,8 +873,8 @@ registrar('datos.inicializar', (tx, a) => {
   }
   asegurarTipos(tx);
   tx.asegurar('plantilla.md', plantillaVacia);
-  for (const nombre of a.plantillas ?? []) {
-    const def = PLANTILLAS_RAPIDAS[nombre];
+  for (const nombre of listaDe(a.plantillas, 'Las plantillas')) {
+    const def = typeof nombre === 'string' && Object.hasOwn(PLANTILLAS_RAPIDAS, nombre) ? PLANTILLAS_RAPIDAS[nombre] : null;
     exigir(def, 'Plantilla rápida desconocida');
     for (const e of def.entradas) {
       const ya = entidades(tx.doc('plantilla.md'), 'plantilla').some((x) => normalizar(x.titulo) === normalizar(e.titulo));
