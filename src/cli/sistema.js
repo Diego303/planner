@@ -32,6 +32,11 @@ export function vivo(pid) {
   try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; }
 }
 
+/** ¿Ese proceso es un planner? true/false según su línea de órdenes (Linux), null si no se puede saber. */
+export function esPlanner(pid) {
+  try { return /planner/.test(readFileSync(`/proc/${pid}/cmdline`, 'utf8')); } catch { return process.platform === 'linux' ? false : null; }
+}
+
 /** ¿Responde un planner en ese puerto? Devuelve su /api/salud o null. */
 export async function salud(puerto) {
   try {
