@@ -1,9 +1,9 @@
 // Rutas /api/*: estado, versión para el sondeo, operaciones con concurrencia optimista y deshacer.
 import { aplicar, ErrorOp, FaltaFichero, existeOp } from '../core/ops.js';
 import { serializar } from '../core/formato/index.js';
-import { esFecha, fechaDe, esSemana, sumarSemanas, semanaDe } from '../core/fechas.js';
-import { listaSemanas } from '../core/semanas.js';
-import { valoresAjustes } from '../core/modelo.js';
+import { esFecha, fechaDe, esSemana, sumarSemanas, semanaDe, diasDeSemana } from '../core/fechas.js';
+import { listaSemanas, prepararCierre } from '../core/semanas.js';
+import { valoresAjustes, tiposDe } from '../core/modelo.js';
 import { FicheroIgnorado } from './store.js';
 import { construirEstado, contexto, todasLasSemanas, FIJOS } from './estado.js';
 
@@ -92,6 +92,24 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
       const hasta = esSemana(q.get('hasta')) ? q.get('hasta') : sumarSemanas(actual, 5);
       if (desde > hasta) throw new ErrorHttp(400, 'Rango de semanas no válido');
       return { semanas: listaSemanas(desde, hasta, await todasLasSemanas(store), actual) };
+    },
+    'GET /api/cierre': async (q) => {
+      const hoy = leerHoy(q.get('hoy'));
+      const id = q.get('semana');
+      if (!esSemana(id)) throw new ErrorHttp(400, 'Semana no válida');
+      const docsSemanas = await todasLasSemanas(store);
+      const leer = async (r) => (await store.leerSeguro(r)).doc;
+      const dias = diasDeSemana(id);
+      const meses = [...new Set([dias[0].slice(0, 7), dias[6].slice(0, 7)])];
+      const tareasDoc = await leer('tareas.md');
+      const ctx = await contexto(store, { hoy }, extrasContexto);
+      const diarios = Object.fromEntries(await Promise.all(dias.map(async (f) => [f, await leer(`diario/${f}.md`)])));
+      return prepararCierre({
+        id, actual: semanaDe(hoy), hoy, docsSemanas, tipos: tiposDe(await leer('tipos.md')),
+        tareasDocs: [tareasDoc, ...(await Promise.all(meses.map((m) => leer(`archivo/tareas-${m}.md`))))].filter(Boolean),
+        tareasDoc, estudioDoc: await leer('estudio.md'), proyectosDoc: await leer('proyectos.md'), inboxDoc: await leer('inbox.md'),
+        diarios, factores: ctx.factores ?? {},
+      });
     },
     'POST /api/op': (_q, cuerpo) => enSerie(() => traducirErrores(async () => {
       if (typeof cuerpo.op !== 'string') throw new ErrorHttp(400, 'Falta la operación');

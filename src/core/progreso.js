@@ -47,3 +47,27 @@ export function actualizadoHace(fecha, hoy) {
 }
 
 export { lunesDe, sumarDias, diaSemana, semanaDe, compararSemanas };
+
+/** Minutos de estudio acumulados de un tema: `previo` + todo lo hecho en todas las semanas. */
+export function acumulado(tema, docsSemanas, tipos) {
+  let min = (tema.previo ?? 0) * 60;
+  for (const doc of Object.values(docsSemanas)) {
+    for (const b of bloquesDe(doc)) {
+      if (b.hecho != null && esBloqueEstudio(b, tipos) && mismoTema(temaDe(b.titulo), tema.nombre)) min += minutosHechos(b);
+    }
+  }
+  return min;
+}
+
+/**
+ * Ritmo hasta el examen con `horas` a la semana desde el lunes de `semana`.
+ * → { estado: 'llega' | 'justo' | 'no', necesarias } o null si faltan datos (total o examen).
+ */
+export function ritmo(tema, acumuladoMin, horas, semana) {
+  if (!tema.total || !tema.examen) return null;
+  const resto = Math.max(0, tema.total * 60 - acumuladoMin) / 60;
+  const semanas = Math.max(1, Math.ceil((diasEntre(lunesDe(semana), tema.examen) + 1) / 7));
+  const necesarias = resto / semanas;
+  const estado = horas >= necesarias * 1.1 ? 'llega' : horas >= necesarias * 0.95 ? 'justo' : 'no';
+  return { estado, necesarias };
+}

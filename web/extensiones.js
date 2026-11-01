@@ -8,3 +8,4 @@ import './gestion/plantilla.js';
 import './gestion/tipos.js';
 import './gestion/ajustes.js';
 import './vistas/hecho.js';
+import './gestion/cerrar-semana.js';

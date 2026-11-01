@@ -27,6 +27,7 @@ export const api = {
   estado: (q) => pedir('GET', `/api/estado?${query(q)}`),
   version: (q) => pedir('GET', `/api/version?${query(q)}`),
   semanas: (q) => pedir('GET', `/api/semanas?${query(q)}`),
+  cierre: (q) => pedir('GET', `/api/cierre?${query(q)}`),
   op: (cuerpo) => pedir('POST', '/api/op', cuerpo),
   deshacer: (cuerpo) => pedir('POST', '/api/deshacer', cuerpo),
 };

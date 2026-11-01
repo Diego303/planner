@@ -14,9 +14,9 @@ import {
   indiceSeccion, finContenido, finSeccion, entidades, bloquesDe, tareasDe, valoresAjustes, tiposDe, TIPOS_DEFECTO,
   seccionesDe, temaDe, mismoTema, temasEstudio, proyectosDe, buscarTema, tipoPorNombre, las3De, huellaDe,
 } from './modelo.js';
-import { estadoSemana, crearDesdePlantilla, soloLectura } from './semanas.js';
+import { estadoSemana, crearDesdePlantilla, soloLectura, semanaNueva, resumenSemana } from './semanas.js';
 import { proponer } from './proponer.js';
-import { fechaDeDia } from './fechas.js';
+import { fechaDeDia, diasDeSemana } from './fechas.js';
 
 export class ErrorOp extends Error {
   constructor(mensaje) { super(mensaje); this.name = 'ErrorOp'; }
@@ -293,12 +293,8 @@ function quitarSugerencias(tx, ruta) {
 registrar('semana.proponer', (tx, a) => {
   const ruta = semanaEditable(tx, a.semana);
   exigir(compararSemanas(a.semana, tx.ctx.semanaActual) >= 0, 'Las semanas pasadas no se proponen');
-  quitarSugerencias(tx, ruta);
-  const r = proponer({
-    id: a.semana, doc: tx.doc(ruta), temas: temasEstudio(tx.doc('estudio.md')), proyectos: proyectosDe(tx.doc('proyectos.md')),
-    ajustes: valoresAjustes(tx.doc('ajustes.md')), tipos: tipos(tx), factores: tx.ctx.factores ?? {}, hoy: exigirHoy(tx), ahora: tx.ctx.ahora ?? null,
-  });
-  for (const b of r.bloques) anadirBloque(tx, ruta, fsem.bloque(b));
+  exigirHoy(tx);
+  const r = proponerEn(tx, ruta, a.semana);
   return { n: r.bloques.length, noCaben: r.noCaben };
 });
 
@@ -361,6 +357,156 @@ registrar('bloque.aMedias', (tx, a) => {
   fijarClave(tx, cual, x.id, 'dejado', dejado);
   if (cual === 'proyecto') fijarClave(tx, 'proyecto', buscarTema(proyectosDe(tx.doc('proyectos.md')), tema).id, 'actualizado', hoy);
   return { tema: x.nombre, dejado };
+});
+
+// ---------- Cerrar semana ----------
+
+/** Escribe `## Cierre`: el resumen (regenerado) y las lecciones (si se dan; si no, se conservan). */
+function escribirCierre(tx, ruta, resumen, lecciones) {
+  const titulo = asegurarSeccion(tx, ruta, 'cierre', fsem.ORDEN_SECCIONES, fsem.seccion);
+  const doc = () => tx.doc(ruta);
+  const enSeccion = (t) => {
+    const fin = finSeccion(doc(), indiceSeccion(doc(), 'cierre'));
+    for (let i = indiceSeccion(doc(), 'cierre') + 1; i < fin; i++) if (t(doc().lineas[i])) return i;
+    return -1;
+  };
+  const r = enSeccion((l) => l.t === 'resumen');
+  if (r >= 0) tx.cambiar(ruta, r, { texto: resumen });
+  else tx.insertar(ruta, titulo + 1, [fsem.resumen(resumen)]);
+  for (const clase of ['funciono', 'cambio']) {
+    const texto = textoOpcional(lecciones?.[clase]);
+    if (!texto) continue;
+    const i = enSeccion((l) => l.t === 'leccion' && l.clase === clase);
+    if (i >= 0) tx.cambiar(ruta, i, { texto });
+    else tx.insertar(ruta, finContenido(doc(), indiceSeccion(doc(), 'cierre')), [fsem.leccion(clase, texto)]);
+  }
+}
+
+/** Las 3 de la semana nueva: se sustituyen (si no cambian, no se toca nada; se respeta lo ya marcado). */
+function reemplazarLas3(tx, ruta, lista) {
+  const actuales = las3De(tx.doc(ruta));
+  // si no llega `rel` y ya había una igual, se conserva la suya (★ no se pierde)
+  const relPrevio = (texto) => actuales.find((x) => normalizar(x.texto) === normalizar(texto))?.rel ?? null;
+  const nuevas = lista.map((o) => ({ texto: limpiarTexto(o.texto), rel: textoOpcional(o.rel) ?? relPrevio(limpiarTexto(o.texto)), si: textoOpcional(o.si), entonces: textoOpcional(o.entonces) }))
+    .filter((o) => o.texto).slice(0, 3);
+  const igual = actuales.length === nuevas.length && actuales.every((o, i) => ['texto', 'rel', 'si', 'entonces'].every((k) => (o[k] ?? null) === (nuevas[i][k] ?? null)));
+  if (igual) return;
+  for (const o of actuales.slice().reverse()) tx.quitar(ruta, o.id);
+  const lineas = nuevas.map((o) => fsem.objetivo3({ ...o, hecha: actuales.find((x) => x.texto === o.texto)?.hecha ?? false }));
+  if (lineas.length) anadirEnSeccion(tx, ruta, 'las3', fsem.ORDEN_SECCIONES, fsem.seccion, lineas);
+}
+
+/** Horas de estudio de la semana nueva: solo se escriben las que difieren de `horas_semana`. */
+function fijarObjetivos(tx, ruta, horas, temas) {
+  for (const t of temas) {
+    const h = horas[t.nombre];
+    if (h == null) continue;
+    exigir(typeof h === 'number' && h >= 0 && h <= 100, `Horas no válidas para ${t.nombre}`);
+    const linea = entidades(tx.doc(ruta), 'objetivo').find((o) => mismoTema(o.tema, t.nombre));
+    if (h === t.horasSemana) { if (linea) tx.quitar(ruta, linea.id); continue; }
+    if (linea) { if (linea.horas !== h) tx.cambiar(ruta, linea.id, { horas: h }); continue; }
+    anadirEnSeccion(tx, ruta, 'estudio', fsem.ORDEN_SECCIONES, fsem.seccion, [fsem.objetivoEstudio(t.nombre, h)]);
+  }
+}
+
+function proponerEn(tx, ruta, id) {
+  quitarSugerencias(tx, ruta);
+  const r = proponer({
+    id, doc: tx.doc(ruta), temas: temasEstudio(tx.doc('estudio.md')), proyectos: proyectosDe(tx.doc('proyectos.md')),
+    ajustes: valoresAjustes(tx.doc('ajustes.md')), tipos: tipos(tx), factores: tx.ctx.factores ?? {}, hoy: tx.ctx.hoy, ahora: tx.ctx.ahora ?? null,
+  });
+  for (const b of r.bloques) anadirBloque(tx, ruta, fsem.bloque(b));
+  return r;
+}
+
+const textoNota = (t) => limpiarTexto(String(t).replace(/^\s*[-*]\s+(\[[ xX]\]\s+)?/, ''));
+
+/**
+ * Cerrar semana: resumen y lecciones, estado cerrada, sin sugerencias, decisiones del paso 2 como operaciones,
+ * siguientes pasos de proyectos, y la semana nueva con Las 3, sus horas de estudio y Proponer.
+ * Repetirlo (tras reabrir) no duplica: los bloques y tareas que ya existen no se vuelven a crear.
+ */
+registrar('semana.cerrar', (tx, a) => {
+  const hoy = exigirHoy(tx);
+  const actual = tx.ctx.semanaActual;
+  const id = a.semana;
+  const ruta = rutaSemana(id);
+  exigir(tx.doc(ruta), 'Esa semana no tiene fichero');
+  exigir(compararSemanas(id, actual) <= 0, 'Solo se cierran la semana actual o las pasadas');
+  exigir(estadoSemana(id, tx.doc(ruta), actual) !== 'cerrada', 'La semana ya está cerrada');
+  const nueva = semanaNueva(id, actual);
+  const rutaNueva = rutaSemana(nueva);
+  const decisiones = a.decisiones ?? [];
+
+  // Referencias antes de mover nada (los índices cambian al quitar y poner líneas)
+  const bloques = decisiones.filter((d) => d.clase === 'bloque').map((d) => ({ d, l: elemento(tx, ruta, d.id, 'bloque', 'El bloque', d.huella) }));
+  const tareas = decisiones.filter((d) => d.clase === 'tarea' || d.clase === 'antigua').map((d) => ({ d, l: elemento(tx, 'tareas.md', d.id, 'tarea', 'La tarea', d.huella) }));
+
+  // 1. Semana N
+  quitarSugerencias(tx, ruta);
+  const dias = diasDeSemana(id);
+  const meses = [...new Set([dias[0].slice(0, 7), dias[6].slice(0, 7)])];
+  const tareasDocs = [tx.doc('tareas.md'), ...meses.map((mes) => tx.doc(`archivo/tareas-${mes}.md`))].filter(Boolean);
+  const diarios = Object.fromEntries(dias.map((f) => [f, tx.doc(`diario/${f}.md`)]));
+  const res = resumenSemana({ id, doc: tx.doc(ruta), tipos: tipos(tx), tareasDocs, diarios });
+  escribirCierre(tx, ruta, res.texto, a.lecciones);
+  cambiarEstadoSemana(tx, ruta, 'cerrada');
+
+  // 2. Decisiones
+  const nuevaAbierta = () => !tx.doc(rutaNueva) || estadoSemana(nueva, tx.doc(rutaNueva), actual) !== 'cerrada';
+  for (const { d, l } of bloques) {
+    if (d.opcion === 'siguiente' && nuevaAbierta()) {
+      crearSemanaSiFalta(tx, nueva);
+      const yaEsta = bloquesDe(tx.doc(rutaNueva)).some((b) => b.dia === l.dia && b.inicio === l.inicio && normalizar(b.titulo) === normalizar(l.titulo));
+      if (!yaEsta) anadirBloque(tx, rutaNueva, fsem.bloque({ dia: l.dia, inicio: l.inicio, fin: l.fin, tipo: l.tipo, titulo: l.titulo, subtipo: l.subtipo, paso: l.paso }));
+    } else if (d.opcion === 'mas') {
+      asegurarTareas(tx);
+      const ya = tareasDe(tx.doc('tareas.md')).mas.some((t) => !t.hecha && normalizar(t.texto) === normalizar(l.titulo));
+      if (!ya) anadirTarea(tx, 'mas', ftar.tarea({ texto: l.titulo, tipo: l.tipo, creada: hoy }));
+    }
+  }
+  for (const { d, l } of tareas) {
+    if (d.opcion === 'hoy') moverLinea(tx, l, 'hoy', { fecha: null });
+    else if (d.opcion === 'mas') moverLinea(tx, l, 'mas', { fecha: null });
+    else if (d.opcion === 'archivar') archivarTareas(tx, [l], hoy);
+  }
+  const proyecto = (nombre) => buscarTema(proyectosDe(tx.doc('proyectos.md')), nombre);
+  for (const d of decisiones.filter((x) => x.clase === 'proyecto')) {
+    if (!proyecto(d.nombre)) continue;
+    if (d.opcion === 'pausar') fijarClave(tx, 'proyecto', proyecto(d.nombre).id, 'estado', 'pausado');
+    if (d.opcion === 'mantener') fijarClave(tx, 'proyecto', proyecto(d.nombre).id, 'actualizado', hoy);
+  }
+  for (const p of a.proyectos ?? []) {
+    const siguiente = limpiarTexto(p.siguiente);
+    if (!proyecto(p.nombre) || !siguiente || siguiente === proyecto(p.nombre).siguiente) continue;
+    fijarClave(tx, 'proyecto', proyecto(p.nombre).id, 'siguiente', siguiente);
+    fijarClave(tx, 'proyecto', proyecto(p.nombre).id, 'actualizado', hoy);
+  }
+  const inbox = decisiones.find((x) => x.clase === 'inbox');
+  const notas = entidades(tx.doc('inbox.md'), 'nota');
+  if (inbox && notas.length) {
+    if (inbox.opcion === 'tareas') {
+      asegurarTareas(tx);
+      for (const n of notas) {
+        const texto = textoNota(n.texto);
+        if (texto && !tareasDe(tx.doc('tareas.md')).mas.some((t) => normalizar(t.texto) === normalizar(texto))) anadirTarea(tx, 'mas', ftar.tarea({ texto, creada: hoy }));
+      }
+    } else if (inbox.opcion === 'archivar') {
+      const rutaArch = `archivo/inbox-${hoy.slice(0, 7)}.md`;
+      const arch = tx.asegurar(rutaArch, () => listaVacia('inbox', `Inbox archivado · ${hoy.slice(0, 7)}`));
+      tx.insertar(rutaArch, arch.lineas.length, notas.map((n) => ({ t: 'nota', texto: n.texto })));
+    }
+    for (const n of notas.slice().reverse()) tx.quitar('inbox.md', n.id);
+  }
+
+  // 3. Semana nueva: Las 3, horas de estudio y Proponer (solo lo que falte)
+  if (!nuevaAbierta()) return { nueva, n: 0, noCaben: [], nuevaCerrada: true, resumen: res.texto };
+  crearSemanaSiFalta(tx, nueva);
+  if (a.siguiente?.las3) reemplazarLas3(tx, rutaNueva, a.siguiente.las3);
+  const temas = temasEstudio(tx.doc('estudio.md'));
+  if (a.siguiente?.horas) fijarObjetivos(tx, rutaNueva, a.siguiente.horas, temas);
+  const r = proponerEn(tx, rutaNueva, nueva);
+  return { nueva, n: r.bloques.length, noCaben: r.noCaben, resumen: res.texto };
 });
 
 function cambiarEstadoSemana(tx, ruta, valor) {
@@ -669,6 +815,6 @@ registrar('proyecto.eliminar', (tx, a) => eliminarSeccionLista(tx, 'proyecto', a
 export const util = {
   exigir, exigirHoy, textoObligatorio, textoOpcional, elemento, rutaSemana, semanaEditable, crearSemanaSiFalta,
   anadirBloque, anadirEnSeccion, anadirTarea, asegurarTareas, cambiarEstadoSemana, fijarClave, tipos, finUltimo,
-  archivarTareas, lineasDeTareas, moverLinea, quitarSugerencias,
+  archivarTareas, lineasDeTareas, moverLinea, quitarSugerencias, proponerEn,
 };
 export { DIAS, sumarSemanas, lunesDe, sumarDias, temaDe, mismoTema, bloquesDe, las3De, temasEstudio, proyectosDe };
