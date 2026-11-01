@@ -47,9 +47,9 @@ ${dej && b.hecho == null ? html`<div class="nota-dejado">La última vez lo dejas
 <label for="ed-titulo">Título</label><input id="ed-titulo" value="${b.titulo}" maxlength="140" autocomplete="off">
 <label>Tipo</label><div class="chips" role="radiogroup" aria-label="Tipo">${d.tipos.map((t) => {
     const on = m.normalizar(t.nombre) === m.normalizar(ed.tipo);
-    return html`<button type="button" class="ac ${on ? 'on' : ''}" role="radio" aria-checked="${on}" data-tipo="${t.nombre}" style="${on ? raw(`background:${t.color};color:${textoSobre(t.color)}`) : ''}">${t.nombre}</button>`;
+    return html`<button type="button" class="ac ${on ? 'on' : ''}" role="radio" aria-checked="${(on) ? 'true' : 'false'}" data-tipo="${t.nombre}" style="${on ? raw(`background:${t.color};color:${textoSobre(t.color)}`) : ''}">${t.nombre}</button>`;
   })}</div>
-<div data-subtipos ${esEstudio ? '' : 'hidden'}><label>Cómo vas a estudiar</label><div class="chips">${[['aprender', 'aprender'], ['repasar', '⟲ repasar'], ['simulacro', '◎ simulacro']].map(([k, t]) => html`<button type="button" class="ac ${ed.subtipo === k ? 'on' : ''}" data-subtipo="${k}" aria-pressed="${ed.subtipo === k}">${t}</button>`)}</div></div>
+<div data-subtipos ${esEstudio ? '' : 'hidden'}><label>Cómo vas a estudiar</label><div class="chips">${[['aprender', 'aprender'], ['repasar', '⟲ repasar'], ['simulacro', '◎ simulacro']].map(([k, t]) => html`<button type="button" class="ac ${ed.subtipo === k ? 'on' : ''}" data-subtipo="${k}" aria-pressed="${(ed.subtipo === k) ? 'true' : 'false'}">${t}</button>`)}</div></div>
 <label>Cuándo</label><div class="cuando">
   <select id="ed-dia" aria-label="Día">${columnas.map((c) => html`<option value="${c.semana}|${c.dia}" ${c.semana === ed.semana && c.dia === b.dia ? 'selected' : ''}>${f.DIAS[c.dia]} ${+c.fecha.slice(8)}</option>`)}</select>
   <select id="ed-inicio" aria-label="Hora de inicio">${inicios.map((t) => html`<option value="${t}" ${t === b.inicio ? 'selected' : ''}>${f.horaCorta(t)}</option>`)}</select>

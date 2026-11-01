@@ -13,6 +13,6 @@ export function rejillaTemas(activo, temaDoc) {
     const muestra = personal ? valoresTema(temaDoc).base : t.id;
     const on = activo === t.id;
     // los valores de tema.md pueden llevar comillas (fuentes): van escapados, nunca con raw()
-    return html`<button type="button" class="miniatura ${on ? 'on' : ''}" role="radio" aria-checked="${on}" data-elegir-tema="${t.id}" ${personal && !hayPersonal ? raw('disabled title="Crea tema.md en tu carpeta de datos (base y colores)"') : ''}><div class="muestra" data-tema-muestra="${muestra}" style="${personal ? cssPersonalizado(temaDoc) : ''}"><div class="m-tarjeta"><span class="m-titulo"></span>${ANCHOS.map((w, i) => html`<span class="m-blk" data-muestra-bloque="${i}" style="width:${w}"></span>`)}</div></div>${t.nombre}</button>`;
+    return html`<button type="button" class="miniatura ${on ? 'on' : ''}" role="radio" aria-checked="${(on) ? 'true' : 'false'}" data-elegir-tema="${t.id}" ${personal && !hayPersonal ? raw('disabled title="Crea tema.md en tu carpeta de datos (base y colores)"') : ''}><div class="muestra" data-tema-muestra="${muestra}" style="${personal ? cssPersonalizado(temaDoc) : ''}"><div class="m-tarjeta"><span class="m-titulo"></span>${ANCHOS.map((w, i) => html`<span class="m-blk" data-muestra-bloque="${i}" style="width:${w}"></span>`)}</div></div>${t.nombre}</button>`;
   })}</div>`;
 }

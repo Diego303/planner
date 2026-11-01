@@ -49,7 +49,7 @@ function pasoResumen(d) {
 
 function pasoPendientes(d) {
   return html`<div class="mut" style="font-size:11px;margin-bottom:4px">Decide qué hacer con cada cosa. Nada se arrastra en silencio: lo que no decidas se queda como está.</div>
-${d.pendientes.length ? d.pendientes.map((p) => html`<div class="pend"><div>${p.titulo}<div class="mut" style="font-size:10.5px">${p.sub}</div></div><div class="opts">${p.opciones.map(([k, t]) => html`<button type="button" class="${cw.decision[p.clave] === k ? 'on' : ''}" aria-pressed="${cw.decision[p.clave] === k}" data-decision="${p.clave}" data-opcion="${k}">${t}</button>`)}</div></div>`) : html`<div class="mut" style="font-size:12px;padding:10px 0">Nada pendiente ✓</div>`}`;
+${d.pendientes.length ? d.pendientes.map((p) => html`<div class="pend"><div>${p.titulo}<div class="mut" style="font-size:10.5px">${p.sub}</div></div><div class="opts">${p.opciones.map(([k, t]) => html`<button type="button" class="${cw.decision[p.clave] === k ? 'on' : ''}" aria-pressed="${(cw.decision[p.clave] === k) ? 'true' : 'false'}" data-decision="${p.clave}" data-opcion="${k}">${t}</button>`)}</div></div>`) : html`<div class="mut" style="font-size:12px;padding:10px 0">Nada pendiente ✓</div>`}`;
 }
 
 function pasoProyectos(d) {

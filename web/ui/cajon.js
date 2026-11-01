@@ -13,7 +13,7 @@ export function pintarCajon() {
   raiz.hidden = st.ui.vista === 'progreso';
   if (!disponibles.includes(st.ui.cajon)) st.ui.cajon = disponibles[0];
   const actual = pestanasCajon[st.ui.cajon];
-  pintar(raiz, html`<div class="dr" role="tablist">${disponibles.map((t) => html`<button type="button" role="tab" aria-selected="${t === st.ui.cajon}" class="${t === st.ui.cajon ? 'on' : ''}" data-cajon="${t}">${pestanasCajon[t].titulo}</button>`)}</div><div role="tabpanel">${actual.pintar()}</div>`);
+  pintar(raiz, html`<div class="dr" role="tablist">${disponibles.map((t) => html`<button type="button" role="tab" aria-selected="${(t === st.ui.cajon) ? 'true' : 'false'}" class="${t === st.ui.cajon ? 'on' : ''}" data-cajon="${t}">${pestanasCajon[t].titulo}</button>`)}</div><div role="tabpanel">${actual.pintar()}</div>`);
 }
 
 export function iniciarCajon() {

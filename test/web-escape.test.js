@@ -26,3 +26,13 @@ test('miniatura del tema personalizado: los valores de tema.md no salen del atri
   assert.match(out, /--fuente: &quot;Inter&quot; onmouseover=&quot;alert\(1\)&quot;/);
   assert.match(out, /--acento: #123456;/);
 });
+
+test('los estados ARIA salen como «true»/«false», no vacíos (la plantilla html convierte los booleanos en «»)', async () => {
+  const { register } = await import('node:module');
+  register('./web-hooks.mjs', import.meta.url);
+  const { rejillaTemas } = await import('../web/ui/miniaturas.js');
+  const out = String(rejillaTemas('papel', null));
+  assert.match(out, /aria-checked="true" data-elegir-tema="papel"/);
+  assert.match(out, /aria-checked="false" data-elegir-tema="nordico-claro"/);
+  assert.ok(!/aria-(checked|pressed|selected|expanded)=""/.test(out));
+});

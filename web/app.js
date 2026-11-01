@@ -19,7 +19,7 @@ export const menuGestion = [];
 let menuAbierto = false;
 
 function pintarBarra() {
-  pintar($('#seg'), html`${Object.entries(vistas).map(([id, v]) => html`<button type="button" class="${id === st.ui.vista ? 'on' : ''}" aria-pressed="${id === st.ui.vista}" data-vista="${id}">${v.titulo}</button>`)}`);
+  pintar($('#seg'), html`${Object.entries(vistas).map(([id, v]) => html`<button type="button" class="${id === st.ui.vista ? 'on' : ''}" aria-pressed="${(id === st.ui.vista) ? 'true' : 'false'}" data-vista="${id}">${v.titulo}</button>`)}`);
   const d = derivados();
   const pendiente = d.meta.pendientes.length > 0;
   $('#gbtn').innerHTML = String(html`${pendiente ? html`<span class="d" aria-label="hay una semana sin cerrar"></span>` : ''}Gestión ▾`);
