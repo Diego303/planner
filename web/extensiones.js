@@ -2,6 +2,7 @@
 import './vistas/hoy.js';
 import './vistas/cajon-diario.js';
 import './vistas/cajon-metas.js';
+import './vistas/progreso.js';
 import './ui/captura.js';
 import './gestion/semanas.js';
 import './gestion/plantilla.js';
