@@ -13,7 +13,7 @@ Plan en [`QA-PLAN.md`](QA-PLAN.md). Este informe se actualiza al cerrar cada fas
 | Visual (`pnpm test:visual`) | **171 / 171 en verde**, tres veces seguidas (144 capturas + diseño adaptable + temas) | sin regresiones |
 | `pnpm test:todo` | **en verde tres veces seguidas** (5,5 min cada una: check, 183 + 200 SIGKILL, 50 e2e, 171 visuales) | 3 seguidas |
 | Bugs | **34 arreglados**, cada uno con su test (6 críticos de pérdida de datos) | |
-| Fases | Q0 ✓ · Q1 ✓ · Q2 ✓ · Q3 ✓ · Q4 ✓ · Q5 ✓ · Q6 ✓ · Q7 ✓ · Q8 (falta tu permiso para tus datos) | Q0–Q8 |
+| Fases | Q0 ✓ · Q1 ✓ · Q2 ✓ · Q3 ✓ · Q4 ✓ · Q5 ✓ · Q6 ✓ · Q7 ✓ · Q8 ✓ (comando listo; aún no hay datos reales que validar) | Q0–Q8 |
 
 ## Bugs
 
@@ -164,4 +164,4 @@ Datos: `test/rendimiento/generar.js` crea tres años realistas (157 semanas, 5.0
 ### Q8 · Validación de tus datos
 - `pnpm qa:validar -- --datos <ruta>`: copia la carpeta a un temporal, la parsea entera, comprueba la ida y vuelta byte a byte y lista líneas no reconocidas (con el motivo), ficheros ignorados, solapes, temas huérfanos, tipos sin uso y tipos sin definir. Comprueba al final que la carpeta original no ha cambiado (`test/qa-validar.test.js` lo verifica byte a byte y por fecha de modificación). Salida 0, 1 (avisos) o 2 (ida y vuelta no exacta).
 - Sobre `ejemplo/`: ida y vuelta exacta en 50 ficheros, 1 línea sin casilla (a propósito) y un solape cada domingo pasado («Cerrar semana» 17:00 dentro del bloque de proyectos de 16:00 a 17:30). Es un detalle de los datos de ejemplo, no del planner.
-- **Pendiente: ejecutarlo sobre `/mnt/d/planner` cuando me des permiso.**
+- **Con permiso (2 nov. 2026), pero sin ejecutar:** `/mnt/d/planner` todavía no existe (el planner no se ha empezado a usar). Cuando haya datos: `pnpm qa:validar -- --datos /mnt/d/planner` (solo lee; trabaja sobre una copia).
