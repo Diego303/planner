@@ -10,10 +10,11 @@ let app, c, P;
 before(async () => { c = copiaEjemplo(); app = await arrancar({ datos: c.dir, puerto: 0, hoySimulado: HOY }); P = app.puerto; });
 after(async () => { await app.cerrar(); c.borrar(); });
 
-/** Petición cruda: sin cabeceras automáticas (ni Host) y con el cuerpo tal cual. */
+/** Petición cruda: sin cabeceras automáticas (ni Host) y con el cuerpo tal cual (con Content-Length: DELETE no va troceado). */
 function cruda({ method = 'GET', path = '/', headers, body = null, host = '127.0.0.1' }) {
   return new Promise((ok, mal) => {
-    const req = request({ host, port: P, method, path, setHost: false, headers: headers ?? { host: `127.0.0.1:${P}` } }, (res) => {
+    const h = { ...(headers ?? { host: `127.0.0.1:${P}` }), ...(body ? { 'content-length': Buffer.byteLength(body) } : {}) };
+    const req = request({ host, port: P, method, path, setHost: false, headers: h }, (res) => {
       let datos = '';
       res.on('data', (d) => { datos += d; });
       res.on('end', () => ok({ estado: res.statusCode, datos, cabeceras: res.headers }));
