@@ -1,6 +1,6 @@
 // Acceso a la carpeta de datos: lectura con caché (mtime, ctime, tamaño, inodo), escritura atómica y versiones.
 import { open, readFile, rename, unlink, stat, mkdir, readdir } from 'node:fs/promises';
-import { existsSync, readdirSync, unlinkSync, mkdirSync } from 'node:fs';
+import { existsSync, readdirSync, unlinkSync, mkdirSync, linkSync, renameSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, resolve, dirname, basename, sep } from 'node:path';
 import { parsear, serializar, tipoDeRuta } from '../core/formato/index.js';
@@ -153,13 +153,22 @@ export function crearStore(carpeta) {
       const hechos = [];
       const versiones = {};
       for (const p of orden) {
+        let choque = false;
         try {
           if (p.texto == null) await unlink(p.abs).catch((e) => { if (e.code !== 'ENOENT') throw e; });
+          else if (p.esperada !== undefined) choque = await reemplazarVigilando(p);
           else { await renombrar(p.tmp, p.abs); p.tmp = null; }
         } catch (e) {
           await descartar();
           const parcial = !(await volverAtras(hechos));
           throw Object.assign(new ErrorEscritura(p.ruta, e), { parcial });
+        }
+        if (choque) {
+          // alguien guardó entre la comprobación y el rename: su versión ya está de vuelta; lo demás, como estaba
+          cache.delete(p.ruta);
+          await descartar();
+          await volverAtras(hechos);
+          throw new ConflictoEscritura(p.ruta);
         }
         hechos.push(p);
         if (p.texto == null) { cache.delete(p.ruta); versiones[p.ruta] = null; continue; }
@@ -170,6 +179,57 @@ export function crearStore(carpeta) {
       }
       return versiones;
     });
+  }
+
+  const temporal = (abs) => join(dirname(abs), `.${basename(abs)}.tmp-${process.pid}-${++contador}`);
+  const SIN_ENLACES = new Set(['EPERM', 'ENOTSUP', 'EOPNOTSUPP', 'EXDEV', 'EMLINK', 'ENOSYS', 'EINVAL']);
+
+  /**
+   * Pone el temporal en su sitio sin pisar lo que alguien haya guardado después de la comprobación.
+   * Hay un hueco entre comprobar y renombrar: un editor que guarde justo ahí perdería su cambio. Para cerrarlo,
+   * se hace un enlace duro a lo que hay en ese instante y se renombra en la misma vuelta (síncrono, sin nada en
+   * medio); luego se mira el enlace: si no es lo que se comprobó, se devuelve su versión y hay conflicto.
+   * Un fichero nuevo se crea con link(), que falla si otro lo ha creado entretanto.
+   * Si el sistema de ficheros no tiene enlaces duros, se queda la comprobación de antes. → ¿hubo conflicto?
+   */
+  async function reemplazarVigilando(p) {
+    if (p.original == null) {
+      try { linkSync(p.tmp, p.abs); } catch (e) {
+        if (e.code === 'EEXIST') return true;
+        if (!SIN_ENLACES.has(e.code)) throw e;
+        await renombrar(p.tmp, p.abs);
+        p.tmp = null;
+        return false;
+      }
+      await unlink(p.tmp).catch(() => {});
+      p.tmp = null;
+      return false;
+    }
+    const enlace = temporal(p.abs);
+    try { linkSync(p.abs, enlace); } catch (e) {
+      if (e.code === 'ENOENT') return true; // lo han borrado entretanto
+      if (!SIN_ENLACES.has(e.code)) throw e;
+      await renombrar(p.tmp, p.abs);
+      p.tmp = null;
+      return false;
+    }
+    try {
+      try { renameSync(p.tmp, p.abs); } catch (e) {
+        if (!['EBUSY', 'EPERM', 'EACCES'].includes(e.code)) throw e;
+        await renombrar(p.tmp, p.abs); // Windows lo tiene bloqueado un momento: con reintentos
+      }
+    } catch (e) {
+      await unlink(enlace).catch(() => {});
+      throw e;
+    }
+    p.tmp = null;
+    const habia = await readFile(enlace);
+    if (versionDe(habia.toString('utf8')) !== p.esperada) {
+      await renombrar(enlace, p.abs);
+      return true;
+    }
+    await unlink(enlace).catch(() => {});
+    return false;
   }
 
   async function leerOriginal(abs) {
@@ -187,7 +247,7 @@ export function crearStore(carpeta) {
       try {
         if (p.original == null) await unlink(p.abs).catch((e) => { if (e.code !== 'ENOENT') throw e; });
         else {
-          const tmp = join(dirname(p.abs), `.${basename(p.abs)}.tmp-${process.pid}-${++contador}`);
+          const tmp = temporal(p.abs);
           const fh = await open(tmp, 'w');
           try { await fh.writeFile(p.original); await fh.sync(); } finally { await fh.close(); }
           await renombrar(tmp, p.abs);

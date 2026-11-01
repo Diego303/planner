@@ -2,7 +2,7 @@
 // y si el proceso muere entre dos, lo que se mueve queda repetido, nunca perdido.
 import { test, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import fs, { readFileSync, existsSync } from 'node:fs';
 import fsp from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
@@ -26,11 +26,16 @@ async function preparar() {
   return { ...p, dir: c.dir, antes: Object.fromEntries(RUTAS.map((r) => [r, leer(c.dir, r)])) };
 }
 
-/** Sustituye el `rename` n-ésimo (desde 1) por `fn`. */
-function enRename(n, fn) {
-  const original = fsp.rename;
-  let llamadas = 0;
-  mock.method(fsp, 'rename', (a, b) => (++llamadas === n ? fn(a, b) : original(a, b)));
+/**
+ * Intercepta la n-ésima vez (desde 1) que un temporal se pone en su sitio (rename, renameSync o linkSync
+ * desde un `.tmp-`): `fn(original, origen, destino)` decide qué pasa.
+ */
+function alColocar(n, fn) {
+  let k = 0;
+  for (const [obj, nombre] of [[fsp, 'rename'], [fs, 'renameSync'], [fs, 'linkSync']]) {
+    const original = obj[nombre];
+    mock.method(obj, nombre, (a, b, ...resto) => (String(a).includes('.tmp-') && ++k === n ? fn(original, a, b) : original(a, b, ...resto)));
+  }
   syncBuiltinESMExports();
 }
 
@@ -38,7 +43,7 @@ const CIERRE = { op: 'dia.cerrar', hoy: '2026-11-03', args: { animo: 4, linea: '
 
 test('si falla el segundo rename, el primero se deshace y nada cambia', async () => {
   const p = await preparar();
-  enRename(2, async () => { throw Object.assign(new Error('EIO simulado'), { code: 'EIO' }); });
+  alColocar(2, () => { throw Object.assign(new Error('EIO simulado'), { code: 'EIO' }); });
   await assert.rejects(p.op(CIERRE), (e) => e.estado === 500 && /No se ha guardado nada/.test(e.message));
   for (const r of RUTAS) assert.equal(leer(p.dir, r), p.antes[r], r);
   mock.restoreAll();
@@ -50,11 +55,13 @@ test('si falla el segundo rename, el primero se deshace y nada cambia', async ()
 test('si el proceso muere entre dos rename, ninguna tarea se pierde', async () => {
   for (const n of [2, 3]) {
     const p = await preparar();
-    enRename(n, () => new Promise(() => {})); // el proceso «muere»: este rename y los siguientes no llegan
-    p.op(CIERRE).catch(() => {});
-    await new Promise((r) => setTimeout(r, 300));
-    const esta = (leer(p.dir, 'tareas.md') ?? '').includes('Revisar PR') || (leer(p.dir, 'archivo/tareas-2026-11.md') ?? '').includes('Revisar PR');
-    assert.ok(esta, `muerte antes del rename ${n}: «Revisar PR» no está ni en tareas.md ni en el archivo`);
+    // lo que quedaría en disco si el proceso muriera justo antes de colocar el n-ésimo fichero
+    let foto = null;
+    alColocar(n, (original, a, b) => { foto = Object.fromEntries(RUTAS.map((r) => [r, leer(p.dir, r)])); return original(a, b); });
+    await p.op(CIERRE);
+    assert.ok(foto, `hubo ${n} colocaciones`);
+    const esta = (foto['tareas.md'] ?? '').includes('Revisar PR') || (foto['archivo/tareas-2026-11.md'] ?? '').includes('Revisar PR');
+    assert.ok(esta, `muerte antes de colocar el ${n}.º: «Revisar PR» no está ni en tareas.md ni en el archivo`);
     mock.restoreAll();
     syncBuiltinESMExports();
   }
