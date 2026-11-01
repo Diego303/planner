@@ -1,4 +1,4 @@
-// e2e · Sesión larga con tres años de datos: operaciones al azar y el sondeo activo durante PLANNER_SESION_MIN minutos
+// e2e · Sesión larga con tres años de datos: operaciones al azar (que no hacen crecer los datos) y el sondeo activo durante PLANNER_SESION_MIN minutos
 // (30 para la prueba completa; «pnpm test:todo» usa 3). Ni el servidor ni la pestaña crecen en memoria, y no se
 // acumulan nodos, listeners ni timers. Sin PLANNER_SESION_MIN, se salta.
 import { test, expect, abrir } from './ayudas.js';
@@ -32,13 +32,17 @@ test(`sesión de ${MINUTOS} min sin fugas`, async ({ page, app }) => {
     return { pestaña: usedSize, nodos: dom.nodes, listeners: dom.jsEventListeners, timers: await page.evaluate(() => window.__timers()), servidor: v8.getHeapStatistics().used_heap_size };
   };
   const azar = crearAzar(7);
+  // Acciones que no hacen crecer los datos (marcar y desmarcar, navegar, abrir y cerrar): si algo crece, es una fuga.
+  const marcar = async (sel) => { const b = page.locator(sel).first(); if (await b.count()) { await b.click(); await page.waitForTimeout(300); await page.locator(sel).first().click(); } };
   const acciones = [
-    async () => { await page.locator('#cap').fill(`tarea ${azar.entero(1, 1e6)} mañana`); await page.keyboard.press('Enter'); },
+    async () => { await page.locator('#seg').getByRole('button', { name: 'Hoy' }).click(); await marcar('#hoy-tareas [data-marcar]'); },
+    async () => { await page.locator('#seg').getByRole('button', { name: 'Semana' }).click(); await marcar('#wk [data-las3-marcar]'); },
     async () => page.locator('#seg').getByRole('button', { name: azar.elegir(['Semana', 'Hoy', 'Progreso']) }).click(),
     async () => { await page.locator('#seg').getByRole('button', { name: 'Semana' }).click(); await page.getByRole('button', { name: azar.elegir(['Semana anterior', 'Semana siguiente', 'hoy']) }).click(); },
-    async () => { await page.locator('#gbtn').click(); await page.locator('#gmenu').getByRole('menuitem', { name: azar.elegir([/Ajustes/, /Tipos/, /^Semanas/]) }).click(); await page.keyboard.press('Escape'); },
-    async () => { await page.locator('#seg').getByRole('button', { name: 'Hoy' }).click(); const b = page.locator('#hoy-tareas [data-marcar]').first(); if (await b.count()) await b.click(); },
-    async () => { await page.locator('#drawer [role=tab]').nth(azar.entero(0, 1)).click().catch(() => {}); },
+    async () => { await page.locator('#gbtn').click(); await page.locator('#gmenu').getByRole('menuitem', { name: azar.elegir([/Ajustes/, /Tipos/, /^Semanas/, /Plantilla/, /^Tema/]) }).click(); await page.keyboard.press('Escape'); },
+    async () => { await page.locator('#seg').getByRole('button', { name: 'Semana' }).click(); await page.locator('#wk .blk').nth(azar.entero(0, 8)).click(); await page.keyboard.press('Escape'); },
+    async () => { await page.locator('#cap').fill(`algo ${azar.entero(1, 99)} mañana`); await page.keyboard.press('Escape'); },
+    async () => { await page.locator('#drawer [role=tab]').nth(azar.entero(0, 2)).click().catch(() => {}); },
   ];
   const muestras = [];
   // reloj monotónico: en WSL el de pared salta (se ajusta con el de Windows) y alargaba el bucle
