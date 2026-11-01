@@ -10,21 +10,43 @@ export function nuevoDoc(tipo, lineas = []) {
   return { tipo, lineas, bom: false, eol: '\n', finalNL: true };
 }
 
-/** Parte el texto en líneas recordando BOM, fin de línea y salto final. */
+/**
+ * Parte el texto en líneas recordando BOM, salto final y el fin de línea de cada una: un fichero con CRLF y
+ * LF mezclados (Bloc de notas + otro editor) se vuelve a escribir con los mismos bytes.
+ */
 export function partirTexto(texto) {
   let bom = false;
   if (texto.charCodeAt(0) === 0xfeff) { bom = true; texto = texto.slice(1); }
-  const eol = texto.includes('\r\n') ? '\r\n' : '\n';
-  if (texto === '') return { lineas: [], bom, eol, finalNL: true };
-  const lineas = texto.split(/\r?\n/);
-  const finalNL = lineas[lineas.length - 1] === '';
-  if (finalNL) lineas.pop();
-  return { lineas, bom, eol, finalNL };
+  if (texto === '') return { lineas: [], fines: [], bom, eol: '\n', finalNL: true };
+  const lineas = [], fines = [];
+  const re = /\r?\n/g;
+  let desde = 0, m;
+  while ((m = re.exec(texto))) {
+    lineas.push(texto.slice(desde, m.index));
+    fines.push(m[0]);
+    desde = re.lastIndex;
+  }
+  const finalNL = desde === texto.length;
+  if (!finalNL) { lineas.push(texto.slice(desde)); fines.push(''); }
+  // fin de línea del documento: el más frecuente (el de las líneas nuevas)
+  const crlf = fines.filter((f) => f === '\r\n').length, lf = fines.filter((f) => f === '\n').length;
+  return { lineas, fines, bom, eol: crlf > lf ? '\r\n' : '\n', finalNL };
+}
+
+/** Documento a partir de las líneas clasificadas; las que no usan el fin de línea del documento lo guardan en `_fin`. */
+export function documento(tipo, p, lineas) {
+  lineas.forEach((l, i) => { if (p.fines[i] && p.fines[i] !== p.eol) l._fin = p.fines[i]; });
+  return { tipo, lineas, bom: p.bom, eol: p.eol, finalNL: p.finalNL };
 }
 
 export function unirTexto(doc, textos) {
-  const cuerpo = textos.join(doc.eol);
-  return (doc.bom ? '﻿' : '') + cuerpo + (doc.finalNL && textos.length ? doc.eol : '');
+  const n = textos.length;
+  let out = doc.bom ? '\ufeff' : '';
+  textos.forEach((t, i) => {
+    const fin = doc.lineas[i]?._fin ?? doc.eol;
+    out += t + (i < n - 1 || doc.finalNL ? fin : '');
+  });
+  return out;
 }
 
 export function canonComun(l) {

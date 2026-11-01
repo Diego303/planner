@@ -1,6 +1,6 @@
 // Formatos de lista `- clave: valor`: ajustes, estudio, proyectos, diario y tema — ver docs/DISENO.md §3.2 y §3.7–3.9
 import {
-  clasificar, partirTexto, serializarDoc, canonComun, nuevoDoc, lineaClaveValor, canonClaveValor,
+  clasificar, partirTexto, documento, serializarDoc, canonComun, nuevoDoc, lineaClaveValor, canonClaveValor,
   parsearNumero, formatoNumero, parsearEntero, parsearNota, parsearSiNo, textoLibre, normalizar,
 } from './comun.js';
 import { esFecha, aMinutos, deMinutos } from '../fechas.js';
@@ -64,7 +64,7 @@ function formatoLista(tipo, claves, { secciones }) {
       enSeccion: (raw, _sec, ctx) => lineaClaveValor(raw, claves, ctx),
       canon,
     });
-    return { tipo, lineas, bom: p.bom, eol: p.eol, finalNL: p.finalNL };
+    return documento(tipo, p, lineas);
   };
   const kv = (clave, valor) => ({ t: 'kv', clave, valor, comentario: null });
   return { tipo, claves, parsear, serializar: (doc) => serializarDoc(doc, canon), canon, kv };

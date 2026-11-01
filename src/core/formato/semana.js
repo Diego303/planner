@@ -1,6 +1,6 @@
 // semanas/AAAA-Www.md — ver docs/DISENO.md §3.5
 import {
-  clasificar, partirTexto, serializarDoc, canonComun, nuevoDoc, elementoLista, casilla, separarComentario,
+  clasificar, partirTexto, documento, serializarDoc, canonComun, nuevoDoc, elementoLista, casilla, separarComentario,
   conComentario, dividirCampos, claveValor, normalizar, parsearNumero, formatoNumero, parsearNota,
 } from './comun.js';
 import { DIAS, parsearRango, formatoRango, parsearDelta, formatoDelta, lunesDe, sumarDias, numeroSemana } from '../fechas.js';
@@ -144,7 +144,7 @@ export function parsear(texto) {
     },
     canon,
   });
-  return { tipo: 'semana', lineas, bom: p.bom, eol: p.eol, finalNL: p.finalNL };
+  return documento('semana', p, lineas);
 }
 
 // ---------- Escritura ----------
