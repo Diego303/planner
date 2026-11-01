@@ -67,24 +67,30 @@ export const esWSL = () => !!process.env.WSL_DISTRO_NAME || (() => {
   try { return /microsoft/i.test(readFileSync('/proc/version', 'utf8')); } catch { return false; }
 })();
 
-function lanzar(cmd, args) {
+/**
+ * Lanza el programa y espera un momento: si sale con error (wslview instalado pero sin navegador configurado),
+ * se prueba el siguiente. Si sigue abierto, se da por bueno. `cualquierSalida`: explorer.exe sale con 1 aunque abra.
+ */
+function lanzar(cmd, args, { cualquierSalida = false } = {}) {
   return new Promise((ok) => {
-    try {
-      const p = spawn(cmd, args, { stdio: 'ignore', detached: true });
-      p.once('error', () => ok(false));
-      p.once('spawn', () => { p.unref(); ok(true); });
-    } catch { ok(false); }
+    let p;
+    try { p = spawn(cmd, args, { stdio: 'ignore', detached: true }); } catch { ok(false); return; }
+    let listo = false;
+    const fin = (v) => { if (listo) return; listo = true; clearTimeout(espera); p.unref(); ok(v); };
+    const espera = setTimeout(() => fin(true), 1500);
+    p.once('error', () => fin(false));
+    p.once('exit', (codigo) => fin(cualquierSalida || codigo === 0));
   });
 }
 
-/** Abre la URL: wslview → explorer.exe en WSL; xdg-open/open/start fuera. Devuelve si lo consiguió. */
+/** Abre la URL: wslview → explorer.exe → cmd.exe en WSL; xdg-open/open/start fuera. Devuelve si lo consiguió. */
 export async function abrirNavegador(url) {
   const intentos = esWSL()
-    ? [['wslview', [url]], ['explorer.exe', [url]], ['cmd.exe', ['/c', 'start', '', url]]]
+    ? [['wslview', [url]], ['explorer.exe', [url], { cualquierSalida: true }], ['cmd.exe', ['/c', 'start', '', url]]]
     : process.platform === 'darwin' ? [['open', [url]]]
       : process.platform === 'win32' ? [['cmd', ['/c', 'start', '', url]]]
         : [['xdg-open', [url]]];
-  for (const [cmd, args] of intentos) if (await lanzar(cmd, args)) return true;
+  for (const [cmd, args, o] of intentos) if (await lanzar(cmd, args, o)) return true;
   return false;
 }
 

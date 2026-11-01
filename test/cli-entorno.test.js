@@ -81,3 +81,46 @@ test('carpeta de datos y PLANNER_HOME con espacios y tildes', async () => {
     assert.ok(s.stdout.includes(datos), s.stdout);
   } finally { hijo.kill(); rmSync(base, { recursive: true, force: true }); }
 });
+
+/** Carpeta con programas falsos que apuntan con qué los llamaron (y salen con `codigo`). */
+function programas(nombres) {
+  const dir = temporal('planner-bin-');
+  const registro = join(dir, 'registro.txt');
+  for (const [nombre, codigo] of Object.entries(nombres)) {
+    writeFileSync(join(dir, nombre), `#!/bin/sh\necho "${nombre} $*" >> "${registro}"\nexit ${codigo}\n`, { mode: 0o755 });
+  }
+  return { dir, llamados: () => (existsSync(registro) ? readFileSync(registro, 'utf8').trim().split('\n') : []), borrar: () => rmSync(dir, { recursive: true, force: true }) };
+}
+
+async function abrirCon(path) {
+  const guardado = { PATH: process.env.PATH, WSL: process.env.WSL_DISTRO_NAME };
+  process.env.PATH = path;
+  process.env.WSL_DISTRO_NAME = 'Prueba';
+  try {
+    const { abrirNavegador } = await import('../src/cli/sistema.js');
+    return await abrirNavegador('http://localhost:4321/');
+  } finally {
+    process.env.PATH = guardado.PATH;
+    if (guardado.WSL == null) delete process.env.WSL_DISTRO_NAME; else process.env.WSL_DISTRO_NAME = guardado.WSL;
+  }
+}
+
+test('abrir el navegador en WSL: wslview, si no explorer.exe, si no cmd.exe; si falla, el siguiente', async () => {
+  const casos = [
+    [{ wslview: 0, 'explorer.exe': 0 }, ['wslview http://localhost:4321/']],
+    [{ 'explorer.exe': 0 }, ['explorer.exe http://localhost:4321/']],
+    [{ 'cmd.exe': 0 }, ['cmd.exe /c start  http://localhost:4321/']],
+    [{ wslview: 1, 'explorer.exe': 0 }, ['wslview http://localhost:4321/', 'explorer.exe http://localhost:4321/']], // wslview instalado pero roto
+    [{ 'explorer.exe': 1, 'cmd.exe': 0 }, ['explorer.exe http://localhost:4321/']], // explorer.exe sale con 1 aunque abra bien
+  ];
+  for (const [nombres, esperado] of casos) {
+    const p = programas(nombres);
+    try {
+      assert.equal(await abrirCon(p.dir), true, JSON.stringify(nombres));
+      await new Promise((r) => setTimeout(r, 150));
+      assert.deepEqual(p.llamados(), esperado, JSON.stringify(nombres));
+    } finally { p.borrar(); }
+  }
+  const vacio = programas({});
+  try { assert.equal(await abrirCon(vacio.dir), false, 'sin ninguno: lo dice'); } finally { vacio.borrar(); }
+});
