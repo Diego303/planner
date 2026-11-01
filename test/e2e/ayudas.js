@@ -10,9 +10,11 @@ import { arrancar } from '../../src/server/index.js';
 export const EJEMPLO = fileURLToPath(new URL('../../ejemplo/', import.meta.url));
 export const HOY = '2026-11-02'; // lunes de la semana 45 del ejemplo
 
-/** Servidor sobre una copia nueva. `datos: 'vacia'` para el onboarding. */
+/** Servidor sobre una copia nueva. `datos: 'vacia'` (carpeta vacía) o `'inexistente'` para el onboarding. */
 export async function servidor({ datos = 'ejemplo', hoy = HOY } = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'planner-e2e-'));
+  const base = mkdtempSync(join(tmpdir(), 'planner-e2e-'));
+  // 'inexistente': la carpeta de datos aún no existe (se crea en el primer paso del onboarding)
+  const dir = datos === 'inexistente' ? join(base, 'mis datos') : base;
   if (datos === 'ejemplo') cpSync(EJEMPLO, dir, { recursive: true });
   let app = await arrancar({ datos: dir, puerto: 0, hoySimulado: hoy });
   const puerto = app.puerto;
@@ -28,7 +30,7 @@ export async function servidor({ datos = 'ejemplo', hoy = HOY } = {}) {
     },
     async parar() { await app.cerrar(); app = null; },
     async volver() { app = await arrancar({ datos: dir, puerto, hoySimulado: hoy }); },
-    async cerrar() { if (app) await app.cerrar(); rmSync(dir, { recursive: true, force: true }); },
+    async cerrar() { if (app) await app.cerrar(); rmSync(base, { recursive: true, force: true }); },
   };
   return s;
 }
