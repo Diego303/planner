@@ -23,6 +23,8 @@ export function errorDeEscritura(e) {
   }
 }
 
+const MOTIVO_COPIA = { ENOSPC: 'no queda espacio en el disco', EACCES: 'sin permiso de escritura', EPERM: 'sin permiso de escritura', EROFS: 'disco de solo lectura' };
+
 export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasContexto = [], metricas = [] }) {
   // Las operaciones se aplican de una en una: así cada fichero tiene una única escritura en curso.
   let cola = Promise.resolve();
@@ -31,6 +33,9 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
     cola = p.catch(() => {});
     return p;
   };
+
+  // Aviso de la última copia fallida: sale en la banda de avisos hasta que una copia salga bien.
+  let avisoCopia = null;
 
   const hoyServidor = () => hoySimulado ?? fechaDe(new Date());
   // La fecha simulada (--hoy) manda sobre la del navegador.
@@ -71,12 +76,17 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
       return serializar(antes) !== serializar(despues);
     });
     const versiones = {};
+    let aviso = null;
     if (cambiados.length) {
       // La carpeta solo se crea cuando el usuario lo pide en el onboarding.
       if (!store.existe() && peticion.op === 'datos.inicializar') store.crearCarpeta();
       if (!store.existe()) throw new ErrorHttp(422, 'La carpeta de datos no existe');
       const modo = await modoCopias();
-      try { copias.antesDeEscribir(modo, peticion.op); } catch (e) { console.error('copia:', e.message); }
+      // Si la copia falla se guarda igual (no copiar no debe impedir trabajar), pero el usuario lo sabe.
+      try { copias.antesDeEscribir(modo, peticion.op); avisoCopia = null; } catch (e) {
+        console.error('copia:', e);
+        aviso = avisoCopia = `No se pudo hacer la copia de seguridad de hoy (${MOTIVO_COPIA[e.code] ?? e.code ?? 'error del disco'}). Lo demás se ha guardado; se reintentará en el próximo cambio.`;
+      }
       // todos o ninguno: si falla uno, no se escribe nada
       const doc = (ruta) => res.mundo.ficheros[ruta];
       // y sin pisar lo que se haya editado fuera desde que se leyó (esperada = versión leída)
@@ -86,11 +96,15 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
       await copias.despuesDeEscribir(modo, peticion.op, ctx);
     }
     const inversaId = cambiados.length ? deshacer.guardar(res.inversa, versiones, peticion.op) : null;
-    return { inversaId, resultado: res.resultado, cambiados };
+    return { inversaId, resultado: res.resultado, cambiados, ...(aviso ? { aviso } : {}) };
   }
 
   const ctxDe = (cuerpo) => ({ hoy: leerHoy(cuerpo.hoy), ahora: leerAhora(cuerpo.ahora) });
-  const estadoPara = (ctx, semana) => construirEstado(store, { ...ctx, semana, hoySimulado, metricas });
+  const estadoPara = async (ctx, semana) => {
+    const e = await construirEstado(store, { ...ctx, semana, hoySimulado, metricas });
+    if (avisoCopia) e.meta.avisos = [...e.meta.avisos, avisoCopia];
+    return e;
+  };
 
   async function traducirErrores(fn) {
     try { return await fn(); } catch (e) {

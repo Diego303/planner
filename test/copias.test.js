@@ -49,3 +49,26 @@ test('modo git: repositorio local y un commit por cierre del día (sin remotos)'
   assert.equal(execFileSync('git', ['-C', dir, 'remote'], { encoding: 'utf8' }).trim(), '');
   rmSync(dir, { recursive: true, force: true });
 });
+
+test('si la copia de seguridad falla, se guarda igual pero el usuario recibe el aviso', async () => {
+  const { copiaEjemplo, apiDirecta } = await import('./ayudas.js');
+  const { readFileSync } = await import('node:fs');
+  const c = copiaEjemplo();
+  try {
+    let lleno = true;
+    const copias = { antesDeEscribir() { if (lleno) throw Object.assign(new Error(`ENOSPC: no space left, mkdir '${c.dir}/.copias'`), { code: 'ENOSPC' }); }, async despuesDeEscribir() {} };
+    const p = apiDirecta(c.dir, { copias });
+    const r = await p.op({ op: 'tarea.crear', hoy: '2026-11-02', args: { seccion: 'mas', tarea: { texto: 'sin copia' } } });
+    assert.match(readFileSync(join(c.dir, 'tareas.md'), 'utf8'), /sin copia/);
+    assert.match(r.aviso ?? '', /No se pudo hacer la copia de seguridad de hoy/);
+    assert.match(r.aviso, /espacio/);
+    assert.ok(!r.aviso.includes(c.dir), 'sin rutas absolutas');
+    // y se queda en la banda de avisos hasta que una copia sale bien
+    assert.ok(r.estado.meta.avisos.includes(r.aviso));
+    assert.ok((await p.estado({ hoy: '2026-11-02' })).meta.avisos.includes(r.aviso));
+    lleno = false;
+    const r2 = await p.op({ op: 'tarea.crear', hoy: '2026-11-02', args: { seccion: 'mas', tarea: { texto: 'con copia' } } });
+    assert.equal(r2.aviso, undefined);
+    assert.ok(!r2.estado.meta.avisos.some((a) => /copia de seguridad/.test(a)));
+  } finally { c.borrar(); }
+});
