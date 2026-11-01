@@ -4,6 +4,21 @@ Organizador personal local y minimalista: calendario semanal por horas, vista Ho
 
 Especificación en [`docs/PLAN.md`](docs/PLAN.md) · diseño técnico (gramática de los ficheros, operaciones, riesgos) en [`docs/DISENO.md`](docs/DISENO.md) · maqueta en [`docs/maquetas/planner-nordico.html`](docs/maquetas/planner-nordico.html).
 
+## Capturas
+
+Con los datos inventados de [`ejemplo/`](ejemplo/) (`planner --ejemplo --hoy 2026-11-02`).
+
+| | |
+|---|---|
+| ![Vista Semana](docs/capturas/semana.png) | ![Editor de bloque](docs/capturas/editor.png) |
+| **Semana**: bloques por horas, carriles, ocupación del día, Las 3 y ★ | **Editor**: tipo, subtipo de estudio, primer paso, «Hecho ✓» y «A medias» |
+| ![Proponer semana](docs/capturas/proponer.png) | ![Vista Hoy](docs/capturas/hoy.png) |
+| **Proponer semana**: sugerencias discontinuas, sin solapes, con deshacer | **Hoy**: horario, tareas, más adelante por grupos y cierre del día |
+| ![Progreso](docs/capturas/progreso.png) | ![Cerrar semana](docs/capturas/cerrar-semana.png) |
+| **Progreso**: certificaciones, plan frente a real, constancia, ánimo y lecciones | **Cerrar semana**: pendientes con una decisión cada uno |
+| ![Selector de tema](docs/capturas/temas.png) | ![Tema nórdico oscuro](docs/capturas/oscuro.png) |
+| **Temas**: seis temas, automático y personalizado | **Nórdico oscuro** |
+
 ## Instalación (WSL o Linux)
 
 Requisitos: Node ≥ 20 y pnpm. Paso a paso, desde cero, en [`instrucciones.md`](instrucciones.md).
