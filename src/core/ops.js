@@ -32,6 +32,8 @@ export const existeOp = (nombre) => Object.hasOwn(OPS, nombre);
 /** Primitivas: solo las usan las inversas que guarda el servidor (deshacer), nunca una petición de fuera. */
 export const PRIMITIVAS = new Set(['lineas.insertar', 'lineas.quitar', 'linea.cambiar', 'fichero.crear', 'fichero.borrar', 'lote']);
 export const esOpPublica = (nombre) => typeof nombre === 'string' && existeOp(nombre) && !PRIMITIVAS.has(nombre);
+/** Nombres de las operaciones que acepta la API (para pruebas y documentación). */
+export const opsPublicas = () => Object.keys(OPS).filter((n) => !PRIMITIVAS.has(n)).sort();
 
 // ---------- Transacción ----------
 

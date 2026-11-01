@@ -5,13 +5,11 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { parsear, serializar, tipoDeRuta } from '../src/core/formato/index.js';
 import { ErrorHttp } from '../src/server/api.js';
+import { opsPublicas } from '../src/core/ops.js';
 import { copiaEjemplo, apiDirecta } from './ayudas.js';
 import { paraCada, TROZOS } from './azar.js';
 
-const OPS_PUBLICAS = ['semana.crear', 'bloque.crear', 'bloque.editar', 'bloque.mover', 'bloque.eliminar', 'semana.proponer', 'bloque.hecho',
-  'bloque.desmarcar', 'bloque.aMedias', 'semana.cerrar', 'semana.reabrir', 'tipo.crear', 'tipo.color', 'tipo.banderas', 'tipo.eliminar',
-  'plantilla.crear', 'plantilla.eliminar', 'ajustes.cambiar', 'tarea.crear', 'tarea.editar', 'tarea.marcar', 'tarea.mover', 'tarea.eliminar',
-  'dia.cerrar', 'estudio.crear', 'estudio.cambiar', 'estudio.eliminar', 'proyecto.crear', 'proyecto.cambiar', 'proyecto.eliminar', 'datos.inicializar'];
+const OPS_PUBLICAS = opsPublicas();
 const CLAVES = ('id semana huella cambios nombre seccion titulo clave inicio siguiente hecha dias delta tipo texto nota fin color valor horas dia '
   + 'destino animo tarea sugerido subtipo paso total si rel proyectos prioridad plantillas plantilla manana linea lecciones horasSemana extra '
   + 'examen entonces dur decisiones comentario bloque avanzado aplazar fecha').split(' ');
@@ -42,6 +40,10 @@ function ficheros(dir) {
   }
   return out;
 }
+
+test('el fuzzer cubre todas las operaciones públicas', () => {
+  assert.ok(OPS_PUBLICAS.length >= 34 && OPS_PUBLICAS.includes('las3.crear') && !OPS_PUBLICAS.includes('lote'), OPS_PUBLICAS.join(' '));
+});
 
 test('2.000 operaciones con argumentos hostiles: solo errores claros (4xx), nunca un 500', async () => {
   const casos = [];
