@@ -76,6 +76,9 @@ function transaccion(mundo, ctx) {
         antes[k] = l[k];
         if (v === undefined) delete nueva[k]; else nueva[k] = v;
       }
+      // La inversa lleva también el texto original: el servidor relee el fichero antes de deshacer y,
+      // sin él, la línea se reescribiría en forma canónica (comentarios alineados y espacios se perderían).
+      for (const k of ['_raw', '_canon']) if (!Object.hasOwn(cambios, k)) antes[k] = l[k];
       d.lineas[indice] = nueva;
       inversas.push({ op: 'linea.cambiar', args: { ruta, indice, cambios: antes } });
     },
