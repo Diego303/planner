@@ -38,3 +38,16 @@ test('dos arrastres seguidos con el disco lento: los dos se guardan', async ({ p
   await esperarFichero(app, W45, (t) => /^- V 21:30-23:00 \| trabajo \| Deploy del pipeline$/m.test(t) && /^- S 20:00-21:00 \| estudio \| MLA-C01 · simulacro/m.test(t), 8000);
 });
 
+test('pasar semanas rápido: una respuesta lenta de antes no devuelve la vista atrás', async ({ page, app }) => {
+  await abrir(page, app);
+  // la semana 46 tarda mucho en llegar; las demás, poco
+  await page.route('**/api/estado?*', async (r) => {
+    await new Promise((ok) => setTimeout(ok, r.request().url().includes('semana=2026-W46') ? 1500 : 100));
+    await r.continue();
+  });
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Semana siguiente' }).click();
+  await expect(page.locator('.wk-num')).toHaveText('semana 48');
+  await page.waitForTimeout(1800); // llega la de la 46
+  await expect(page.locator('.wk-num')).toHaveText('semana 48');
+});
+
