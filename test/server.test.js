@@ -7,7 +7,6 @@ import { request } from 'node:http';
 import { arrancar } from '../src/server/index.js';
 import { EJEMPLO } from './ayudas.js';
 import * as m from '../src/core/modelo.js';
-import { fechaDe } from '../src/core/fechas.js';
 
 const HOY = '2026-11-02';
 let app, dir, base;
@@ -95,8 +94,12 @@ test('POST /api/op escribe de forma atómica, cambia la versión y hace la copia
   assert.notEqual(r.json.estado.versiones['semanas/2026-W45.md'], antes.json.versiones['semanas/2026-W45.md']);
   assert.notEqual((await get(`/api/version?hoy=${HOY}`)).json.version, v0);
   assert.ok(!readdirSync(join(dir, 'semanas')).some((n) => n.includes('.tmp-')), 'sin temporales');
-  assert.ok(existsSync(join(dir, '.copias', fechaDe(new Date()), 'semanas', '2026-W45.md')), 'copia del día');
-  assert.ok(!existsSync(join(dir, '.copias', fechaDe(new Date()), '.copias')));
+  // la copia lleva la fecha real del día (no la simulada); sin depender de la hora a la que corre el test
+  const copias = readdirSync(join(dir, '.copias'));
+  assert.equal(copias.length, 1);
+  assert.match(copias[0], /^\d{4}-\d{2}-\d{2}$/);
+  assert.ok(existsSync(join(dir, '.copias', copias[0], 'semanas', '2026-W45.md')), 'copia del día');
+  assert.ok(!existsSync(join(dir, '.copias', copias[0], '.copias')));
 });
 
 test('409 si el fichero cambió fuera del planner', async () => {
