@@ -5,8 +5,11 @@ import { parsear, serializar, tipoDeRuta } from '../src/core/formato/index.js';
 
 export const EJEMPLO = new URL('../ejemplo/', import.meta.url).pathname;
 
-/** Todos los ficheros del planner dentro de ejemplo/: [{ ruta, texto }] */
+let enCache = null;
+
+/** Todos los ficheros del planner dentro de ejemplo/: [{ ruta, texto }] (se leen una vez por proceso). */
 export function ficherosEjemplo() {
+  if (enCache) return enCache;
   const out = [];
   const recorrer = (dir) => {
     for (const n of readdirSync(dir)) {
@@ -19,7 +22,8 @@ export function ficherosEjemplo() {
     }
   };
   recorrer(EJEMPLO);
-  return out.sort((a, b) => a.ruta.localeCompare(b.ruta));
+  enCache = out.sort((a, b) => a.ruta.localeCompare(b.ruta));
+  return enCache;
 }
 
 /** Mundo con todos los ficheros de ejemplo parseados. */

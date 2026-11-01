@@ -31,8 +31,11 @@ planner/
 │   │   ├── store.js            # lectura con caché por mtime, escritura atómica, versiones
 │   │   ├── estado.js           # compone la respuesta de /api/estado (semanas, métricas)
 │   │   ├── copias.js           # copias rotativas y git local opcional
-│   │   └── deshacer.js         # últimas 20 inversas
-│   └── cli/                    # args, pid, puerto libre, abrir navegador, --ejemplo
+│   │   ├── deshacer.js         # últimas 20 inversas
+│   │   └── index.js            # composición: servidor + tema inicial + métricas del dominio
+│   └── cli/
+│       ├── args.js             # lectura de argumentos y ayuda
+│       └── sistema.js          # PID, puerto libre, abrir navegador (wslview / explorer.exe), copia de ejemplo/
 ├── web/
 │   ├── index.html  styles.css  app.js  manifest.webmanifest  icon.svg  icon-192.png  icon-512.png
 │   ├── estado.js  api.js       # almacén del cliente (ops optimistas, sondeo) y fetch
