@@ -22,6 +22,11 @@ export class ErrorEscritura extends Error {
   }
 }
 
+/** El fichero cambió en disco desde que se leyó: no se escribe para no pisar ese cambio. */
+export class ConflictoEscritura extends Error {
+  constructor(ruta) { super(`${ruta} cambió en disco`); this.ruta = ruta; }
+}
+
 export class FicheroIgnorado extends Error {
   constructor(ruta, motivo) { super(`${ruta}: ${motivo}`); this.ruta = ruta; this.motivo = motivo; }
 }
@@ -93,7 +98,10 @@ export function crearStore(carpeta) {
    * Escribe varios ficheros como una unidad: primero todos a sus temporales (con fsync) y, solo si todos
    * se han escrito, los renombra seguidos. Si falla un temporal (disco lleno, permisos…) se borran los
    * demás y no cambia nada.
-   * cambios: [{ ruta, texto }] (texto null = borrar el fichero) → { ruta: versión nueva | null }
+   * Antes de renombrar comprueba que cada fichero sigue como se leyó (`esperada`): si alguien lo editó
+   * entretanto (Obsidian, el Bloc de notas…), lanza ConflictoEscritura y tampoco cambia nada.
+   * cambios: [{ ruta, texto, esperada? }] (texto null = borrar; esperada: versión leída, null = no existía,
+   * undefined = no comprobar) → { ruta: versión nueva | null }
    */
   async function escribirVarios(cambios) {
     if (!existe()) throw new ErrorEscritura(cambios[0]?.ruta ?? '', Object.assign(new Error('sin carpeta'), { code: 'ENOENT' }));
@@ -116,6 +124,14 @@ export function crearStore(carpeta) {
         await descartar();
         throw new ErrorEscritura(actual, e);
       }
+      for (const p of preparados) {
+        if (p.esperada === undefined) continue;
+        if ((await versionEnDisco(p.abs)) !== p.esperada) {
+          cache.delete(p.ruta);
+          await descartar();
+          throw new ConflictoEscritura(p.ruta);
+        }
+      }
       const versiones = {};
       for (const p of preparados) {
         try {
@@ -133,6 +149,13 @@ export function crearStore(carpeta) {
       }
       return versiones;
     });
+  }
+
+  async function versionEnDisco(abs) {
+    try { return versionDe((await readFile(abs)).toString('utf8')); } catch (e) {
+      if (e.code === 'ENOENT') return null;
+      throw e;
+    }
   }
 
   async function escribir(ruta, doc) {

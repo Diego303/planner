@@ -4,7 +4,7 @@ import { serializar } from '../core/formato/index.js';
 import { esFecha, fechaDe, esSemana, sumarSemanas, semanaDe, diasDeSemana } from '../core/fechas.js';
 import { listaSemanas, prepararCierre } from '../core/semanas.js';
 import { valoresAjustes, tiposDe } from '../core/modelo.js';
-import { FicheroIgnorado, ErrorEscritura } from './store.js';
+import { FicheroIgnorado, ErrorEscritura, ConflictoEscritura } from './store.js';
 import { construirEstado, contexto, todasLasSemanas, FIJOS } from './estado.js';
 
 export class ErrorHttp extends Error {
@@ -78,7 +78,10 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
       try { copias.antesDeEscribir(modo, peticion.op); } catch (e) { console.error('copia:', e.message); }
       // todos o ninguno: si falla uno, no se escribe nada
       const doc = (ruta) => res.mundo.ficheros[ruta];
-      Object.assign(versiones, await store.escribirVarios(cambiados.map((ruta) => ({ ruta, texto: doc(ruta) == null ? null : serializar(doc(ruta)) }))));
+      // y sin pisar lo que se haya editado fuera desde que se leyó (esperada = versión leída)
+      Object.assign(versiones, await store.escribirVarios(cambiados.map((ruta) => ({
+        ruta, texto: doc(ruta) == null ? null : serializar(doc(ruta)), esperada: leidas[ruta] ?? null,
+      }))));
       await copias.despuesDeEscribir(modo, peticion.op, ctx);
     }
     const inversaId = cambiados.length ? deshacer.guardar(res.inversa, versiones, peticion.op) : null;
@@ -93,6 +96,7 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
       if (e instanceof ErrorOp) throw new ErrorHttp(422, e.message);
       if (e instanceof FicheroIgnorado) throw new ErrorHttp(422, `${e.ruta} está ignorado: ${e.motivo}`);
       if (e instanceof ErrorEscritura) throw errorDeEscritura(e);
+      if (e instanceof ConflictoEscritura) throw new ErrorHttp(409, 'Cambiaste el fichero fuera del planner, recargado', { ruta: e.ruta });
       throw e;
     }
   }
