@@ -82,7 +82,10 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
   const hostValido = (h) => h === `localhost:${puertoReal}` || h === `127.0.0.1:${puertoReal}`;
   const origenValido = (o) => o === `http://localhost:${puertoReal}` || o === `http://127.0.0.1:${puertoReal}`;
 
+  let parando = false;
+
   async function manejar(req, res) {
+    if (parando) return responder(res, 503, 'El planner se está parando', { 'Content-Type': 'text/plain; charset=utf-8', Connection: 'close' });
     // Defensa contra DNS rebinding: solo nombres locales con nuestro puerto.
     if (!hostValido(req.headers.host)) return responder(res, 403, 'Host no permitido', { 'Content-Type': 'text/plain; charset=utf-8' });
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -123,13 +126,28 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
     });
   }
 
+  // Peticiones en marcha: al parar se espera a que terminen (una escritura de varios ficheros no se corta).
+  const enCurso = new Set();
   const servidor = createServer((req, res) => {
-    manejar(req, res).catch((e) => { console.error(e); if (!res.headersSent) json(res, 500, { error: 'Error interno' }); });
+    const p = manejar(req, res)
+      .catch((e) => { console.error(e); if (!res.headersSent) json(res, 500, { error: 'Error interno' }); })
+      .finally(() => enCurso.delete(p));
+    enCurso.add(p);
   });
   await new Promise((ok, mal) => { servidor.once('error', mal); servidor.listen(puerto, host, ok); });
   puertoReal = servidor.address().port;
   return {
     servidor, store, api, puerto: puertoReal, url: `http://localhost:${puertoReal}/`,
-    cerrar: () => new Promise((ok) => { servidor.closeAllConnections?.(); servidor.close(() => ok()); }),
+    /** Deja de aceptar peticiones, espera a las que están en marcha (como mucho `espera` ms) y cierra. */
+    async cerrar({ espera = 5000 } = {}) {
+      parando = true;
+      const cerrado = new Promise((ok) => servidor.close(() => ok()));
+      servidor.closeIdleConnections?.();
+      let plazo;
+      await Promise.race([Promise.allSettled([...enCurso]), new Promise((ok) => { plazo = setTimeout(ok, espera); })]);
+      clearTimeout(plazo);
+      servidor.closeAllConnections?.();
+      await cerrado;
+    },
   };
 }
