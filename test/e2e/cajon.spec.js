@@ -94,6 +94,7 @@ test('añadir y quitar estudio y proyectos, con la validación de los formulario
   await esperarFichero(app, 'estudio.md', (t) => !t.includes('Kubernetes CKA'));
   await c.getByRole('button', { name: 'Quitar blog' }).click();
   await esperarFichero(app, 'proyectos.md', (t) => !t.includes('## blog'));
+  await expect(page.locator('#toast')).toContainText('«blog» quitado'); // el deshacer de este, no el del anterior
   await page.locator('#toast [data-deshacer]').click();
   await esperarFichero(app, 'proyectos.md', (t) => t.includes('## blog'));
 });

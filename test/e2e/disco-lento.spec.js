@@ -1,5 +1,6 @@
 // e2e · Con el disco lento (/mnt/d), la respuesta de una operación llega mientras haces la siguiente:
 // el repintado no puede cortar lo que estás escribiendo ni el arrastre que tienes en la mano.
+// Las esperas son largas (15 s): también se pasan con los datos en /mnt/d y varios servidores a la vez.
 import { test, expect, abrir, bloque, esperarFichero } from './ayudas.js';
 
 const W45 = 'semanas/2026-W45.md';
@@ -26,7 +27,7 @@ test('editar Las 3 mientras vuelve la respuesta de otro cambio no pierde lo escr
   await page.keyboard.press('End');
   await page.keyboard.type(' (y repasar fallos)', { delay: 60 }); // la respuesta llega a mitad
   await page.keyboard.press('Enter');
-  await esperarFichero(app, W45, (t) => t.includes('- [x] Entregar el lab de RAG') && t.includes('- [ ] Simulacro MLA-C01 ≥ 70 % (y repasar fallos) | rel: MLA-C01'));
+  await esperarFichero(app, W45, (t) => t.includes('- [x] Entregar el lab de RAG') && t.includes('- [ ] Simulacro MLA-C01 ≥ 70 % (y repasar fallos) | rel: MLA-C01'), 15000);
 });
 
 test('dos arrastres seguidos con el disco lento: los dos se guardan', async ({ page, app }) => {
@@ -66,5 +67,5 @@ test('tras un 409, repetir el cambio enseguida (con la recarga aún en camino) s
   await page.unroute('**/api/op');
   await page.locator('#cap').fill('Comprar pilas');
   await page.keyboard.press('Enter');
-  await esperarFichero(app, 'tareas.md', (t) => t.includes('Comprar pilas') && t.includes('escrita en Obsidian'));
+  await esperarFichero(app, 'tareas.md', (t) => t.includes('Comprar pilas') && t.includes('escrita en Obsidian'), 15000);
 });
