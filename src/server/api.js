@@ -1,5 +1,5 @@
 // Rutas /api/*: estado, versión para el sondeo, operaciones con concurrencia optimista y deshacer.
-import { aplicar, ErrorOp, FaltaFichero, existeOp } from '../core/ops.js';
+import { aplicar, ErrorOp, FaltaFichero, existeOp, esOpPublica } from '../core/ops.js';
 import { serializar } from '../core/formato/index.js';
 import { esFecha, fechaDe, esSemana, sumarSemanas, semanaDe, diasDeSemana } from '../core/fechas.js';
 import { listaSemanas, prepararCierre } from '../core/semanas.js';
@@ -42,8 +42,8 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
   }
 
   /** Aplica una operación cargando bajo demanda los ficheros que pida; comprueba versiones; escribe. */
-  async function ejecutar(peticion, versionesCliente, ctxBase) {
-    if (!existeOp(peticion.op)) throw new ErrorHttp(422, `Operación desconocida: ${peticion.op}`);
+  async function ejecutar(peticion, versionesCliente, ctxBase, { interna = false } = {}) {
+    if (!(interna ? existeOp(peticion.op) : esOpPublica(peticion.op))) throw new ErrorHttp(422, `Operación desconocida: ${peticion.op}`);
     const ctx = await contexto(store, ctxBase, extrasContexto);
     const mundo = { ficheros: {} }, leidas = {};
     // Precarga en paralelo lo que casi todas las operaciones leen; el resto se pide bajo demanda.
@@ -143,7 +143,7 @@ export function crearApi({ store, copias, deshacer, hoySimulado = null, extrasCo
       if (!entrada) throw new ErrorHttp(410, 'Ya no se puede deshacer');
       const ctx = ctxDe(cuerpo);
       try {
-        const r = await ejecutar(entrada.inversa, entrada.versiones, ctx);
+        const r = await ejecutar(entrada.inversa, entrada.versiones, ctx, { interna: true });
         return { ok: true, ...r, estado: await estadoPara(ctx, cuerpo.semana) };
       } catch (e) {
         if (e.estado === 409) throw new ErrorHttp(409, 'No se puede deshacer: el fichero cambió después', e.extra);

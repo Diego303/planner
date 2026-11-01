@@ -29,6 +29,9 @@ export class FaltaFichero extends Error {
 const OPS = {};
 export const registrar = (nombre, fn) => { OPS[nombre] = fn; };
 export const existeOp = (nombre) => Object.hasOwn(OPS, nombre);
+/** Primitivas: solo las usan las inversas que guarda el servidor (deshacer), nunca una petición de fuera. */
+export const PRIMITIVAS = new Set(['lineas.insertar', 'lineas.quitar', 'linea.cambiar', 'fichero.crear', 'fichero.borrar', 'lote']);
+export const esOpPublica = (nombre) => typeof nombre === 'string' && existeOp(nombre) && !PRIMITIVAS.has(nombre);
 
 // ---------- Transacción ----------
 

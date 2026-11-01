@@ -62,3 +62,26 @@ test('2.000 operaciones con argumentos hostiles: solo errores claros (4xx), nunc
     assert.ok(await p.estado({ hoy: HOY }));
   }
 });
+
+test('las primitivas internas (líneas sueltas, ficheros, lotes) no se aceptan desde fuera', async () => {
+  const c = copiaEjemplo();
+  limpiar.push(c.borrar);
+  const p = apiDirecta(c.dir, { hoySimulado: HOY });
+  const antes = ficheros(c.dir);
+  const peticiones = [
+    { op: 'fichero.borrar', args: { ruta: 'tareas.md' } }, // una petición borraría todas las tareas
+    { op: 'lineas.insertar', args: { ruta: 'tareas.md', indice: 0, lineas: [{ t: '?', _raw: 'a\n## Hoy\n- [ ] inyectada' }] } },
+    { op: 'lineas.quitar', args: { ruta: 'tareas.md', indice: 0, n: 5 } },
+    { op: 'linea.cambiar', args: { ruta: 'ajustes.md', indice: 1, cambios: { _raw: 'x' } } },
+    { op: 'fichero.crear', args: { ruta: 'semanas/2030-W01.md', doc: { tipo: 'semana', lineas: [] } } },
+    { op: 'lote', args: { ops: [{ op: 'fichero.borrar', args: { ruta: 'estudio.md' } }] } },
+  ];
+  for (const cuerpo of peticiones) {
+    await assert.rejects(p.op({ ...cuerpo, hoy: HOY }), (e) => e.estado === 422 && /desconocida/.test(e.message), cuerpo.op);
+  }
+  assert.deepEqual(ficheros(c.dir), antes);
+  // deshacer sí las usa por dentro
+  const r = await p.op({ op: 'tarea.crear', hoy: HOY, args: { seccion: 'mas', tarea: { texto: 'nueva' } } });
+  await p.deshacer({ inversaId: r.inversaId, hoy: HOY });
+  assert.deepEqual(ficheros(c.dir), antes);
+});
