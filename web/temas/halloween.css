@@ -1,0 +1,27 @@
+/* Halloween: oscuro cálido con acento naranja. Decoración sutil y desactivable (murciélago y telaraña). Nada animado. */
+:root[data-tema="halloween"], [data-tema-muestra="halloween"] {
+  --modo: oscuro;
+  --fondo: #141010;
+  --superficie: #1E1715;
+  --superficie-2: #2A201C;
+  --texto: #F3E9DF;
+  --texto-2: #BFA894;
+  --texto-3: #7E6A5C;
+  --borde: #33261F;
+  --acento: #FF7A1A;
+  --acento-texto: #141010;
+  --aviso: #FFB347;
+  --aviso-fondo: color-mix(in srgb, #FFB347 13%, #1E1715);
+  --ok: #9CCB6B;
+  --ok-fondo: color-mix(in srgb, #9CCB6B 13%, #1E1715);
+  --peligro: #FF5A4E;
+  --enlace: #FFB070;
+  --velo: rgba(0, 0, 0, .55);
+  --sombra: 0 0 0 1px #33261F;
+  --sombra-alta: 0 0 0 1px #45332A, 0 14px 40px rgba(0, 0, 0, .6);
+  --radio: 18px;
+  --fuente: Inter, "Segoe UI", -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --fondo-deco: none;
+  color-scheme: dark;
+}
+:root[data-tema="halloween"]:not([data-deco="no"]) .deco-halloween { display: block; }

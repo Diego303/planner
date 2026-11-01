@@ -1,0 +1,17 @@
+{
+  "name": "planner",
+  "short_name": "planner",
+  "description": "Organizador personal local en Markdown: semana por horas, hoy, metas y progreso. Sin IA y sin nube.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F6F6F3",
+  "theme_color": "#F6F6F3",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

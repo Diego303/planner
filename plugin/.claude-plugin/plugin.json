@@ -1,0 +1,7 @@
+{
+  "name": "planner",
+  "version": "0.1.0",
+  "description": "Comandos opcionales para tu carpeta de planner: ordenar el inbox, repaso de semanas, plan de estudio y dividir tareas. Siempre con vista previa, confirmación y copia antes de escribir.",
+  "author": { "name": "planner" },
+  "license": "MIT"
+}

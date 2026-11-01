@@ -1,0 +1,13 @@
+# Ajustes
+- capacidad: 70            # % máximo del día ocupado (50–100)
+- tareas_hoy: 5
+- horas: 7-24              # horas visibles
+- cierre: 22:30            # fin de jornada y hora del cierre del día
+- inicio_semana: lunes
+- foco_max: 3              # h de estudio intenso al día antes de avisar
+- mejores_horas: sin preferencia   # mañanas | tardes | noches
+- margen: auto             # auto (usa el factor real) | fijo (solo capacidad)
+- copias: diaria           # diaria | al cerrar semana | git
+- puerto: 4321
+- tema: nordico-claro      # nordico-claro | nordico-oscuro | automatico | papel | universo | halloween | alto-contraste | personalizado
+- tema_temporada: no       # sí → Halloween del 25 al 31 de octubre y vuelve solo a tu tema

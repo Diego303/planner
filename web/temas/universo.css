@@ -1,0 +1,43 @@
+/* Universo (violeta oscuro): campo de estrellas estático y un halo violeta suave arriba. */
+:root[data-tema="universo"], [data-tema-muestra="universo"] {
+  --modo: oscuro;
+  --fondo: #0E0A1F;
+  --superficie: #171130;
+  --superficie-2: #211A42;
+  --texto: #ECE8FF;
+  --texto-2: #A9A1D6;
+  --texto-3: #6F68A0;
+  --borde: #2A2250;
+  --acento: #B69CFF;
+  --acento-texto: #0E0A1F;
+  --aviso: #FFC27A;
+  --aviso-fondo: color-mix(in srgb, #FFC27A 13%, #171130);
+  --ok: #7EE0B5;
+  --ok-fondo: color-mix(in srgb, #7EE0B5 13%, #171130);
+  --peligro: #FF8A8A;
+  --enlace: #A9C1FF;
+  --velo: rgba(5, 3, 15, .6);
+  --sombra: 0 0 0 1px #2A2250;
+  --sombra-alta: 0 0 0 1px #3A2F6E, 0 14px 40px rgba(0, 0, 0, .6);
+  --radio: 18px;
+  --fuente: Inter, "Segoe UI", -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --fondo-deco:
+    radial-gradient(ellipse 70% 260px at 50% -60px, rgba(150, 110, 255, .22), transparent 75%),
+    radial-gradient(circle at 7% 12%, rgba(255, 255, 255, .45) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 18% 64%, rgba(255, 255, 255, .3) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 27% 31%, rgba(255, 255, 255, .5) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 36% 86%, rgba(255, 255, 255, .35) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 44% 9%, rgba(255, 255, 255, .4) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 52% 47%, rgba(255, 255, 255, .25) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 61% 73%, rgba(255, 255, 255, .45) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 69% 22%, rgba(255, 255, 255, .3) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 77% 58%, rgba(255, 255, 255, .5) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 85% 91%, rgba(255, 255, 255, .3) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 92% 35%, rgba(255, 255, 255, .45) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 97% 77%, rgba(255, 255, 255, .25) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 3% 92%, rgba(255, 255, 255, .35) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 13% 42%, rgba(255, 255, 255, .25) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 57% 96%, rgba(255, 255, 255, .4) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 81% 6%, rgba(255, 255, 255, .35) 0 1px, transparent 1.6px);
+  color-scheme: dark;
+}
