@@ -297,3 +297,16 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .m-titulo { height: 5px; width: 45%; border-radius: 3px; background: var(--texto); opacity: .8; }
 .m-blk { height: 9px; border-radius: 3px; }
 .aviso-contraste { font-size: 11px; color: var(--aviso); margin-top: 6px; }
+
+/* «Apunta algo»: panel con botones para el tipo, el cuándo y la prioridad */
+.cap-panel { position: absolute; left: 0; right: 0; top: 44px; z-index: 20; background: var(--superficie); border: var(--borde-ancho) solid var(--borde); border-radius: 12px; box-shadow: var(--sombra-alta); padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; min-width: 420px; }
+.cap-panel[hidden] { display: none; }
+.cp-fila { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.cp-lab { font-size: 11px; color: var(--mut); width: 52px; flex: none; }
+.cp-fila .ac { font-size: 11.5px; }
+.cp-pie { display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: 11.5px; border-top: 1px solid var(--linea); padding-top: 8px; flex-wrap: wrap; }
+.cp-pie .mut { font-size: 10.5px; }
+
+/* horas libres («de 8:30 a 18:00») en el editor de bloque y en la plantilla */
+.cuando { align-items: center; flex-wrap: wrap; }
+.pop input.hora, .mod input.hora, input.hora { width: 78px; padding-left: 6px; padding-right: 4px; text-align: left; font-size: 12px; font-variant-numeric: tabular-nums; }

@@ -96,7 +96,7 @@ function manejarError(e) {
  * Devuelve { local: resultado local o null, respuesta: Promise<respuesta|null> }.
  * `mensaje(resultado)` → texto del toast con «deshacer».
  */
-export function enviar(op, args, { mensaje = null } = {}) {
+export function enviar(op, args, { mensaje = null, accion = null } = {}) {
   if (st.caido) { toastError('Servidor parado · solo lectura'); return { local: null, respuesta: Promise.resolve(null) }; }
   let local = null;
   try {
@@ -119,8 +119,9 @@ export function enviar(op, args, { mensaje = null } = {}) {
       recomponer();
       // si mientras tanto se cambió de semana, se carga la que se está viendo
       if (st.ui.semana !== r.estado.meta.semana) cargar(); else avisar();
-      if (mensaje && r.inversaId) toast(mensaje(r.resultado ?? local?.resultado ?? {}, r), { deshacer: () => deshacer(r.inversaId) });
-      else if (mensaje) toast(mensaje(r.resultado ?? {}, r));
+      const extra = accion?.(r.resultado ?? local?.resultado ?? {}, r) ?? null;
+      if (mensaje && r.inversaId) toast(mensaje(r.resultado ?? local?.resultado ?? {}, r), { deshacer: () => deshacer(r.inversaId), accion: extra });
+      else if (mensaje) toast(mensaje(r.resultado ?? {}, r), { accion: extra });
       return r;
     } catch (e) {
       await manejarError(e);

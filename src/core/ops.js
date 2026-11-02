@@ -319,6 +319,24 @@ registrar('las3.eliminar', (tx, a) => {
   tx.quitar(ruta, a.id);
 });
 
+/** Pasa Las 3 de una semana a otra (las escribiste en la semana que no era): se quitan de la primera. */
+registrar('las3.pasar', (tx, a) => {
+  exigir(a.desde !== a.a, 'Es la misma semana');
+  const origen = semanaEditable(tx, a.desde);
+  const destino = semanaEditable(tx, a.a);
+  const mover = las3De(tx.doc(origen));
+  exigir(mover.length, 'Esa semana no tiene Las 3');
+  const ya = las3De(tx.doc(destino));
+  const nuevas = mover.filter((o) => !ya.some((x) => normalizar(x.texto) === normalizar(o.texto)));
+  exigir(ya.length + nuevas.length <= 3, `La semana ya tiene ${ya.length} de Las 3: no caben ${nuevas.length} más`);
+  if (nuevas.length) {
+    anadirEnSeccion(tx, destino, 'las3', fsem.ORDEN_SECCIONES, fsem.seccion,
+      nuevas.map((o) => fsem.objetivo3({ texto: o.texto, rel: o.rel, si: o.si, entonces: o.entonces, hecha: o.hecha })));
+  }
+  for (const o of mover.slice().sort((x, y) => y.id - x.id)) tx.quitar(origen, o.id);
+  return { n: nuevas.length };
+});
+
 // ---------- Proponer, Hecho y A medias ----------
 
 /** Quita las sugerencias no aceptadas de una semana (de abajo arriba para no mover índices). */
@@ -651,6 +669,30 @@ registrar('plantilla.eliminar', (tx, a) => {
   return a.aplicar ? aplicarEnSemanas(tx, (ruta, desde) => quitarEntrada(tx, ruta, e, desde)) : null;
 });
 
+/**
+ * Cambia una entrada de la plantilla (días, horas, título, tipo…). Con `aplicar`, también las semanas ya creadas
+ * (la actual desde hoy y las futuras): donde el bloque sigue tal cual, se actualiza (o se quita si su día ya no
+ * está) y los días nuevos se añaden. Lo que hayas movido, cambiado o marcado como hecho no se toca.
+ */
+registrar('plantilla.editar', (tx, a) => {
+  const e = elemento(tx, 'plantilla.md', a.id, 'plantilla', 'Esa entrada de la plantilla', a.huella);
+  const c = a.cambios ?? {};
+  exigir(esObjeto(c), 'Cambios no válidos');
+  const tiene = (k) => Object.hasOwn(c, k);
+  const dias = tiene('dias') ? c.dias : e.dias;
+  exigir(Array.isArray(dias) && dias.length && dias.every((d) => esEntero(d, 0, 6)), 'Elige al menos un día');
+  const v = validarCamposBloque({
+    dia: dias[0], inicio: tiene('inicio') ? c.inicio : e.inicio, fin: tiene('fin') ? c.fin : e.fin,
+    tipo: tiene('tipo') ? c.tipo : e.tipo, titulo: tiene('titulo') ? c.titulo : e.titulo,
+    subtipo: tiene('subtipo') ? c.subtipo : e.subtipo, paso: tiene('paso') ? c.paso : e.paso,
+  }, false);
+  exigir(v.fin > v.inicio, 'El bloque termina antes de empezar');
+  if (v.subtipo && !tipoPorNombre(tipos(tx), v.tipo)?.estudio) v.subtipo = null; // «aprender» solo tiene sentido en estudio
+  const nueva = entradaPlantilla({ ...v, dias, extra: e.extra, comentario: e.comentario });
+  tx.cambiar('plantilla.md', a.id, { dias: nueva.dias, inicio: nueva.inicio, fin: nueva.fin, tipo: nueva.tipo, titulo: nueva.titulo, subtipo: nueva.subtipo, paso: nueva.paso });
+  return a.aplicar ? aplicarEnSemanas(tx, (ruta, desde) => cambiarEntrada(tx, ruta, e, nueva, desde)) : null;
+});
+
 // ---------- Aplicar la plantilla a semanas que ya existen ----------
 
 /** Primer día que se toca de la semana `id`: en la actual, desde hoy; en las futuras, todos; en las pasadas, ninguno (null). */
@@ -683,10 +725,39 @@ function aplicarEntradas(tx, ruta, entradas, desde) {
 
 /** Quita de la semana los bloques de la entrada `e` que sigan tal cual (desde el día `desde`). → { n } */
 function quitarEntrada(tx, ruta, e, desde) {
-  const sobran = bloquesDe(tx.doc(ruta)).filter((b) => b.dia >= desde && e.dias.includes(b.dia) && mismoBloque(b, b.dia, e)
-    && b.plantilla && b.hecho == null && !b.sugerido && normalizar(b.tipo) === normalizar(e.tipo));
+  const sobran = bloquesDe(tx.doc(ruta)).filter((b) => b.dia >= desde && intacto(b, e));
   for (const b of sobran.reverse()) tx.quitar(ruta, b.id);
   return { n: sobran.length, solapes: 0 };
+}
+
+/** Bloque de la semana que sigue exactamente como lo puso la entrada `e` de la plantilla (ni movido, ni cambiado, ni hecho). */
+const intacto = (b, e) => b.plantilla && b.hecho == null && !b.sugerido && e.dias.includes(b.dia) && mismoBloque(b, b.dia, e)
+  && normalizar(b.tipo) === normalizar(e.tipo) && (b.subtipo ?? null) === (e.subtipo ?? null) && (b.paso ?? null) === (e.paso ?? null);
+
+/** Lleva a la semana el cambio de una entrada de la plantilla de `viejo` a `nuevo` (desde el día `desde`). → { n, solapes } */
+function cambiarEntrada(tx, ruta, viejo, nuevo, desde) {
+  const intactos = bloquesDe(tx.doc(ruta)).filter((b) => b.dia >= desde && intacto(b, viejo));
+  const dias = new Set();
+  let n = 0;
+  for (const b of intactos.filter((x) => nuevo.dias.includes(x.dia))) {
+    tx.cambiar(ruta, b.id, { inicio: nuevo.inicio, fin: nuevo.fin, tipo: nuevo.tipo, titulo: nuevo.titulo, subtipo: nuevo.subtipo, paso: nuevo.paso });
+    dias.add(b.dia);
+    n++;
+  }
+  // los días que ya no están (de abajo arriba: quitar no mueve los de antes)
+  for (const b of intactos.filter((x) => !nuevo.dias.includes(x.dia)).sort((x, y) => y.id - x.id)) { tx.quitar(ruta, b.id); n++; }
+  // los días nuevos; un día que ya estaba pero cuyo bloque cambiaste esa semana se respeta (no se duplica)
+  const nuevos = nuevo.dias.filter((d) => d >= desde && !viejo.dias.includes(d));
+  n += aplicarEntradas(tx, ruta, [{ ...nuevo, dias: nuevos }], desde).n;
+  for (const d of nuevos) dias.add(d);
+  // solapes de lo actualizado o añadido con el resto del día
+  const todos = bloquesDe(tx.doc(ruta)).filter((b) => !b.sugerido);
+  let solapes = 0;
+  for (const d of dias) {
+    const b = todos.find((x) => x.dia === d && mismoBloque(x, d, nuevo) && x.plantilla);
+    if (b && todos.some((o) => o !== b && o.dia === d && seCruzan(o, b))) solapes++;
+  }
+  return { n, solapes };
 }
 
 /** Aplica `fn(ruta, desde)` a las semanas ya creadas desde la actual que se pueden editar. → { semanas, n, solapes } */

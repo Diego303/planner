@@ -34,7 +34,7 @@ test('límite de Hoy: ↑ sube hasta llenarlo, entonces ↑ se desactiva; ↓ ba
   await page.getByRole('button', { name: 'Subir a hoy: Llamar al gestor' }).click();
   await expect(contador).toHaveText('5/5');
   await page.locator('#cap').fill('Comprar pilas');
-  await expect(page.locator('#capp')).toContainText('Hoy está lleno');
+  await expect(page.locator('#cap-panel')).toContainText('Irá a Más adelante (Hoy está lleno)');
   await page.keyboard.press('Enter');
   await expect(page.locator('#capp')).toContainText('guardado en Más adelante ✓ · Hoy está lleno');
 });
@@ -87,31 +87,81 @@ test('cierre del día: los 4 pasos, «mañana empiezo por» prellenado y el diar
   await esperarFichero(app, 'diario/2026-11-02.md', (t) => /ánimo: 5/.test(t));
 });
 
-test('captura: chips para cada token, destino correcto y «guardado en…»', async ({ page, app }) => {
+test('captura escrita: lo de siempre (#tipo, mañana, !, 45m, algún día) sigue valiendo y se ve en los botones', async ({ page, app }) => {
   await irAHoy(page, app);
-  const cap = page.locator('#cap'), prev = page.locator('#capp');
+  const cap = page.locator('#cap'), panel = page.locator('#cap-panel');
+  const activo = (texto) => panel.locator('.ac[aria-pressed="true"]', { hasText: texto });
   const casos = [
-    ['Llamar a Marta mañana #personal ! 45m', ['personal', 'mañana', 'prioridad', '45m'], 'Más adelante', /- \[ \] Llamar a Marta \| personal \| prioridad \| fecha: 2026-11-03 \| dur: 45m/],
+    ['Llamar a Marta mañana #personal ! 45m', ['personal', 'mañana', '! importante'], 'Más adelante', /- \[ \] Llamar a Marta \| personal \| prioridad \| fecha: 2026-11-03 \| dur: 45m/],
     ['Revisar el informe hoy #trabajo', ['trabajo', 'hoy'], 'Hoy', /## Hoy[^#]*- \[ \] Revisar el informe \| trabajo/],
-    ['Aprender Go algún día', ['sin tipo'], 'Algún día', /## Algún día[\s\S]*- \[ \] Aprender Go/],
+    ['Aprender Go algún día', ['sin tipo', 'algún día'], 'Algún día', /## Algún día[\s\S]*- \[ \] Aprender Go/],
     ['Pagar el seguro 15/11', ['sin tipo', '15 nov'], 'Más adelante', /- \[ \] Pagar el seguro .*fecha: 2026-11-15/],
   ];
   for (const [texto, chips, destino, re] of casos) {
     await cap.fill(texto);
-    for (const c of chips) await expect(prev.locator('.pv', { hasText: c }).first()).toBeVisible();
-    await expect(prev).toContainText(`→ ${destino}`);
+    for (const c of chips) await expect(activo(c)).toBeVisible();
+    await expect(panel).toContainText(`Irá a ${destino}`);
     await page.keyboard.press('Enter');
-    await expect(prev).toContainText(`guardado en ${destino} ✓`);
+    await expect(page.locator('#toast')).toContainText(`Guardado en ${destino} ✓`);
     await expect(cap).toHaveValue('');
     await esperarFichero(app, 'tareas.md', (t) => re.test(t));
   }
-  // solo tokens: no se guarda y se explica
   await cap.fill('mañana #trabajo 30m');
   await page.keyboard.press('Enter');
-  await expect(prev).toContainText('Escribe qué es');
-  // Esc vacía
+  await expect(page.locator('#capp')).toContainText('Escribe qué es');
   await page.keyboard.press('Escape');
   await expect(cap).toHaveValue('');
+  await expect(panel).toBeHidden();
+});
+
+test('captura con botones: tipo, cuándo e importante sin saberse nada; «/» elige el tipo; «✎ editar» al guardar', async ({ page, app }) => {
+  await abrir(page, app);
+  const cap = page.locator('#cap'), panel = page.locator('#cap-panel');
+  await cap.click();
+  await expect(panel).toBeVisible();
+  await cap.fill('Comprar regalo de Ana');
+  await panel.getByRole('button', { name: 'personal' }).click();
+  await panel.getByRole('button', { name: 'mañana' }).click();
+  await panel.getByRole('button', { name: '! importante' }).click();
+  await expect(cap).toBeFocused(); // pulsar un botón no quita el foco de la barra
+  await expect(panel.getByRole('button', { name: 'personal' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(panel).toContainText('Irá a Más adelante');
+  await panel.getByRole('button', { name: 'Guardar' }).click();
+  await esperarFichero(app, 'tareas.md', (t) => /- \[ \] Comprar regalo de Ana \| personal \| prioridad \| fecha: 2026-11-03/.test(t));
+  // lo elegido no se queda para la siguiente
+  await expect(panel.getByRole('button', { name: 'sin tipo' })).toHaveAttribute('aria-pressed', 'true');
+  // otro día con calendario
+  await cap.fill('Cita del dentista');
+  await panel.getByRole('button', { name: 'otro día…' }).click();
+  await panel.getByLabel('Fecha').fill('2026-11-20');
+  await expect(panel.locator('.ac[aria-pressed="true"]', { hasText: '20 nov' })).toBeVisible();
+  await cap.press('Enter');
+  await esperarFichero(app, 'tareas.md', (t) => /- \[ \] Cita del dentista \| fecha: 2026-11-20/.test(t));
+  // «/»: lista de tipos, se filtra al escribir, flechas y Enter
+  await cap.fill('Leer el capítulo 3 /');
+  await expect(panel).toContainText('Elige tipo');
+  await cap.press('e');
+  await expect(panel.locator('[data-cap-tipo]')).toHaveText(['estudio', 'entreno']);
+  await cap.press('ArrowDown');
+  await cap.press('Enter'); // elige «entreno», no guarda
+  await expect(cap).toHaveValue('Leer el capítulo 3 ');
+  await expect(panel.getByRole('button', { name: 'entreno' })).toHaveAttribute('aria-pressed', 'true');
+  await panel.getByRole('button', { name: 'estudio' }).click(); // cambiar de idea
+  await cap.press('Enter');
+  await esperarFichero(app, 'tareas.md', (t) => /- \[ \] Leer el capítulo 3 \| estudio/.test(t));
+  // y al guardar, «✎ editar» abre la tarea para poner la duración
+  await page.locator('#toast [data-accion-toast]').click();
+  await expect(page.locator('#v-hoy')).toBeVisible();
+  await expect(page.getByLabel('Texto de la tarea')).toHaveValue('Leer el capítulo 3');
+  await page.getByLabel('Duración (opcional)').fill('1h30');
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  await esperarFichero(app, 'tareas.md', (t) => /- \[ \] Leer el capítulo 3 \| estudio \| dur: 1h30/.test(t));
+  // una duración que no se entiende no se guarda
+  await page.getByRole('button', { name: 'Editar: Leer el capítulo 3' }).click();
+  await page.getByLabel('Duración (opcional)').fill('mucho');
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByLabel('Texto de la tarea')).toBeVisible();
+  expect(app.leer('tareas.md')).toMatch(/Leer el capítulo 3 \| estudio \| dur: 1h30/);
 });
 
 test('editar y borrar una tarea desde Hoy', async ({ page, app }) => {
@@ -119,7 +169,7 @@ test('editar y borrar una tarea desde Hoy', async ({ page, app }) => {
   await page.getByRole('button', { name: 'Editar: Llamar al gestor' }).click();
   await page.getByLabel('Texto de la tarea').fill('Llamar al gestor por la renta');
   await page.getByLabel('Fecha (opcional)').fill('2026-11-04');
-  await page.locator('#et-dur').selectOption({ label: '30m' });
+  await page.getByLabel('Duración (opcional)').fill('30m');
   await page.locator('#et-prioridad').check();
   await page.locator('#et-seccion').selectOption('mas');
   await page.getByRole('button', { name: 'Guardar' }).click();

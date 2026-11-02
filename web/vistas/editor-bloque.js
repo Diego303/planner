@@ -7,8 +7,7 @@ import { toast } from '../ui/toast.js';
 import * as f from '/core/fechas.js';
 import * as m from '/core/modelo.js';
 import { textoSobre } from '/core/color.js';
-
-const DURACIONES = [30, 60, 90, 120, 150, 180, 240, 510];
+import { horaDeMinutos, textoDuracion, leerHoras, campoHora, sugerenciasHora, normalizarHora } from '../ui/horas.js';
 
 /** Pasos extra del editor (los registra la fase de «Hecho» y «A medias»): { nombre: { pie(b), cuerpo(b, ed), alAbrir(el, b, ed) } } */
 export const pasosEditor = {};
@@ -22,7 +21,6 @@ let ed = null; // estado del editor abierto: { id, huella, tipo, subtipo, modo }
 export const editorAbierto = () => ed;
 export { bloqueActual };
 
-const etiquetaDuracion = (min) => (min < 60 ? `${min} min` : `${f.numero(min / 60)} h`);
 
 /** Aviso «la última vez lo dejaste en…» del tema del bloque (estudio o proyecto). */
 export function dejadoDe(d, titulo) {
@@ -34,11 +32,6 @@ function contenido(b, d) {
   const esEstudio = m.esEstudio(d.tipos, ed.tipo);
   const dej = dejadoDe(d, b.titulo);
   const las3 = m.las3De(d.semanaDoc);
-  const h0 = d.ajustes.horas.desde * 60, h1 = d.ajustes.horas.hasta * 60;
-  const inicios = [];
-  for (let t = h0; t < h1; t += 30) inicios.push(t);
-  if (!inicios.includes(b.inicio)) inicios.push(b.inicio), inicios.sort((x, y) => x - y);
-  const duraciones = DURACIONES.includes(b.fin - b.inicio) ? DURACIONES : [...DURACIONES, b.fin - b.inicio].sort((x, y) => x - y);
   const columnas = f.columnasSemana(st.ui.semana, d.ajustes.inicio_semana);
   if (!columnas.some((c) => c.semana === ed.semana && c.dia === b.dia)) columnas.push({ semana: ed.semana, dia: b.dia, fecha: f.fechaDeDia(ed.semana, b.dia) });
   const paso = ed.modo && pasosEditor[ed.modo];
@@ -52,9 +45,11 @@ ${dej && b.hecho == null ? html`<div class="nota-dejado">La última vez lo dejas
 <div data-subtipos ${esEstudio ? '' : 'hidden'}><label>Cómo vas a estudiar</label><div class="chips">${[['aprender', 'aprender'], ['repasar', '⟲ repasar'], ['simulacro', '◎ simulacro']].map(([k, t]) => html`<button type="button" class="ac ${ed.subtipo === k ? 'on' : ''}" data-subtipo="${k}" aria-pressed="${(ed.subtipo === k) ? 'true' : 'false'}">${t}</button>`)}</div></div>
 <label>Cuándo</label><div class="cuando">
   <select id="ed-dia" aria-label="Día">${columnas.map((c) => html`<option value="${c.semana}|${c.dia}" ${c.semana === ed.semana && c.dia === b.dia ? 'selected' : ''}>${f.DIAS[c.dia]} ${+c.fecha.slice(8)}</option>`)}</select>
-  <select id="ed-inicio" aria-label="Hora de inicio">${inicios.map((t) => html`<option value="${t}" ${t === b.inicio ? 'selected' : ''}>${f.horaCorta(t)}</option>`)}</select>
-  <select id="ed-dur" aria-label="Duración">${duraciones.map((x) => html`<option value="${x}" ${x === b.fin - b.inicio ? 'selected' : ''}>${etiquetaDuracion(x)}</option>`)}</select>
-</div>
+</div><div class="cuando" style="margin-top:5px">
+  <span class="mut">de</span>${campoHora('ed-inicio', horaDeMinutos(b.inicio), 'Empieza')}
+  <span class="mut">a</span>${campoHora('ed-fin', horaDeMinutos(b.fin), 'Termina')}${sugerenciasHora()}
+  <span class="mut" style="font-size:11px" id="ed-dur-texto">${textoDuracion(b.fin - b.inicio)}</span>
+</div><div class="error-form" role="alert" id="ed-error"></div>
 <label for="ed-paso">Primer paso <span style="color:var(--texto-3)">(opcional · qué abres y qué haces primero)</span></label><input id="ed-paso" value="${b.paso ?? ''}" maxlength="200" placeholder="p. ej. abrir el PDF del tema 4 y hacer las 10 preguntas" autocomplete="off">
 <label class="fila" style="margin-top:10px"><input type="checkbox" id="ed-plantilla" ${b.plantilla ? 'checked' : ''}> ↻ en la plantilla (cada semana)</label>
 ${paso ? paso.cuerpo(b, ed) : html`<div class="pie">${b.sugerido
@@ -63,17 +58,25 @@ ${paso ? paso.cuerpo(b, ed) : html`<div class="pie">${b.sugerido
 ${b.plantilla ? html`<div class="mut pista">Los cambios aquí solo afectan a esta semana. La plantilla se edita en Gestión → Plantilla.</div>` : ''}`}`;
 }
 
-/** Lee el formulario del editor → { cambios, destino } (destino = semana del día elegido). */
+/** ¿Las horas del formulario valen? Si no, lo dice en el editor y no se guarda. */
+export function horasValidas(el) {
+  const h = leerHoras($('#ed-inicio', el).value, $('#ed-fin', el).value);
+  const caja = $('#ed-error', el);
+  if (caja) caja.textContent = h.error ?? '';
+  if (h.error) $('#ed-fin', el)?.focus();
+  return !h.error;
+}
+
+/** Lee el formulario del editor → { cambios, destino } (destino = semana del día elegido). Horas libres. */
 export function leerCambios(el, b) {
   const d = derivados();
   const [destino, dia] = $('#ed-dia', el).value.split('|');
-  const inicio = +$('#ed-inicio', el).value;
-  const fin = Math.min(d.ajustes.horas.hasta * 60, inicio + +$('#ed-dur', el).value);
+  const h = leerHoras($('#ed-inicio', el).value, $('#ed-fin', el).value);
   const cambios = {
     titulo: $('#ed-titulo', el).value.trim() || 'Sin título',
     tipo: ed.tipo,
     subtipo: m.esEstudio(d.tipos, ed.tipo) ? ed.subtipo : null,
-    dia: +dia, inicio, fin: Math.max(fin, inicio + 30),
+    dia: +dia, inicio: h.error ? b.inicio : h.inicio, fin: h.error ? b.fin : h.fin,
     paso: $('#ed-paso', el).value.trim() || null,
   };
   const plantilla = $('#ed-plantilla', el).checked;
@@ -153,25 +156,38 @@ function enlazar(el, b) {
       ed.subtipo = ed.subtipo === t.dataset.subtipo ? null : t.dataset.subtipo;
       for (const x of $$('[data-subtipo]', el)) { x.classList.toggle('on', x.dataset.subtipo === ed.subtipo); x.setAttribute('aria-pressed', x.dataset.subtipo === ed.subtipo); }
     } else if (t.dataset.ed === 'cerrar') cerrarEditor();
-    else if (t.dataset.ed === 'guardar') { guardarFormulario(el); cerrarEditor(); }
-    else if (t.dataset.ed === 'aceptar') { guardarFormulario(el, { sugerido: false }); cerrarEditor(); }
+    else if (t.dataset.ed === 'guardar') { if (horasValidas(el)) { guardarFormulario(el); cerrarEditor(); } }
+    else if (t.dataset.ed === 'aceptar') { if (horasValidas(el)) { guardarFormulario(el, { sugerido: false }); cerrarEditor(); } }
     else if (t.dataset.ed === 'eliminar') {
       const actual = bloqueActual();
       if (!actual) return cerrarEditor();
       enviar('bloque.eliminar', { semana: ed.semana, id: ed.id, huella: m.huellaDe(actual) }, { mensaje: () => `Bloque «${actual.titulo}» eliminado` });
       cerrarEditor();
     } else if (t.dataset.paso) {
-      cambiarPaso(el, t.dataset.paso);
+      if (horasValidas(el)) cambiarPaso(el, t.dataset.paso);
     } else if (accionesEditor[t.dataset.ed]) {
       accionesEditor[t.dataset.ed](el, bloqueActual());
     }
   };
   el.onkeydown = (ev) => {
-    if (ev.key === 'Enter' && ev.target.matches('#ed-titulo, #ed-paso')) {
+    if (ev.key === 'Enter' && ev.target.matches('#ed-titulo, #ed-paso, #ed-inicio, #ed-fin')) {
       ev.preventDefault();
+      if (!horasValidas(el)) return;
       guardarFormulario(el, b.sugerido ? { sugerido: false } : {});
       cerrarEditor();
     }
+  };
+  el.addEventListener('focusout', (ev) => {
+    if (!ev.target.matches?.('#ed-inicio, #ed-fin')) return;
+    const n = normalizarHora(ev.target.value);
+    if (n) ev.target.value = n;
+  });
+  // la duración se ve al cambiar las horas
+  el.oninput = (ev) => {
+    if (!ev.target.matches('#ed-inicio, #ed-fin')) return;
+    const h = leerHoras($('#ed-inicio', el).value, $('#ed-fin', el).value);
+    $('#ed-dur-texto', el).textContent = h.error ? '' : textoDuracion(h.fin - h.inicio);
+    $('#ed-error', el).textContent = '';
   };
   pasosEditor[ed.modo]?.alAbrir?.(el, b, ed);
 }

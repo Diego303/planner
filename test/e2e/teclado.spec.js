@@ -53,7 +53,7 @@ for (const vista of ['Semana', 'Hoy', 'Progreso']) {
     await page.locator('body').click({ position: { x: 1, y: 1 } });
     const controles = await page.locator('#app').evaluate((app) => [...app.querySelectorAll('button:not([disabled]), input:not([disabled]), select, [tabindex="0"], [contenteditable="true"]')]
       .filter((e) => e.offsetParent !== null && !e.closest('[hidden]')).length);
-    const paradas = await recorrer(page, controles + 5);
+    const paradas = await recorrer(page, controles + 25); // + los botones del panel de «apunta algo» al pasar por él
     const sinNombre = paradas.filter((p) => !p.body && !p.nombre);
     expect(sinNombre, 'controles sin nombre accesible').toEqual([]);
     const sinFoco = paradas.filter((p) => !p.body && !p.visible);

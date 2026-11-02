@@ -75,9 +75,11 @@ function banda(v) {
 
 function las3(v) {
   const editable = !v.ro;
-  return html`<div class="las3"><span class="mut" style="font-size:12px;margin-right:4px">Las 3</span>${v.las3.map((o) => html`<div class="b3 ${o.hecha ? 'hecha' : ''}" data-las3="${o.id}">
+  // siempre se ve de qué semana son (es fácil escribirlas en la siguiente sin darse cuenta)
+  const etiqueta = v.esActual ? 'Las 3 de esta semana' : `Las 3 de la semana ${f.numeroSemana(v.id)}`;
+  return html`<div class="las3"><span class="${v.esActual ? 'mut' : 'aviso-texto'}" style="font-size:12px;margin-right:4px" data-las3-etiqueta>${etiqueta}</span>${v.las3.map((o) => html`<div class="b3 ${o.hecha ? 'hecha' : ''}" data-las3="${o.id}">
       <button type="button" class="cb ${o.hecha ? 'on' : ''}" data-las3-marcar ${editable ? '' : 'disabled'} aria-label="${o.hecha ? 'Desmarcar' : 'Marcar como hecha'}: ${o.texto}">${o.hecha ? '✓' : ''}</button>
-      <span ${editable ? raw('contenteditable="true" spellcheck="false"') : ''} data-las3-texto role="textbox" aria-label="Objetivo de la semana">${o.texto}</span></div>`)}${editable && v.las3.length < 3 ? html`<div class="b3"><span class="cb" aria-hidden="true"></span><input data-las3-nueva maxlength="140" aria-label="Añadir uno de Las 3" placeholder="＋ añadir lo que hará que la semana merezca la pena"></div>` : ''}${!v.las3.length && !editable ? html`<span class="mut" style="font-size:12px">—</span>` : ''}</div>`;
+      <span ${editable ? raw('contenteditable="true" spellcheck="false"') : ''} data-las3-texto role="textbox" aria-label="Objetivo de la semana">${o.texto}</span></div>`)}${editable && v.las3.length < 3 ? html`<div class="b3"><span class="cb" aria-hidden="true"></span><input data-las3-nueva maxlength="140" aria-label="Añadir uno de Las 3" placeholder="${v.esActual ? '＋ añadir lo que hará que esta semana merezca la pena' : `＋ añadir para la semana ${f.numeroSemana(v.id)}`}"></div>` : ''}${!v.las3.length && !editable ? html`<span class="mut" style="font-size:12px">—</span>` : ''}</div>`;
 }
 
 function cabeceraDias(v) {

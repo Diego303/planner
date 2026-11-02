@@ -63,8 +63,9 @@ test('editar todos los campos: título, tipo, subtipo, día, hora, duración, pr
   await expect(pop.locator('[data-subtipos]')).toBeVisible();
   await pop.locator('[data-subtipo="repasar"]').click();
   await pop.locator('#ed-dia').selectOption({ label: 'S 7' });
-  await pop.locator('#ed-inicio').selectOption({ label: '16:30' });
-  await pop.locator('#ed-dur').selectOption({ label: '2 h' });
+  await pop.getByLabel('Empieza').fill('16:30');
+  await pop.getByLabel('Termina').fill('18:30');
+  await expect(pop.locator('#ed-dur-texto')).toHaveText('2 h');
   await pop.locator('#ed-paso').fill('abrir el lab 3 | y leer el enunciado');
   await pop.locator('#ed-plantilla').check();
   await pop.locator('[data-ed="guardar"]').click();
@@ -272,4 +273,67 @@ test('navegar ‹ hoy ›: pasadas, cerradas en solo lectura de verdad, futuras 
   await page.getByRole('button', { name: 'Semana siguiente' }).click();
   await expect(page.locator('.wk-num')).toHaveText('semana 1');
   await expect(page.locator('.wk-rango')).toHaveText('4 – 10 ene');
+});
+
+test('horas libres en el editor: un bloque de 9 h, hasta medianoche, y un fin antes del inicio se explica', async ({ page, app }) => {
+  await abrir(page, app);
+  const pop = page.locator('.pop');
+  await bloque(page, 'Trabajo').click();
+  await pop.getByLabel('Empieza').fill('08:30');
+  await pop.getByLabel('Termina').fill('17:30');
+  await expect(pop.locator('#ed-dur-texto')).toHaveText('9 h');
+  await pop.getByRole('button', { name: 'Guardar' }).click();
+  await esperarFichero(app, W45, (t) => /^- L 08:30-17:30 \| trabajo \| Trabajo \| plantilla$/m.test(t));
+  // hasta medianoche (00:00 como fin) y minutos sueltos
+  await bloque(page, 'Deploy del pipeline').click();
+  await pop.getByLabel('Empieza').fill('21:45');
+  await pop.getByLabel('Termina').fill('00:00');
+  await expect(pop.locator('#ed-dur-texto')).toHaveText('2 h 15 min');
+  await pop.getByLabel('Termina').press('Enter');
+  await esperarFichero(app, W45, (t) => /^- J 21:45-24:00 \| trabajo \| Deploy del pipeline$/m.test(t));
+  // fin antes del inicio: no se guarda y se dice por qué
+  await bloque(page, 'Gimnasio').click();
+  await pop.getByLabel('Empieza').fill('19:00');
+  await pop.getByLabel('Termina').fill('18:00');
+  await pop.getByRole('button', { name: 'Guardar' }).click();
+  await expect(pop.getByRole('alert')).toHaveText('La hora de fin tiene que ser después de la de inicio');
+  await expect(pop).toBeVisible();
+  expect(app.leer(W45)).toMatch(/^- L 18:00-19:30 \| entreno \| Gimnasio \| plantilla$/m);
+});
+
+test('Las 3 dicen de qué semana son; las escritas en la siguiente se pasan a esta desde Hoy y salen en el cajón', async ({ page, app }) => {
+  // como te pasó: esta semana sin Las 3 y la siguiente con ellas
+  app.escribir(W45, app.leer(W45).replace(/## Las 3\n(- .*\n)+/, '## Las 3\n'));
+  await abrir(page, app);
+  await expect(page.locator('[data-las3-etiqueta]')).toHaveText('Las 3 de esta semana');
+  await expect(page.locator('#drawer')).toContainText('Aún sin elegir · escribirlas →');
+  await page.getByRole('button', { name: 'Semana siguiente' }).click();
+  await expect(page.locator('[data-las3-etiqueta]')).toHaveText('Las 3 de la semana 46');
+  await expect(page.locator('[data-las3-etiqueta]')).toHaveClass(/aviso-texto/);
+  for (const t of ['Organizarme', 'Estudiar', 'Entrenar']) {
+    await page.locator('[data-las3-nueva]').fill(t);
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#wk [data-las3]', { hasText: t })).toBeVisible();
+  }
+  await esperarFichero(app, 'semanas/2026-W46.md', (t) => /- \[ \] Entrenar/.test(t ?? ''));
+  await page.locator('#seg').getByRole('button', { name: 'Hoy' }).click();
+  const card = page.locator('#hoy-las3');
+  await expect(card).toContainText('Aún no has elegido Las 3 de esta semana');
+  await expect(card).toContainText('Tienes Las 3 en la semana 46 (la siguiente): Organizarme · Estudiar · Entrenar');
+  await card.getByRole('button', { name: 'Pasarlas a esta semana' }).click();
+  await expect(card).toContainText('○ Organizarme');
+  await esperarFichero(app, W45, (t) => /## Las 3\n- \[ \] Organizarme\n- \[ \] Estudiar\n- \[ \] Entrenar\n/.test(t));
+  await esperarFichero(app, 'semanas/2026-W46.md', (t) => !/Organizarme/.test(t));
+  // y en el cajón de la Semana
+  await page.locator('#seg').getByRole('button', { name: 'Semana' }).click();
+  await page.getByRole('button', { name: 'hoy', exact: true }).click();
+  await page.locator('#drawer').getByRole('tab', { name: 'Hoy' }).click();
+  await expect(page.locator('#drawer')).toContainText('○ Organizarme');
+  // «escribirlas» lleva a la semana actual con el cursor en «añadir»
+  app.escribir(W45, app.leer(W45).replace(/## Las 3\n(- .*\n)+/, '## Las 3\n'));
+  await expect(page.locator('#drawer')).toContainText('Aún sin elegir', { timeout: 4000 });
+  await page.getByRole('button', { name: 'Semana siguiente' }).click();
+  await page.locator('#drawer').getByRole('button', { name: /escribirlas/ }).click();
+  await expect(page.locator('.wk-num')).toHaveText('semana 45');
+  await expect(page.locator('[data-las3-nueva]')).toBeFocused();
 });
