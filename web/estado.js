@@ -81,9 +81,31 @@ export const irASemana = (id) => { st.ui.semana = id; return cargar(id); };
 
 let cola = Promise.resolve();
 
+// ---------- ¿Está todo guardado? (indicador de la barra) ----------
+// `enVuelo`: operaciones y deshaceres que aún no ha confirmado el servidor (en disco).
+let enVuelo = 0;
+let fallo = null; // hora del último cambio que no se pudo guardar (se enseña unos segundos)
+let ultimoGuardado = null;
+/** 'caido' | 'guardando' | 'fallo' | 'guardado' */
+export function estadoGuardado() {
+  if (st.caido) return 'caido';
+  if (enVuelo > 0) return 'guardando';
+  if (fallo && performance.now() - fallo < 6000) return 'fallo';
+  return 'guardado';
+}
+export const horaUltimoGuardado = () => ultimoGuardado;
+function enCamino(delta) {
+  enVuelo = Math.max(0, enVuelo + delta);
+  if (delta < 0 && enVuelo === 0 && !st.caido) ultimoGuardado = new Date();
+  acciones.alGuardar?.();
+}
+// Cerrar la pestaña con un cambio aún en camino: el navegador pregunta antes.
+addEventListener('beforeunload', (ev) => { if (enVuelo > 0) ev.preventDefault(); });
+
 function manejarError(e) {
   generacion++;
   pendientes.length = 0;
+  if (!(e instanceof ErrorApi && e.estado === 0)) { fallo = performance.now(); setTimeout(() => acciones.alGuardar?.(), 6100); }
   if (e instanceof ErrorApi && e.estado === 0) { st.caido = true; recomponer(); avisar(); toastError('Servidor parado · solo lectura'); return; }
   if (e instanceof ErrorApi && e.estado === 409) toast(e.message);
   else toastError(e.message);
@@ -107,10 +129,18 @@ export function enviar(op, args, { mensaje = null, accion = null } = {}) {
   }
   const pendiente = { op, args };
   pendientes.push(pendiente);
+  enCamino(+1);
   if (local) { st.datos = { ...st.datos, ficheros: local.mundo.ficheros }; avisar(); }
   const gen = generacion;
   const respuesta = cola.then(async () => {
-    if (gen !== generacion) return null; // una operación anterior falló: esta se basaba en ella
+    try {
+      if (gen !== generacion) return null; // una operación anterior falló: esta se basaba en ella
+      return await enviarAhora();
+    } finally {
+      enCamino(-1);
+    }
+  });
+  async function enviarAhora() {
     try {
       const semanaPedida = st.ui.semana;
       const r = await api.op({ op, args, versiones: st.base.versiones, hoy: hoy(), ahora: ahora(), semana: semanaPedida });
@@ -127,7 +157,7 @@ export function enviar(op, args, { mensaje = null, accion = null } = {}) {
       await manejarError(e);
       return null;
     }
-  });
+  }
   cola = respuesta.catch(() => null);
   return { local: local?.resultado ?? null, respuesta };
 }
@@ -148,6 +178,7 @@ export function enviarVarias(lista, { mensaje = null } = {}) {
 }
 
 export function deshacer(inversaId) {
+  enCamino(+1);
   cola = cola.then(async () => {
     try {
       const r = await api.deshacer({ inversaId, hoy: hoy(), ahora: ahora(), semana: st.ui.semana });
@@ -158,6 +189,8 @@ export function deshacer(inversaId) {
     } catch (e) {
       if (e instanceof ErrorApi && e.estado === 0) await manejarError(e);
       else { toastError(e.message); await cargar(); }
+    } finally {
+      enCamino(-1);
     }
   });
   return cola;

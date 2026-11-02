@@ -12,6 +12,36 @@ test('una edición a mano con la web abierta se ve en ≤ 3 s @tiempo', async ({
   await expect(bloque(page, 'Deploy del pipeline')).toHaveCount(0, { timeout: 3000 });
 });
 
+test('indicador «Guardado» / «Guardando…»: dice la verdad sobre lo que ya está en los ficheros', async ({ page, app }) => {
+  await abrir(page, app);
+  const ind = page.locator('#guardado');
+  await expect(ind).toHaveText('Guardado');
+  await expect(ind).toHaveAttribute('title', /Todo lo que ves está en tus ficheros/);
+  // mientras el servidor no confirma, «Guardando…»; y el fichero aún no lo tiene
+  let soltar;
+  const retenida = new Promise((r) => { soltar = r; });
+  await page.route('**/api/op', async (ruta) => { await retenida; await ruta.continue(); });
+  await page.locator('#cap').fill('Comprar pilas');
+  await page.keyboard.press('Enter');
+  await expect(ind).toHaveText('Guardando…');
+  await expect(ind).toHaveAttribute('data-estado', 'guardando');
+  expect(app.leer('tareas.md')).not.toContain('Comprar pilas');
+  // varias seguidas: sigue «Guardando…» hasta la última
+  await page.locator('#cap').fill('Comprar pan');
+  await page.keyboard.press('Enter');
+  soltar();
+  await expect(ind).toHaveText('Guardado');
+  const t = app.leer('tareas.md');
+  expect(t).toContain('Comprar pilas');
+  expect(t).toContain('Comprar pan');
+  await expect(ind).toHaveAttribute('title', /último cambio a las \d\d:\d\d/);
+  await page.unroute('**/api/op');
+  // deshacer también pasa por «Guardando…» y termina en «Guardado»
+  await page.locator('#toast [data-deshacer]').click();
+  await esperarFichero(app, 'tareas.md', (x) => !x.includes('Comprar pan'));
+  await expect(ind).toHaveText('Guardado');
+});
+
 test('si había una operación en vuelo y el fichero cambió fuera: aviso de recarga, sin pisar nada', async ({ page, app }) => {
   page.permitirErrores(/status of 409/); // Chrome apunta en la consola toda respuesta 4xx
   await abrir(page, app);
@@ -26,6 +56,8 @@ test('si había una operación en vuelo y el fichero cambió fuera: aviso de rec
   await expect(page.locator('#toast')).toContainText('Cambiaste el fichero fuera del planner, recargado');
   expect(app.leer('tareas.md')).toContain('- [ ] escrita en Obsidian');
   expect(app.leer('tareas.md')).not.toContain('Comprar pilas');
+  await expect(page.locator('#guardado')).toHaveText('No se guardó el último cambio');
+  await expect(page.locator('#guardado')).toHaveText('Guardado', { timeout: 8000 });
   await page.unroute('**/api/op');
   // tras recargar, se puede repetir y entonces sí se guarda
   await page.locator('#cap').fill('Comprar pilas');
@@ -41,6 +73,7 @@ test('servidor parado: banda de solo lectura; al volver se recupera sin perder n
   await esperarFichero(app, 'tareas.md', (t) => t.includes('Antes de parar'));
   await app.parar();
   await expect(page.locator('#banda')).toContainText('Servidor parado · solo lectura', { timeout: 4000 });
+  await expect(page.locator('#guardado')).toHaveText('Sin conexión · no se guarda');
   // en solo lectura no se puede editar: ni proponer, ni editar bloques, ni Las 3
   await expect(page.getByRole('button', { name: 'Proponer semana' })).toBeDisabled();
   await expect(page.locator('#wk .col.ro')).toHaveCount(7);
@@ -50,6 +83,7 @@ test('servidor parado: banda de solo lectura; al volver se recupera sin perder n
   await app.volver();
   await expect(page.locator('#banda')).not.toContainText('Servidor parado', { timeout: 8000 });
   await expect(page.locator('#wk .col.ro')).toHaveCount(0);
+  await expect(page.locator('#guardado')).toHaveText('Guardado');
   expect(app.leer('tareas.md')).toContain('Antes de parar');
   await page.locator('#cap').fill('Después de volver');
   await page.keyboard.press('Enter');

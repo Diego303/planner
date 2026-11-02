@@ -47,11 +47,17 @@ Marca cada punto; si alguno falla, apunta qué viste (y la hora) y mira la termi
 30. [ ] Diario (cajón): pulsa un día de esta semana, cambia el ánimo y guarda.
 31. [ ] Teclado: `?` enseña los atajos; `←` `→` cambian de semana; `n` va a «apunta algo»; escribiendo en un campo no hacen nada.
 
+## Guardado
+
+32. [ ] Junto a Semana · Hoy · Progreso pone **● Guardado**. Al apuntar una tarea pasa un momento a **○ Guardando…** y vuelve a **● Guardado**; entonces la tarea ya está en `tareas.md`.
+33. [ ] Pasa el ratón por «Guardado»: dice tu carpeta de datos y la hora del último cambio.
+34. [ ] Para el planner (`planner stop`) con la pestaña abierta: en ≤ 5 s pone **Sin conexión · no se guarda** en rojo; al arrancarlo vuelve a **● Guardado**.
+
 ## Copias y cierre
 
-32. [ ] Tras el primer cambio del día, existe `D:\planner\.copias\AAAA-MM-DD\` con tus ficheros (aunque tarde un poco en terminar).
-33. [ ] Ctrl + C en la terminal (o `planner stop`) mientras guardas algo: al volver a arrancar, el cambio está entero o no está; nunca a medias.
-34. [ ] Con el planner parado y la pestaña abierta, sale la banda «Servidor parado · solo lectura»; al arrancarlo de nuevo desaparece sola en ≤ 5 s.
+35. [ ] Tras el primer cambio del día, existe `D:\planner\.copias\AAAA-MM-DD\` con tus ficheros (aunque tarde un poco en terminar).
+36. [ ] Ctrl + C en la terminal (o `planner stop`) mientras guardas algo: al volver a arrancar, el cambio está entero o no está; nunca a medias.
+37. [ ] Con el planner parado y la pestaña abierta, sale la banda «Servidor parado · solo lectura»; al arrancarlo de nuevo desaparece sola en ≤ 5 s.
 
 ## Si algo falla
 

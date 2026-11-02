@@ -51,6 +51,8 @@ planner/
 ```
 
 - `web/estado.js` y `web/api.js` sacan de `app.js` el almacén y la red para que `app.js` solo orqueste.
+- **Indicador de guardado** (`#guardado`, junto al selector de vista): `estado.js` cuenta lo que está «en camino» (operaciones y deshaceres que el servidor aún no ha confirmado en disco) y expone `estadoGuardado()` → `guardando` · `guardado` · `fallo` (6 s tras un error que no es de conexión) · `caido`; `app.js` lo pinta (`acciones.alGuardar`), con «Guardando…» visible al menos 400 ms. Los intervalos usan `performance.now()` (monotónico; no depende del reloj del sistema ni del reloj fijo de los e2e). Con algo en camino, cerrar la pestaña pide confirmación (`beforeunload`). Solo lee estado del cliente: no escribe nada.
+- `enviarVarias(lista, {mensaje})` (en `estado.js`): varias operaciones de un mismo formulario con un único aviso y un «deshacer» que las deshace todas, de la última a la primera.
 - `web/vistas/editor-bloque.js` separa el popover del bloque (es la pieza más grande de la vista Semana).
 - `server/estado.js` compone el estado completo y las métricas; `api.js` se queda en rutas.
 - Los formatos que comparten gramática comparten módulo (`listas.js`, `tareas.js` con el archivo, `tipos.js` con la plantilla) en vez de un fichero por formato: menos código repetido y una sola forma de leer `- clave: valor`.
@@ -308,9 +310,9 @@ El usuario pidió avanzar sin paradas; estas son las preguntas que habría hecho
 | 6 | Semana cerrada por error: reabrir no cambia la siguiente | `cierre.test.js` |
 | 7 | Semanas futuras se crean desde plantilla al abrirlas | `ops.test.js`; UI Gestión → Semanas → planificar |
 | 8 | Semanas pasadas sin fichero: vacías y solo lectura | `semana-core.test.js` (estado «sin datos»), `ops.test.js` (rechazo) |
-| 9 | Cambiar la plantilla no toca semanas existentes | `ops.test.js` (solo toca plantilla.md) |
+| 9 | Cambiar la plantilla: con la casilla (por defecto) llega a la semana actual desde hoy y a las futuras ya creadas, solo donde el bloque sigue tal cual; nunca a semanas pasadas o cerradas; sin la casilla, solo `plantilla.md` | `ops.test.js` (`plantilla.crear/editar/eliminar` con y sin `aplicar`), e2e `gestion.spec` (Plantilla) |
 | 10 | Borrar un tipo en uso: sin `pasarA`, bloqueado con explicación; la UI pregunta a qué tipo pasar sus usos | `ops.test.js`, `server.test.js` (422 «en uso»), `flexible.test.js` (`pasarA`), e2e `flexible.spec` |
-| 11 | Bloque que cruza la hora visible máxima: se recorta al pintar | `capacidad.js` (`minutosVisibles`), `semana.js` (recorte al pintar, el fichero no cambia) |
+| 11 | Bloque que cruza la hora visible máxima: se recorta al pintar | `capacidad.js` (`minutosVisibles`), `semana.js` (recorte al pintar, el fichero no cambia); el editor avisa si cae fuera de las horas visibles y ofrece ampliarlas (e2e `flexible.spec`) |
 | 12 | Semana ISO 53 y cambio de año | `fechas.test.js`, `proponer.test.js` (escenario 12), `semana-core.test.js` |
 | 13 | Puerto ocupado → siguiente libre; segunda instancia → abre la primera | `cli.test.js` |
 | 14 | Carpeta inexistente o vacía → onboarding | `cli.test.js` (`datos.vacia`), `ops.test.js` (`datos.inicializar`); probado en navegador |
