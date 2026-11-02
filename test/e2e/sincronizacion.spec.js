@@ -3,7 +3,7 @@ import { test, expect, abrir, bloque, esperarFichero } from './ayudas.js';
 
 const W45 = 'semanas/2026-W45.md';
 
-test('una edición a mano con la web abierta se ve en ≤ 3 s', async ({ page, app }) => {
+test('una edición a mano con la web abierta se ve en ≤ 3 s @tiempo', async ({ page, app }) => {
   await abrir(page, app);
   app.escribir(W45, app.leer(W45).replace('## Bloques\n', '## Bloques\n- S 16:00-17:00 | personal | Añadido en el Bloc de notas\n'));
   await expect(bloque(page, 'Añadido en el Bloc de notas')).toBeVisible({ timeout: 3000 });

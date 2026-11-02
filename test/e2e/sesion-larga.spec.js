@@ -9,7 +9,7 @@ const MINUTOS = Number(process.env.PLANNER_SESION_MIN ?? 0);
 test.use({ datos: 'tres-años' });
 test.skip(!MINUTOS, 'solo con PLANNER_SESION_MIN');
 
-test(`sesión larga (${MINUTOS ? `${MINUTOS} min` : "PLANNER_SESION_MIN=30 para la de 30 min"}) sin fugas`, async ({ page, app }) => {
+test(`sesión larga (${MINUTOS ? `${MINUTOS} min` : "PLANNER_SESION_MIN=30 para la de 30 min"}) sin fugas @tiempo`, async ({ page, app }) => {
   test.setTimeout((MINUTOS + 8) * 60_000);
   // el servidor, en su propio proceso: así su memoria no se mezcla con la de Playwright
   await app.parar();

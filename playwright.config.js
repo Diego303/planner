@@ -1,4 +1,6 @@
 // e2e de la web con Playwright (Chromium). Cada test arranca su servidor con una copia nueva de ejemplo/.
+// Los que miden tiempos (@tiempo: ≤ 3 s, < 50 ms, sesión larga) se pasan aparte y de uno en uno (pnpm test:e2e):
+// con 4 navegadores a la vez, la contienda de CPU retrasa los timers y la medida deja de ser la de un uso normal.
 // En WSL, Chromium necesita libnss3: una vez, «sudo pnpm exec playwright install-deps chromium».
 import { defineConfig } from '@playwright/test';
 
