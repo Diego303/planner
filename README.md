@@ -21,7 +21,7 @@ Con los datos inventados de [`ejemplo/`](ejemplo/) (`planner --ejemplo --hoy 202
 
 ## Instalación (WSL o Linux)
 
-Requisitos: Node ≥ 20 y pnpm. Paso a paso, desde cero, en [`instrucciones.md`](instrucciones.md).
+Requisitos: Node ≥ 20 y pnpm. Paso a paso, desde cero, en [`instrucciones.md`](instrucciones.md). Qué puedes rellenar y dónde, en [`guia.md`](guia.md).
 
 ```bash
 pnpm setup                               # una vez (si da «Text file busy», mira instrucciones.md, paso 2.3)

@@ -14,7 +14,8 @@
     "ejemplo/",
     "plugin/",
     "README.md",
-    "instrucciones.md"
+    "instrucciones.md",
+    "guia.md"
   ],
   "engines": {
     "node": ">=20"

@@ -146,6 +146,8 @@ El `.vbs` ejecuta `wsl.exe -e bash -lic "planner --silencioso"`. Más detalles e
 
 ## 5. El día a día
 
+> ¿Dónde se mete cada cosa? Listado completo, para seguirlo paso a paso: [`guia.md`](guia.md).
+
 | Dónde | Qué haces |
 |---|---|
 | **Semana** | Doble clic en un hueco = bloque de 1 h. Arrastra para mover, estira el borde inferior, clic para editar. **Hecho ✓** pregunta cuánto duró; **A medias** guarda dónde lo dejaste. **Proponer semana** reparte tus horas de estudio y proyectos. Escribe **Las 3** arriba. |
