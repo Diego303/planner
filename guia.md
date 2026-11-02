@@ -4,13 +4,15 @@ La pantalla tiene cinco partes. Esto es lo que puedes rellenar en cada una.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ planner  [Semana][Hoy][Progreso]   ＋ apunta algo…  Gestión ▾│  ← barra de arriba
+│ planner [Semana][Hoy][Progreso] ● Guardado  ＋ apunta algo… Gestión▾│ ← barra de arriba
 ├───────────────────────────────────────────┬─────────────────┤
 │                                           │  Hoy·Metas·Diario│
 │   la vista que elijas                     │  (el cajón)      │
 │   (Semana, Hoy o Progreso)                │                  │
 └───────────────────────────────────────────┴─────────────────┘
 ```
+
+**● Guardado** (junto a las vistas): todo lo que ves ya está en tus ficheros Markdown. **○ Guardando…** mientras se escribe; **No se guardó el último cambio** si algo falló (el aviso de abajo dice por qué); **Sin conexión · no se guarda** si el servidor está parado. Pasa el ratón por encima para ver la carpeta y la hora del último cambio.
 
 ---
 

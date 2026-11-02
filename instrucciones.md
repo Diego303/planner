@@ -158,7 +158,7 @@ El `.vbs` ejecuta `wsl.exe -e bash -lic "planner --silencioso"`. Más detalles e
 | **Progreso** | Cómo vas con cada certificación, lo que tardas de verdad, constancia, ánimo y lecciones. |
 | **Gestión ▾** | Semanas, **Cerrar semana** (el domingo o el lunes, 4 pasos), Plantilla (cada entrada se puede **editar**, con subtipo y primer paso; los cambios llegan también a las semanas ya creadas), Tipos, Tema, Ajustes y Atajos de teclado. En **Semanas** puedes ir a la semana de cualquier fecha. |
 
-Cada cambio se puede **deshacer** durante 10 s desde el aviso de abajo. Atajos: `n` apuntar algo, `1` `2` `3` vistas, `←` `→` semanas, `h` semana actual, `?` ayuda y `Esc` cierra lo que esté abierto.
+Junto a Semana · Hoy · Progreso, **● Guardado** te dice que todo lo que ves ya está en tus ficheros (**○ Guardando…** mientras se escribe). Cada cambio se puede **deshacer** durante 10 s desde el aviso de abajo. Atajos: `n` apuntar algo, `1` `2` `3` vistas, `←` `→` semanas, `h` semana actual, `?` ayuda y `Esc` cierra lo que esté abierto.
 
 ## 6. Dónde están tus datos
 

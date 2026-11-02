@@ -66,6 +66,8 @@ Copia [`scripts/windows/planner-inicio.vbs`](scripts/windows/) a la carpeta `she
 
 **Apunta algo** (barra superior): escribe y Enter. Al pulsarla, botones para el tipo, cuándo e importante; `/` para elegir el tipo; al guardar, «✎ editar» para la duración y demás. **💡 es una idea** la guarda en el inbox, tal cual. También valen `#área`, `hoy | mañana | lun…dom | dd/mm`, `!`, `45m | 2h | 1h30`, `algún día`.
 
+**● Guardado / ○ Guardando…** (junto a las vistas): si lo que ves ya está escrito en tus ficheros; también avisa si un cambio no se guardó o si el servidor está parado. Cerrar la pestaña con un cambio aún en camino pide confirmación.
+
 Teclado: `n` apuntar algo · `1` `2` `3` Semana, Hoy, Progreso · `←` `→` semana anterior y siguiente · `h` semana actual · `?` ayuda · `Esc` cierra popovers, modales y menús · `Enter` abre el bloque con foco y guarda formularios. Los atajos de una tecla no actúan mientras escribes.
 
 ## Tus datos

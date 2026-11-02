@@ -223,6 +223,7 @@ Logo · selector **Semana / Hoy / Progreso** · **«apunta algo…»** centrado 
 ### Semana
 - Cabecera: rango («2 – 8 nov»), «semana 45», estado en pastilla, ‹ hoy ›, **Proponer semana**. A la derecha, «más adelante · n», «n sugerencias», «⚠ n solapes».
 - Banda de estado (cerrada / sin cerrar / reabierta / futura) con su acción (Reabrir / Cerrar ahora).
+- Barra superior: tras el selector de vista, **● Guardado / ○ Guardando…** (operaciones sin confirmar por el servidor), «No se guardó el último cambio» (6 s tras un error) y «Sin conexión · no se guarda». En pantallas estrechas, solo el punto.
 - **Las 3** como pastillas marcables y editables en línea; «si→» abre su plan B (si … → entonces …). «Quitar sugerencias» borra lo propuesto no aceptado.
 - Rejilla 7 días × horas visibles (`PX` = 23 px/h). Bajo cada día, línea de **ocupación** (verde ≤ capacidad, ámbar ≤ capacidad + 15, rojo más) y aviso «x h estudio» si supera `foco_max`.
 - Bloques: color del tipo al 11 % de fondo con texto del color. Marcas: `↻` plantilla, `★` avanza las 3, `◎` simulacro, `⟲` repaso, `☾` trabajo después de `cierre` (rayado gris), `⚠` solape (anillo rojo), discontinuo = sugerido, tachado = hecho.
