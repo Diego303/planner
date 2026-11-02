@@ -21,7 +21,7 @@ Con los datos inventados de [`ejemplo/`](ejemplo/) (`planner --ejemplo --hoy 202
 
 ## Instalación (WSL o Linux)
 
-Requisitos: Node ≥ 20 y pnpm. Paso a paso, desde cero, en [`instrucciones.md`](instrucciones.md).
+Requisitos: Node ≥ 20 y pnpm. Paso a paso, desde cero, en [`instrucciones.md`](instrucciones.md). Qué puedes rellenar y dónde, en [`guia.md`](guia.md).
 
 ```bash
 pnpm setup                               # una vez (si da «Text file busy», mira instrucciones.md, paso 2.3)
@@ -58,14 +58,15 @@ Copia [`scripts/windows/planner-inicio.vbs`](scripts/windows/) a la carpeta `she
 
 | Vista | Para qué |
 |---|---|
-| **Semana** | Doble clic en un hueco crea un bloque de 1 h; arrastra para mover (ajuste a 30 min y a otro día); estira el borde inferior; clic para editar (título, tipo, ◎ simulacro / ⟲ repaso, primer paso, ↻ plantilla). **Hecho ✓** pregunta cuánto duró de verdad; **A medias** guarda dónde lo dejaste. **Proponer semana** coloca tus horas de estudio y proyectos sin solapar. |
-| **Hoy** | Horario del día, Las 3, tareas de hoy (máx. configurable) y más adelante por grupos; **cierre del día** en 4 pasos que termina en «mañana empiezo por…». |
+| **Semana** | Doble clic en un hueco crea un bloque de 1 h; arrastra para mover (ajuste a 30 min y a otro día); estira el borde inferior; clic para editar (título, tipo —o uno nuevo—, ◎ simulacro / ⟲ repaso, día u **otra fecha** de otra semana, de qué hora a qué hora, primer paso, ↻ plantilla, **duplicar en otros días**; si cae fuera de las horas visibles, avisa y ofrece ampliarlas). **↻ Aplicar plantilla** añade lo que falte de la plantilla; **Quitar sugerencias** limpia lo que propuso «Proponer». En Las 3, **si→** guarda un plan B («si pasa esto → entonces…»). **Hecho ✓** pregunta cuánto duró de verdad (y se puede cambiar después); **A medias** guarda dónde lo dejaste. **Proponer semana** coloca tus horas de estudio y proyectos sin solapar. |
+| **Hoy** | Horario del día, Las 3, **Ideas** (inbox: → tarea o ×), tareas de hoy (máx. configurable; con Hoy lleno, ↑ sube igualmente avisando) y más adelante por grupos; **cierre del día** en 4 pasos que termina en «mañana empiezo por…». |
 | **Progreso** | Certificaciones (bullet graph), plan frente a real, lo que tardas de verdad, constancia sin rachas, ánimo y horas, lecciones. |
-| **Gestión ▾** | Semanas (−4…+5), Cerrar semana (asistente de 4 pasos), Plantilla, Tipos, Tema y Ajustes. |
+| **Gestión ▾** | Semanas (−4…+5), Cerrar semana (asistente de 4 pasos), Plantilla (editable, con subtipo y primer paso; los cambios llegan a las semanas ya creadas), Tipos (renombrar y quitar pasando sus bloques a otro tipo), Tema y Ajustes (horas visibles de 0 a 24, cierre a cualquier hora). Semanas lleva a la semana de cualquier fecha. |
+| **Cajón** | Hoy · **Metas** (✎ en cada estudio y proyecto: nombre, horas, examen, simulacros, siguiente paso, pausar y reactivar) · **Diario** (pulsa un día de los últimos 7 para escribirlo o cambiarlo). |
 
-**Apunta algo** (barra superior): `#área` (prefijo de un tipo), `hoy | mañana | lun…dom | dd/mm`, `!` prioridad, `45m | 2h | 1h30`, `algún día`. Enter guarda.
+**Apunta algo** (barra superior): escribe y Enter. Al pulsarla, botones para el tipo, cuándo e importante; `/` para elegir el tipo; al guardar, «✎ editar» para la duración y demás. **💡 es una idea** la guarda en el inbox, tal cual. También valen `#área`, `hoy | mañana | lun…dom | dd/mm`, `!`, `45m | 2h | 1h30`, `algún día`.
 
-Teclado: `Esc` cierra popovers, modales y menús; `Enter` abre el bloque con foco y guarda formularios.
+Teclado: `n` apuntar algo · `1` `2` `3` Semana, Hoy, Progreso · `←` `→` semana anterior y siguiente · `h` semana actual · `?` ayuda · `Esc` cierra popovers, modales y menús · `Enter` abre el bloque con foco y guarda formularios. Los atajos de una tecla no actúan mientras escribes.
 
 ## Tus datos
 

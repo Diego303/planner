@@ -10,6 +10,7 @@ function contenido() {
   const d = derivados();
   const actual = d.meta.semanaActual;
   return html`${cabecera('Semanas')}<div class="mut mod-nota">Cada semana es un fichero (semanas/${actual}.md). Abre cualquiera: las pasadas para consultar o reabrir, las futuras para planificar con tiempo.</div>
+<div style="display:flex;gap:6px;align-items:center;margin:4px 0 8px;font-size:12px">Ir a la semana del <input type="date" id="ir-fecha" value="${d.meta.hoy}" aria-label="Ir a la semana de esta fecha"><button type="button" class="dark" data-ir-fecha>Ir</button></div>
 ${d.meta.semanas.map(({ id, estado }) => html`<div class="pend" style="${id === st.ui.semana ? 'font-weight:500' : ''}"><span>${ICONO_ESTADO[estado]} Semana ${f.numeroSemana(id)} <span class="mut" style="font-size:10.5px">${f.rangoSemana(id)} · ${estado}</span></span><span class="opts"><button type="button" data-ir="${id}" class="${id === st.ui.semana ? 'on' : ''}">${id < actual ? 'ver' : id === actual ? 'hoy' : 'planificar'}</button>${estado === 'cerrada' ? html`<button type="button" data-reabrir="${id}">reabrir</button>` : ''}${(estado === 'sin cerrar' || estado === 'reabierta') && acciones.cerrarSemana ? html`<button type="button" data-cerrar="${id}">cerrar</button>` : ''}</span></div>`)}`;
 }
 
@@ -17,6 +18,15 @@ export function abrirSemanas() {
   abrirModal(contenido(), { etiqueta: 'Semanas' });
   const mod = cuerpoModal();
   on(mod, 'click', '[data-ir]', (_ev, el) => { cerrarModal(); acciones.irA('semana'); irASemana(el.dataset.ir); });
+  const irAFecha = () => {
+    const fecha = mod.querySelector('#ir-fecha').value;
+    if (!f.esFecha(fecha)) return;
+    cerrarModal();
+    acciones.irA('semana');
+    irASemana(f.semanaDe(fecha));
+  };
+  on(mod, 'click', '[data-ir-fecha]', irAFecha);
+  on(mod, 'keydown', '#ir-fecha', (ev) => { if (ev.key === 'Enter') irAFecha(); });
   on(mod, 'click', '[data-reabrir]', (_ev, el) => {
     const id = el.dataset.reabrir;
     cerrarModal();

@@ -12,7 +12,7 @@ const pintar = (page, vista) => page.evaluate((v) => {
   return performance.now() - t;
 }, vista);
 
-test('pintar la Semana < 50 ms y Progreso < 200 ms (mediana de 7)', async ({ page, app }) => {
+test('pintar la Semana < 50 ms y Progreso < 200 ms (mediana de 7) @tiempo', async ({ page, app }) => {
   const lentos = [];
   page.on('console', (m) => { if (/pintar tardó/.test(m.text())) lentos.push(m.text()); });
   await abrir(page, app);
@@ -35,7 +35,7 @@ test('pintar la Semana < 50 ms y Progreso < 200 ms (mediana de 7)', async ({ pag
   expect(Date.now() - t0).toBeLessThan(500);
 });
 
-test('el sondeo no escribe nada en disco ni recarga el estado si no cambia nada', async ({ page, app }) => {
+test('el sondeo no escribe nada en disco ni recarga el estado si no cambia nada @tiempo', async ({ page, app }) => {
   const peticiones = [];
   page.on('request', (r) => { if (r.url().includes('/api/')) peticiones.push(new URL(r.url()).pathname); });
   await abrir(page, app);

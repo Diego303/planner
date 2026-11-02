@@ -28,7 +28,10 @@ pestanasCajon.hoy = {
     return html`<div class="mut" style="font-size:12px">${dia} · ahora</div>
 <div class="ahora-titulo">${a.ahora ? a.ahora.titulo : 'Libre'} <span>${a.ahora ? `hasta ${f.horaCorta(a.ahora.fin)}` : ''}</span></div>
 <div class="mut" style="font-size:12px;margin-bottom:14px">${a.despues ? `Después: ${a.despues.titulo} · ${f.horaCorta(a.despues.inicio)}` : ''}</div>
-<div style="display:flex;justify-content:space-between"><span class="lab">Tareas</span><span class="mut" style="font-size:12px">${abiertas}/${d.ajustes.tareas_hoy}</span></div>
+<div class="lab">Las 3 de esta semana</div>${d.las3Actual.length
+    ? d.las3Actual.map((o) => html`<div style="font-size:12px;padding:2px 0" class="${o.hecha ? 'mut' : ''}">${o.hecha ? '✓' : '○'} ${o.texto}</div>`)
+    : html`<button type="button" class="add mut" style="font-size:11.5px" data-escribir-las3>Aún sin elegir · escribirlas →</button>`}
+<div style="display:flex;justify-content:space-between;margin-top:14px"><span class="lab">Tareas</span><span class="mut" style="font-size:12px">${abiertas}/${d.ajustes.tareas_hoy}</span></div>
 ${d.tareas.hoy.map((t) => html`<div class="task ${t.hecha ? 'done' : ''}" style="grid-template-columns:18px 1fr" data-tarea-cajon="${t.id}"><button type="button" class="cb ${t.hecha ? 'on' : ''}" aria-label="${t.hecha ? 'Desmarcar' : 'Marcar como hecha'}: ${t.texto}">${t.hecha ? '✓' : ''}</button><span class="tx">${t.prioridad ? html`<b class="peligro-texto">! </b>` : ''}${t.texto}${tareaVencida(t, d.meta.hoy) ? html` <span class="peligro-texto" style="font-size:11px">vencida</span>` : ''}</span></div>`)}
 ${d.tareas.hoy.length ? '' : html`<div class="vacio" style="padding:8px 0">Nada para hoy.</div>`}
 <button type="button" class="add" style="margin-top:10px" data-abrir-hoy>Abrir Hoy →</button>`;
@@ -39,5 +42,6 @@ ${d.tareas.hoy.length ? '' : html`<div class="vacio" style="padding:8px 0">Nada 
       if (t) enviar('tarea.marcar', { id: t.id, huella: m.huellaDe(t), hecha: !t.hecha });
     });
     on(raiz, 'click', '[data-abrir-hoy]', () => acciones.irA?.('hoy'));
+    on(raiz, 'click', '[data-escribir-las3]', () => acciones.escribirLas3?.());
   },
 };

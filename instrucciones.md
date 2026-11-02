@@ -146,16 +146,19 @@ El `.vbs` ejecuta `wsl.exe -e bash -lic "planner --silencioso"`. Más detalles e
 
 ## 5. El día a día
 
+> ¿Dónde se mete cada cosa? Listado completo, para seguirlo paso a paso: [`guia.md`](guia.md).
+
 | Dónde | Qué haces |
 |---|---|
-| **Semana** | Doble clic en un hueco = bloque de 1 h. Arrastra para mover, estira el borde inferior, clic para editar. **Hecho ✓** pregunta cuánto duró; **A medias** guarda dónde lo dejaste. **Proponer semana** reparte tus horas de estudio y proyectos. Escribe **Las 3** arriba. |
-| **Hoy** | Tus tareas (✎ en cada una para editar, mover o borrar), lo de más adelante y, al final del día, **Cerrar el día** (termina con «mañana empiezo por…»). |
-| **Apunta algo** (barra de arriba) | `Llamar al gestor mañana #pers 30m !` → Enter. Fichas: `#área`, `hoy`/`mañana`/`lun…dom`/`dd/mm`, `!`, `45m`/`2h`/`1h30`, `algún día`. |
-| **Metas** (cajón derecho) | Horas de estudio de la semana, simulacros y el siguiente paso de cada proyecto. |
+| **Semana** | Doble clic en un hueco = bloque de 1 h. Arrastra para mover, estira el borde inferior, clic para editar (horas libres, «de 8:30 a 18:00», sin límite de duración; **otra fecha…** lo lleva a otra semana; **Duplicar en otros días**; «＋ nuevo» crea un tipo ahí mismo). **Hecho ✓** pregunta cuánto duró; **A medias** guarda dónde lo dejaste. **Proponer semana** reparte tus horas de estudio y proyectos; **↻ Aplicar plantilla** añade lo que le falte de tu plantilla (avisa si algo se solapa). Escribe **Las 3** arriba: la etiqueta dice si son de esta semana o de otra; **si→** les pone un plan B. **Quitar sugerencias** borra lo propuesto que no aceptaste. |
+| **Hoy** | Tus tareas (✎ en cada una para editar, mover o borrar), lo de más adelante (↑ sube a hoy, aunque esté lleno), tus **Ideas** (→ tarea o ×) y, al final del día, **Cerrar el día** (termina con «mañana empiezo por…»). |
+| **Apunta algo** (barra de arriba) | Escribe qué es y Enter. Al pulsar la barra salen botones para el **tipo**, **cuándo** (hoy, mañana, otro día, más adelante, algún día) e **importante**; con **/** eliges el tipo con el teclado. Al guardar, **✎ editar** abre la tarea para la duración, la fecha exacta, etc. **💡 es una idea** la manda al inbox (sale en Hoy, en «Ideas»). Si te los sabes, también valen `#área`, `mañana`/`lun…dom`/`dd/mm`, `!`, `45m`/`2h`/`1h30`, `algún día`. |
+| **Metas** (cajón derecho) | Horas de estudio de la semana, simulacros y el siguiente paso de cada proyecto. **✎** en cada uno para cambiar nombre, horas, examen, añadir un simulacro, o pausar y reactivar un proyecto. |
+| **Diario** (cajón derecho) | Pulsa cualquiera de los últimos 7 días para escribir o cambiar su ánimo, su línea y «mañana empiezo por…». |
 | **Progreso** | Cómo vas con cada certificación, lo que tardas de verdad, constancia, ánimo y lecciones. |
-| **Gestión ▾** | Semanas, **Cerrar semana** (el domingo o el lunes, 4 pasos), Plantilla, Tipos, Tema y Ajustes. |
+| **Gestión ▾** | Semanas, **Cerrar semana** (el domingo o el lunes, 4 pasos), Plantilla (cada entrada se puede **editar**, con subtipo y primer paso; los cambios llegan también a las semanas ya creadas), Tipos, Tema, Ajustes y Atajos de teclado. En **Semanas** puedes ir a la semana de cualquier fecha. |
 
-Cada cambio se puede **deshacer** durante 10 s desde el aviso de abajo. `Esc` cierra lo que esté abierto.
+Cada cambio se puede **deshacer** durante 10 s desde el aviso de abajo. Atajos: `n` apuntar algo, `1` `2` `3` vistas, `←` `→` semanas, `h` semana actual, `?` ayuda y `Esc` cierra lo que esté abierto.
 
 ## 6. Dónde están tus datos
 
@@ -169,7 +172,7 @@ D:\planner\
 ├── tareas.md           Hoy · Más adelante · Algún día
 ├── estudio.md          certificaciones y cursos (horas/semana, examen, simulacros)
 ├── proyectos.md        proyectos y su siguiente paso
-├── inbox.md            notas sueltas (las ordena el plugin opcional)
+├── inbox.md            ideas sueltas («💡 es una idea»; salen en Hoy, en «Ideas»)
 ├── tema.md             (opcional) tu tema personalizado
 ├── semanas\2026-W45.md una por semana: Las 3, bloques y cierre
 ├── diario\2026-11-02.md uno por día cerrado: ánimo, una línea, «mañana empiezo por»
@@ -269,8 +272,8 @@ Empiezas con tus ajustes, colores y semana tipo, pero sin semanas, tareas ni dia
 
 ## 9. Personalizar
 
-- **Gestión → Ajustes**: capacidad del día, tareas máximas en Hoy, horas visibles, hora de cierre, si la semana empieza en lunes o domingo, foco máximo de estudio, tus mejores horas, margen de «Proponer», copias y tema.
-- **Gestión → Tipos**: colores y banderas «trabajo» (cuenta para la hora de desconexión ☾) y «estudio» (subtipos, foco y simulacros).
+- **Gestión → Ajustes**: capacidad del día, tareas máximas en Hoy, horas visibles (de 0 a 24), hora de cierre (la que quieras), si la semana empieza en lunes o domingo, foco máximo de estudio, tus mejores horas, margen de «Proponer», copias y tema.
+- **Gestión → Tipos**: colores, nombre (pulsa el nombre; cambia también tus bloques, plantilla y tareas), quitar (si está en uso, eliges a qué tipo pasan sus bloques) y banderas «trabajo» (cuenta para la hora de desconexión ☾) y «estudio» (subtipos, foco y simulacros).
 - **Gestión → Tema**: Nórdico claro u oscuro, Automático (sigue a Windows), Papel, Universo, Halloween, Alto contraste o Personalizado (crea `tema.md`; ejemplo en el [README](README.md#tema-personalizado)).
 - **Puerto**: `--puerto 5000` una vez, o `puerto:` en Ajustes para siempre (se aplica al arrancar). Si cambias el puerto, vuelve a instalar la app desde la dirección nueva.
 

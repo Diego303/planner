@@ -198,7 +198,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .task.done .tx { text-decoration: line-through; color: var(--texto-3); }
 .row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--linea); font-size: 12.5px; }
 .mv, .x { opacity: 0; font-size: 11px; padding: 1px 8px; border-radius: var(--radio-chip); border: 0; background: var(--superficie-2); }
-.task:hover .mv, .lt:hover .mv, .row:hover .x, .mv:focus-visible, .x:focus-visible { opacity: 1; }
+.task:hover .mv, .lt:hover .mv, .lt:hover .x, .row:hover .x, .mv:focus-visible, .x:focus-visible { opacity: 1; }
 .lt { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 7px 0; border-top: 1px solid var(--linea); font-size: 12.5px; }
 .grp { font-size: 11.5px; color: var(--mut); margin: 10px 0 2px; }
 .grp.vencidas { color: var(--peligro); }
@@ -268,7 +268,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 #cierre-manana { border-color: var(--acento); }
 .lleno { font-size: 10.5px; color: var(--aviso); margin-top: 4px; }
 .dias7 { display: flex; justify-content: space-between; }
-.dias7 > div { text-align: center; }
+.dias7 > div, .dias7 > button { text-align: center; }
 .circulo { width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 5px; border: 1px dashed var(--borde); }
 .circulo[data-animo] { border: 0; }
 .circulo[data-animo="1"] { background: var(--animo-1); }
@@ -297,3 +297,25 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .m-titulo { height: 5px; width: 45%; border-radius: 3px; background: var(--texto); opacity: .8; }
 .m-blk { height: 9px; border-radius: 3px; }
 .aviso-contraste { font-size: 11px; color: var(--aviso); margin-top: 6px; }
+
+/* «Apunta algo»: panel con botones para el tipo, el cuándo y la prioridad */
+.cap-panel { position: absolute; left: 0; right: 0; top: 44px; z-index: 20; background: var(--superficie); border: var(--borde-ancho) solid var(--borde); border-radius: 12px; box-shadow: var(--sombra-alta); padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; min-width: 420px; }
+.cap-panel[hidden] { display: none; }
+.cp-fila { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.cp-lab { font-size: 11px; color: var(--mut); width: 52px; flex: none; }
+.cp-fila .ac { font-size: 11.5px; }
+.cp-pie { display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: 11.5px; border-top: 1px solid var(--linea); padding-top: 8px; flex-wrap: wrap; }
+.cp-pie .mut { font-size: 10.5px; }
+
+/* horas libres («de 8:30 a 18:00») en el editor de bloque y en la plantilla */
+.cuando { align-items: center; flex-wrap: wrap; }
+.pop input.hora, .mod input.hora, input.hora { width: 78px; padding-left: 6px; padding-right: 4px; text-align: left; font-size: 12px; font-variant-numeric: tabular-nums; }
+.b3-si { font-size: 10.5px; padding: 1px 6px; margin-left: 2px; border-radius: var(--radio-chip); color: var(--mut); background: transparent; border: var(--borde-ancho) dashed var(--borde); }
+.b3-si.on { color: var(--texto); border-style: solid; }
+.dia7 { background: transparent; border: 0; padding: 2px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; border-radius: 6px; }
+.dia7.on { background: var(--superficie-2); }
+
+/* Atajos de teclado (?) */
+table.atajos { border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+table.atajos td { padding: 4px 10px 4px 0; vertical-align: top; }
+kbd { font: 11.5px ui-monospace, monospace; padding: 1px 6px; border: 1px solid var(--borde-control); border-bottom-width: 2px; border-radius: 5px; background: var(--superficie); white-space: nowrap; }

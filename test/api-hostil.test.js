@@ -12,7 +12,7 @@ import { paraCada, TROZOS } from './azar.js';
 const OPS_PUBLICAS = opsPublicas();
 const CLAVES = ('id semana huella cambios nombre seccion titulo clave inicio siguiente hecha dias delta tipo texto nota fin color valor horas dia '
   + 'destino animo tarea sugerido subtipo paso total si rel proyectos prioridad plantillas plantilla manana linea lecciones horasSemana extra '
-  + 'examen entonces dur decisiones comentario bloque avanzado aplazar fecha').split(' ');
+  + 'examen entonces dur decisiones comentario bloque avanzado aplazar fecha desde a aplicar nuevo pasarA exceder').split(' ');
 const HOY = '2026-11-02';
 
 const limpiar = [];

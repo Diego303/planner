@@ -1,13 +1,14 @@
 // Gestión → Ajustes: todos los de ajustes.md, aplicados al momento.
 import { html, on, $, raw } from '../ui/dom.js';
 import { abrirModal, cabecera, cuerpoModal, modalAbierto } from '../ui/modal.js';
-import { st, enviar, derivados, alCambiar } from '../estado.js';
+import { st, enviar, derivados, alCambiar, acciones } from '../estado.js';
 import { avisoLineas } from '../ui/avisos.js';
 import { entradaMenu, itemMenu, opcionesHora } from './comun.js';
 
 /** Lo que hacen las secciones extra al pintarse (p. ej. colorear las miniaturas de tema): [(mod) → void] */
 export const alPintarAjustes = [];
 import * as f from '/core/fechas.js';
+import { minutosDeHora, sugerenciasHora } from '../ui/horas.js';
 
 let abierta = false;
 
@@ -22,9 +23,9 @@ function contenido() {
   return html`${cabecera('Ajustes')}
 <label for="aj-capacidad">Capacidad: ocupar como máximo el <b id="aj-capacidad-v" style="color:var(--texto)">${a.capacidad} %</b> de tu día (el resto es margen)</label><input type="range" id="aj-capacidad" data-ajuste="capacidad" min="50" max="100" step="5" value="${a.capacidad}" style="width:100%">
 <label for="aj-tareas">Tareas máximas en Hoy</label><input type="number" id="aj-tareas" data-ajuste="tareas_hoy" min="1" max="20" value="${a.tareas_hoy}" style="width:70px;font-size:12px">
-<label>Horas visibles en el calendario</label><div style="display:flex;gap:6px;align-items:center"><select id="aj-desde" data-ajuste="horas" style="font-size:12px" aria-label="Desde">${opciones([5, 6, 7, 8, 9, 10].map((h) => [h, h]), a.horas.desde)}</select> a <select id="aj-hasta" data-ajuste="horas" style="font-size:12px" aria-label="Hasta">${opciones([20, 21, 22, 23, 24].map((h) => [h, h]), a.horas.hasta)}</select> h</div>
+<label>Horas visibles en el calendario</label><div style="display:flex;gap:6px;align-items:center"><select id="aj-desde" data-ajuste="horas" style="font-size:12px" aria-label="Desde">${opciones(Array.from({ length: 24 }, (_, h) => [h, h]), a.horas.desde)}</select> a <select id="aj-hasta" data-ajuste="horas" style="font-size:12px" aria-label="Hasta">${opciones(Array.from({ length: 24 }, (_, h) => [h + 1, h + 1]), a.horas.hasta)}</select> h</div>
 <label for="aj-inicio">La semana empieza en <span style="color:var(--texto-3)">(solo cambia cómo se ve: los ficheros siguen siendo semanas ISO de lunes a domingo)</span></label><select id="aj-inicio" data-ajuste="inicio_semana" style="font-size:12px">${opciones([['lunes', 'lunes'], ['domingo', 'domingo']], a.inicio_semana)}</select>
-<label for="aj-cierre">Hora del cierre del día</label><select id="aj-cierre" data-ajuste="cierre" style="font-size:12px">${opcionesHora(19 * 60, 24 * 60, a.cierre)}</select>
+<label for="aj-cierre">Hora del cierre del día <span style="color:var(--texto-3)">(la que quieras: 17:30, 22:00…)</span></label><input type="text" class="hora" id="aj-cierre" data-ajuste="cierre" value="${f.deMinutos(a.cierre)}" inputmode="numeric" maxlength="5" placeholder="hh:mm" list="horas-30" autocomplete="off">${sugerenciasHora()}<div class="error-form" role="alert" id="aj-error"></div>
 <label for="aj-foco">Máximo de estudio intenso en un día</label><select id="aj-foco" data-ajuste="foco_max" style="font-size:12px">${opciones([1, 1.5, 2, 2.5, 3, 3.5, 4, 5].map((h) => [h, `${f.numero(h)} h`]), a.foco_max)}</select>
 <label for="aj-mejores">Mis mejores horas para estudiar <span style="color:var(--texto-3)">(opcional · «Proponer» las usa primero)</span></label><select id="aj-mejores" data-ajuste="mejores_horas" style="font-size:12px">${opciones(['sin preferencia', 'mañanas', 'tardes', 'noches'].map((x) => [x, x]), a.mejores_horas)}</select>
 <label for="aj-margen">Margen al proponer</label><select id="aj-margen" data-ajuste="margen" style="font-size:12px">${opciones([['auto', `según lo que tardas de verdad (estudio ×${factor ? f.numero(factor.factor) : '1'})`], ['fijo', 'solo la capacidad']], a.margen)}</select>
@@ -37,7 +38,8 @@ ${seccionesAjustes.map((fn) => raw(String(fn())))}
 function valorDe(el, mod) {
   switch (el.dataset.ajuste) {
     case 'horas': return { desde: +$('#aj-desde', mod).value, hasta: +$('#aj-hasta', mod).value };
-    case 'capacidad': case 'tareas_hoy': case 'cierre': case 'foco_max': case 'puerto': return Number(el.value);
+    case 'cierre': return minutosDeHora(el.value); // «22», «2230», «22.30»… → minutos
+    case 'capacidad': case 'tareas_hoy': case 'foco_max': case 'puerto': return Number(el.value);
     default: return el.value;
   }
 }
@@ -55,7 +57,16 @@ function enlazar() {
   on(mod, 'input', '#aj-capacidad', (_ev, el) => { $('#aj-capacidad-v', mod).textContent = `${el.value} %`; });
   on(mod, 'change', '[data-ajuste]', (_ev, el) => {
     const clave = el.dataset.ajuste, valor = valorDe(el, mod);
-    if (clave === 'horas' && valor.desde >= valor.hasta) { repintar(); return; }
+    const err = $('#aj-error', mod);
+    if (err) err.textContent = '';
+    if (clave === 'horas' && valor.desde >= valor.hasta) {
+      if (err) err.textContent = '«Desde» tiene que ser antes que «hasta»';
+      return;
+    }
+    if (clave === 'cierre' && (valor == null || valor >= 1440)) {
+      if (err) err.textContent = 'Escribe la hora del cierre como 22:30';
+      return;
+    }
     enviar('ajustes.cambiar', { clave, valor });
   });
 }
@@ -68,3 +79,4 @@ export function abrirAjustes() {
 
 alCambiar(repintar);
 entradaMenu({ id: 'ajustes', orden: 60, pintar: () => itemMenu('ajustes', 'Ajustes'), accion: abrirAjustes });
+entradaMenu({ id: 'atajos', orden: 70, pintar: () => itemMenu('atajos', 'Atajos de teclado', html`<kbd>?</kbd>`), accion: () => acciones.atajos?.() });

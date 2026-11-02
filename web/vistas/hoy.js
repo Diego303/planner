@@ -1,7 +1,7 @@
 // Vista Hoy: horario del día con «ahora», Las 3 con su «si → entonces», tareas de hoy, más adelante
 // por grupos y el cierre del día en 4 pasos (termina siempre en «mañana empiezo por…»).
 import { html, raw, $, on, pintar, temaActual } from '../ui/dom.js';
-import { st, enviar, derivados, ahora } from '../estado.js';
+import { st, enviar, derivados, ahora, acciones, irASemana } from '../estado.js';
 import { vistas } from '../app.js';
 import { agendaDeHoy, tareaVencida } from './cajon-hoy.js';
 import { avisoLineas } from '../ui/avisos.js';
@@ -30,8 +30,29 @@ function horario(d, tema) {
   return html`<div class="card"><div class="lab">${f.capitalizar(f.fechaLarga(d.meta.hoy))}</div>${filas.length ? filas : html`<div class="mut">Hoy no hay bloques.</div>`}</div>`;
 }
 
+/** Las 3 de la semana siguiente si las de esta están vacías (se escribieron en la semana que no era). */
+function las3Siguiente(d) {
+  const sig = f.sumarSemanas(d.meta.semanaActual, 1);
+  return { id: sig, lista: m.las3De(st.datos.ficheros[`semanas/${sig}.md`]) };
+}
+
 function las3Hoy(d) {
-  return html`<div class="card"><div class="lab">Las 3 de la semana</div>${d.las3Actual.length ? d.las3Actual.map((o) => html`<div class="b3h ${o.hecha ? 'hecha' : ''}"><div class="t" style="font-size:12.5px">${o.hecha ? '✓' : '○'} ${o.texto}</div>${o.si ? html`<div class="mut" style="font-size:11px;margin-left:16px">si ${o.si} → ${o.entonces ?? '…'}</div>` : ''}</div>`) : html`<div class="vacio">Aún no has elegido Las 3 de esta semana: escríbelas en la vista Semana.</div>`}</div>`;
+  const lista = d.las3Actual.map((o) => html`<div class="b3h ${o.hecha ? 'hecha' : ''}"><div class="t" style="font-size:12.5px">${o.hecha ? '✓' : '○'} ${o.texto}</div>${o.si ? html`<div class="mut" style="font-size:11px;margin-left:16px">si ${o.si} → ${o.entonces ?? '…'}</div>` : ''}</div>`);
+  if (d.las3Actual.length) return html`<div class="card"><div class="lab">Las 3 de esta semana</div>${lista}</div>`;
+  const sig = las3Siguiente(d);
+  return html`<div class="card"><div class="lab">Las 3 de esta semana</div>
+<div class="vacio">Aún no has elegido Las 3 de esta semana: las 3 cosas que harían que mereciera la pena.</div>
+${sig.lista.length ? html`<div class="recuadro" style="font-size:11.5px;margin-top:8px">Tienes Las 3 en la semana ${f.numeroSemana(sig.id)} (la siguiente): ${sig.lista.map((o) => o.texto).join(' · ')}.<div class="pie" style="margin-top:6px"><button type="button" class="dark" data-las3-pasar="${sig.id}">Pasarlas a esta semana</button></div></div>` : ''}
+<button type="button" class="add" style="margin-top:8px" data-las3-escribir>Escribirlas en la semana →</button></div>`;
+}
+
+/** Ideas sueltas del inbox: pasarlas a tarea o borrarlas. */
+function ideas() {
+  const notas = m.notasInbox(st.datos.ficheros['inbox.md']);
+  const texto = (n) => n.texto.replace(/^\s*[-*]\s+(\[[ xX]\]\s+)?/, '');
+  return html`<div class="card"><div class="fila-lab"><span class="lab">Ideas</span><span class="mut" style="font-size:12px">${notas.length || ''}</span></div>${notas.length
+    ? notas.map((n) => html`<div class="lt" style="grid-template-columns:1fr auto" data-idea="${n.id}"><span>${texto(n)}</span><span class="opts"><button type="button" class="mv" data-idea-tarea aria-label="Pasar a tarea: ${texto(n)}" title="Pasar a tarea (Más adelante)">→ tarea</button><button type="button" class="x" data-idea-borrar aria-label="Borrar idea: ${texto(n)}">×</button></span></div>`)
+    : html`<div class="mut" style="font-size:11.5px">Apunta ideas sueltas con «💡 es una idea» en «apunta algo»: salen aquí hasta que las ordenes.</div>`}</div>`;
 }
 
 // ---------- Editar y borrar tareas ----------
@@ -41,14 +62,13 @@ const DURACIONES = [15, 30, 45, 60, 90, 120, 180, 240];
 const SECCIONES = [['hoy', 'Hoy'], ['mas', 'Más adelante'], ['algun', 'Algún día']];
 
 function formularioTarea(d, t) {
-  const durs = t.dur && !DURACIONES.includes(t.dur) ? [...DURACIONES, t.dur].sort((a, b) => a - b) : DURACIONES;
   return html`<div class="frm" data-form-tarea="${t.id}" style="margin:6px 0">
 <input id="et-texto" value="${t.texto}" maxlength="200" aria-label="Texto de la tarea">
 <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
   <select id="et-tipo" aria-label="Tipo" style="font-size:11.5px"><option value="">sin tipo</option>${d.tipos.map((x) => html`<option ${m.normalizar(x.nombre) === m.normalizar(t.tipo ?? '') ? 'selected' : ''}>${x.nombre}</option>`)}</select>
   <select id="et-seccion" aria-label="Sección" style="font-size:11.5px">${SECCIONES.map(([k, n]) => html`<option value="${k}" ${k === t.seccion ? 'selected' : ''}>${n}</option>`)}</select>
   <input id="et-fecha" type="date" value="${t.fecha ?? ''}" aria-label="Fecha (opcional)" style="font-size:11.5px">
-  <select id="et-dur" aria-label="Duración" style="font-size:11.5px"><option value="">sin duración</option>${durs.map((x) => html`<option value="${x}" ${x === t.dur ? 'selected' : ''}>${f.formatoDuracion(x)}</option>`)}</select>
+  <input id="et-dur" list="et-duraciones" value="${t.dur ? f.formatoDuracion(t.dur) : ''}" placeholder="duración: 45m, 2h…" aria-label="Duración (opcional)" style="font-size:11.5px;width:120px"><datalist id="et-duraciones">${DURACIONES.map((x) => html`<option value="${f.formatoDuracion(x)}"></option>`)}</datalist>
   <label class="fila" style="margin:0"><input type="checkbox" id="et-prioridad" ${t.prioridad ? 'checked' : ''}> prioridad</label>
 </div>
 <div class="pie" style="margin-top:4px"><button type="button" class="dark" data-et="guardar">Guardar</button><button type="button" data-et="cancelar">Cancelar</button><button type="button" class="peligro-texto" data-et="eliminar">Eliminar</button></div></div>`;
@@ -62,9 +82,18 @@ function guardarTarea(form) {
   if (!t) { pintarHoy(); return; }
   const texto = $('#et-texto', form).value.trim();
   if (!texto) { $('#et-texto', form).focus(); editando = t.id; return; }
+  // duración libre («45m», «2h», «1h30», «90»): lo que no se entiende no se guarda y se dice
+  const durTexto = $('#et-dur', form).value.trim();
+  const dur = !durTexto ? null : /^\d+$/.test(durTexto) ? +durTexto : f.parsearDuracion(durTexto);
+  if (durTexto && !(dur > 0 && dur <= 24 * 60)) {
+    editando = t.id;
+    $('#et-dur', form).setCustomValidity('Escribe la duración como 45m, 2h o 1h30');
+    $('#et-dur', form).reportValidity();
+    return;
+  }
   const cambios = {
     texto, tipo: $('#et-tipo', form).value || null, fecha: $('#et-fecha', form).value || null,
-    dur: $('#et-dur', form).value ? +$('#et-dur', form).value : null, prioridad: $('#et-prioridad', form).checked,
+    dur, prioridad: $('#et-prioridad', form).checked,
   };
   const seccion = $('#et-seccion', form).value;
   if (seccion !== t.seccion) enviar('tarea.mover', { id: t.id, huella: m.huellaDe(t), seccion, cambios });
@@ -81,7 +110,7 @@ function filaTarea(d, t, tema) {
 function tareasHoy(d, tema) {
   const abiertas = d.tareas.hoy.filter((t) => !t.hecha).length;
   const lleno = abiertas >= d.ajustes.tareas_hoy;
-  return html`<div class="card"><div class="fila-lab"><span class="lab">Tareas de hoy</span><span class="mut" style="font-size:12px">${abiertas}/${d.ajustes.tareas_hoy}</span></div>${d.tareas.hoy.map((t) => filaTarea(d, t, tema))}${d.tareas.hoy.length ? '' : html`<div class="vacio" style="padding:8px 0">Nada para hoy. Apunta algo arriba o sube algo de «Más adelante».</div>`}${lleno ? html`<div class="lleno">Hoy está lleno (${d.ajustes.tareas_hoy}). Lo nuevo irá a Más adelante.</div>` : ''}</div>`;
+  return html`<div class="card"><div class="fila-lab"><span class="lab">Tareas de hoy</span><span class="mut" style="font-size:12px">${abiertas}/${d.ajustes.tareas_hoy}</span></div>${d.tareas.hoy.map((t) => filaTarea(d, t, tema))}${d.tareas.hoy.length ? '' : html`<div class="vacio" style="padding:8px 0">Nada para hoy. Apunta algo arriba o sube algo de «Más adelante».</div>`}${lleno ? html`<div class="lleno">Hoy está lleno (${d.ajustes.tareas_hoy}). Lo nuevo irá a Más adelante; si algo no puede esperar, súbelo con ↑.</div>` : ''}</div>`;
 }
 
 function masAdelante(d, tema) {
@@ -96,7 +125,7 @@ function masAdelante(d, tema) {
   ];
   const total = grupos.reduce((s, [, l]) => s + l.length, 0);
   const recordatorio = d.las3Actual.length ? html`<div class="recuadro" style="font-size:11.5px;margin-bottom:12px;line-height:1.5"><span class="mut">Antes de subir algo a Hoy, recuerda tus 3:</span><br>${raw(d.las3Actual.map((o) => String(html`<b style="font-weight:500">★ ${o.texto}</b>`)).join(' · '))}</div>` : '';
-  return html`<div class="card">${recordatorio}<div class="fila-lab"><span class="lab">Más adelante</span><span class="mut" style="font-size:12px">${total}</span></div>${grupos.map(([nombre, lista]) => (lista.length ? html`<div class="grp ${nombre === 'Vencidas' ? 'vencidas' : ''}">${nombre} · ${lista.length}</div>${lista.map((t) => (editando === t.id ? formularioTarea(d, t) : html`<div class="lt" data-tarea="${t.id}" style="${nombre === 'Algún día' ? 'opacity:.7' : ''}"><span>${punto(d, t.tipo, tema)}${t.prioridad ? html`<b class="peligro-texto">! </b>` : ''}${m.tareaAvanzaLas3(t, d.las3Actual) ? html`<span title="avanza las 3" class="aviso-texto">★ </span>` : ''}${t.texto}${t.dur ? html` <span class="mut" style="font-size:10.5px">${f.formatoDuracion(t.dur)}</span>` : ''}</span><span class="mut" style="font-size:10.5px">${t.fecha && nombre !== 'Vencidas' ? etiquetaFecha(t.fecha, hoy) : ''}</span><span style="display:flex;gap:4px">${botonEditar(t)}<button type="button" class="mv" data-subir ${lleno ? raw('disabled title="Hoy está lleno"') : ''} aria-label="Subir a hoy: ${t.texto}">↑ hoy</button></span></div>`))}` : ''))}${total ? '' : html`<div class="mut">Vacío</div>`}${avisoLineas('tareas.md', st.datos.ficheros['tareas.md'])}</div>`;
+  return html`<div class="card">${recordatorio}<div class="fila-lab"><span class="lab">Más adelante</span><span class="mut" style="font-size:12px">${total}</span></div>${grupos.map(([nombre, lista]) => (lista.length ? html`<div class="grp ${nombre === 'Vencidas' ? 'vencidas' : ''}">${nombre} · ${lista.length}</div>${lista.map((t) => (editando === t.id ? formularioTarea(d, t) : html`<div class="lt" data-tarea="${t.id}" style="${nombre === 'Algún día' ? 'opacity:.7' : ''}"><span>${punto(d, t.tipo, tema)}${t.prioridad ? html`<b class="peligro-texto">! </b>` : ''}${m.tareaAvanzaLas3(t, d.las3Actual) ? html`<span title="avanza las 3" class="aviso-texto">★ </span>` : ''}${t.texto}${t.dur ? html` <span class="mut" style="font-size:10.5px">${f.formatoDuracion(t.dur)}</span>` : ''}</span><span class="mut" style="font-size:10.5px">${t.fecha && nombre !== 'Vencidas' ? etiquetaFecha(t.fecha, hoy) : ''}</span><span style="display:flex;gap:4px">${botonEditar(t)}<button type="button" class="mv" data-subir ${lleno ? raw('title="Hoy está lleno: se sube igualmente"') : ''} aria-label="Subir a hoy: ${t.texto}">↑ hoy</button></span></div>`))}` : ''))}${total ? '' : html`<div class="mut">Vacío</div>`}${avisoLineas('tareas.md', st.datos.ficheros['tareas.md'])}</div>`;
 }
 
 // ---------- Cierre del día ----------
@@ -157,11 +186,12 @@ function cerrarDia() {
 export function pintarHoy() {
   const raiz = $('#v-hoy');
   if (!raiz.firstElementChild) {
-    raiz.innerHTML = '<div class="hoy-grid"><div class="hoy-col"><div id="hoy-horario"></div><div id="hoy-las3"></div></div><div class="hoy-col"><div id="hoy-tareas"></div><div id="hoy-mas"></div><div id="hoy-cierre"></div></div></div>';
+    raiz.innerHTML = '<div class="hoy-grid"><div class="hoy-col"><div id="hoy-horario"></div><div id="hoy-las3"></div><div id="hoy-ideas"></div></div><div class="hoy-col"><div id="hoy-tareas"></div><div id="hoy-mas"></div><div id="hoy-cierre"></div></div></div>';
   }
   const d = derivados(), tema = temaActual();
   pintar($('#hoy-horario'), horario(d, tema));
   pintar($('#hoy-las3'), las3Hoy(d));
+  pintar($('#hoy-ideas'), ideas());
   pintar($('#hoy-tareas'), tareasHoy(d, tema));
   pintar($('#hoy-mas'), masAdelante(d, tema));
   pintar($('#hoy-cierre'), cierreDelDia(d));
@@ -179,7 +209,12 @@ function iniciarHoy() {
     if (!t) return;
     if (ev.target.closest('[data-editar-tarea]')) { editando = t.id; pintarHoy(); $('#et-texto')?.focus(); return; }
     if (ev.target.closest('[data-bajar]')) { enviar('tarea.mover', { id: t.id, huella: m.huellaDe(t), seccion: 'mas' }); return; }
-    if (ev.target.closest('[data-subir]')) { enviar('tarea.mover', { id: t.id, huella: m.huellaDe(t), seccion: 'hoy' }); return; }
+    if (ev.target.closest('[data-subir]')) {
+      // el límite de Hoy es una guía: si está lleno, se sube igualmente y se avisa
+      const d = derivados(), lleno = d.tareas.hoy.filter((x) => !x.hecha).length >= d.ajustes.tareas_hoy;
+      enviar('tarea.mover', { id: t.id, huella: m.huellaDe(t), seccion: 'hoy', exceder: lleno }, lleno ? { mensaje: () => `Subida a Hoy · ya tienes más de ${d.ajustes.tareas_hoy}: quizá alguna puede esperar` } : {});
+      return;
+    }
     if (el.classList.contains('task')) enviar('tarea.marcar', { id: t.id, huella: m.huellaDe(t), hecha: !t.hecha });
   });
   on(raiz, 'click', '[data-et]', (_ev, el) => {
@@ -194,6 +229,19 @@ function iniciarHoy() {
     if (ev.key === 'Escape') { ev.stopPropagation(); editando = null; pintarHoy(); }
     if (ev.key === 'Enter' && ev.target.id === 'et-texto') { ev.preventDefault(); guardarTarea(form); }
   });
+  on(raiz, 'input', '#et-dur', (_ev, el) => el.setCustomValidity(''));
+  on(raiz, 'click', '[data-idea-tarea], [data-idea-borrar]', (ev, el) => {
+    const id = +el.closest('[data-idea]').dataset.idea;
+    const n = m.notasInbox(st.datos.ficheros['inbox.md']).find((x) => x.id === id);
+    if (!n) return;
+    if (el.matches('[data-idea-tarea]')) enviar('inbox.aTarea', { id, huella: m.huellaDe(n) }, { mensaje: () => 'Idea pasada a tarea (Más adelante)' });
+    else enviar('inbox.eliminar', { id, huella: m.huellaDe(n) }, { mensaje: () => 'Idea borrada' });
+  });
+  on(raiz, 'click', '[data-las3-pasar]', (_ev, el) => {
+    const d = derivados();
+    enviar('las3.pasar', { desde: el.dataset.las3Pasar, a: d.meta.semanaActual }, { mensaje: (r) => `Las 3 pasadas a esta semana (${r.n ?? 0})` });
+  });
+  on(raiz, 'click', '[data-las3-escribir]', () => escribirLas3());
   on(raiz, 'click', '[data-decidir]', (_ev, el) => {
     const c = estadoCierre(derivados().meta.hoy);
     c.decision[el.dataset.texto] = c.decision[el.dataset.texto] === el.dataset.decidir ? undefined : el.dataset.decidir;
@@ -214,5 +262,25 @@ function iniciarHoy() {
     }
   });
 }
+
+/** Lleva a la semana actual con el cursor en «añadir» de Las 3. */
+export async function escribirLas3() {
+  acciones.irA?.('semana');
+  await irASemana(derivados().meta.semanaActual);
+  requestAnimationFrame(() => $('[data-las3-nueva]')?.focus());
+}
+acciones.escribirLas3 = escribirLas3;
+
+/** Abre el formulario de una tarea en Hoy (lo usa «✎ editar» al apuntar algo). */
+acciones.editarTarea = ({ id, texto }) => {
+  acciones.irA?.('hoy');
+  const ts = m.entidades(st.datos.ficheros['tareas.md'], 'tarea');
+  const t = ts.find((x) => x.id === id && x.texto === texto) ?? ts.find((x) => x.texto === texto && !x.hecha);
+  if (!t) return;
+  editando = t.id;
+  pintarHoy();
+  $('#et-texto')?.focus();
+  $('#et-texto')?.closest('[data-form-tarea]')?.scrollIntoView({ block: 'nearest' });
+};
 
 vistas.hoy = { titulo: 'Hoy', pintar: pintarHoy, iniciar: iniciarHoy };

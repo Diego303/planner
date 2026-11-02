@@ -165,3 +165,28 @@ Datos: `test/rendimiento/generar.js` crea tres años realistas (157 semanas, 5.0
 - `pnpm qa:validar -- --datos <ruta>`: copia la carpeta a un temporal, la parsea entera, comprueba la ida y vuelta byte a byte y lista líneas no reconocidas (con el motivo), ficheros ignorados, solapes, temas huérfanos, tipos sin uso y tipos sin definir. Comprueba al final que la carpeta original no ha cambiado (`test/qa-validar.test.js` lo verifica byte a byte y por fecha de modificación). Salida 0, 1 (avisos) o 2 (ida y vuelta no exacta).
 - Sobre `ejemplo/`: ida y vuelta exacta en 50 ficheros, 1 línea sin casilla (a propósito) y un solape cada domingo pasado («Cerrar semana» 17:00 dentro del bloque de proyectos de 16:00 a 17:30). Es un detalle de los datos de ejemplo, no del planner.
 - **Con permiso (2 nov. 2026), pero sin ejecutar:** `/mnt/d/planner` todavía no existe (el planner no se ha empezado a usar). Cuando haya datos: `pnpm qa:validar -- --datos /mnt/d/planner` (solo lee; trabaja sobre una copia).
+
+### Después de la QA · uso (2 nov. 2026)
+A partir del uso real:
+- **Las 3 «no salían» en Hoy:** estaban escritas en la semana siguiente sin que la pantalla lo dejara claro. Ahora la etiqueta dice siempre de qué semana son, Hoy ofrece pasarlas a esta semana y el cajón las enseña.
+- **Plantilla:** se puede editar cada entrada y los cambios llegan a las semanas ya creadas (respetando lo cambiado a mano; «tal cual» incluye el primer paso y el subtipo). «↻ Aplicar plantilla» en la semana.
+- **Sin límites de horas:** «de … a …» libres en el editor y en la plantilla (campos en 24 h).
+- **«Apunta algo» sin memorizar:** botones de tipo, cuándo e importante, «/» para el tipo y «✎ editar» al guardar.
+- Pruebas: 187 unitarias (con `plantilla.editar`, `las3.pasar` y el fuzzer con las operaciones nuevas), 55 e2e (nuevos: captura con botones y «/», horas libres, editar la plantilla, Las 3 entre semanas), 171 visuales regeneradas y revisadas.
+- **Test intermitente encontrado y explicado:** «edición a mano en ≤ 3 s» fallaba con 4 navegadores a la vez por contienda de CPU (lo normal: 1,5–2 s). Los tests que miden tiempos (`@tiempo`) se pasan aparte y de uno en uno.
+
+### Flexibilidad: nada que bloquee (2 nov. 2026)
+Revisión «quirúrgica» de lo que obligaba a editar ficheros a mano o a borrar y rehacer. Los 18 puntos están hechos:
+- **Bloqueos quitados:** renombrar tipos y quitar uno en uso pasando sus usos a otro · editar estudio (nombre, horas, examen, total, simulacro) y proyecto (nombre, siguiente paso, pausar/reactivar) · mover un bloque a otra fecha (otra semana) · plan B de Las 3 en la vista Semana · «Quitar sugerencias».
+- **Rigideces:** horas visibles de 0 a 24 · hora de cierre libre · aviso si un bloque cae fuera de lo visible, con «Ver de X a Y» · duplicar un bloque en otros días · Hoy lleno → ↑ y «hoy» suben igualmente, avisando · ir a la semana de cualquier fecha · subtipo y primer paso en la plantilla.
+- **Comodidad:** tipo nuevo desde el editor · ideas (inbox) desde la captura y tarjeta «Ideas» en Hoy · cambiar la duración real de un bloque hecho · atajos de teclado (`n`, `1` `2` `3`, `←` `→`, `h`, `?`, también en Gestión ▾) · editar el diario de los últimos 7 días.
+- **Datos:** cada operación nueva tiene inversa probada byte a byte (renombrar en todas las semanas, incluidas las cerradas, la plantilla y las tareas) y entra en el fuzzer de la API (4 semillas, limpio). Un formulario con varios cambios (Metas) se deshace con **un solo** «deshacer», de la última operación a la primera.
+- Pruebas: 195 unitarias, 64 e2e (10 nuevos en `flexible.spec.js`, 3 ajustados al comportamiento nuevo), 171 visuales regeneradas y revisadas (también en alto contraste y oscuro).
+
+**Decisiones que dejo para ti:**
+1. Al renombrar un estudio o proyecto se cambian los títulos «Nombre · …», el `rel` de Las 3 y los objetivos, pero **no el texto libre** (si escribiste «Estudiar AI-102» en Las 3, se queda así).
+2. Renombrar un tipo dos veces (ida y vuelta) deja el contenido igual, pero las líneas tocadas quedan en el orden canónico (`… | hecho: 0 | plantilla`); con «deshacer» sí vuelve byte a byte.
+3. «Duplicar» copia dentro de la misma semana; para otra semana, «otra fecha…» lo mueve.
+4. El diario se edita desde el cajón solo para los últimos 7 días (la operación acepta cualquier fecha hasta hoy).
+5. El plan de diseño dejaba los atajos de teclado fuera; los he añadido porque estaban en la lista que aprobaste. Son de una tecla y no actúan mientras escribes.
+

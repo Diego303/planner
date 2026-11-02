@@ -96,7 +96,7 @@ function manejarError(e) {
  * Devuelve { local: resultado local o null, respuesta: Promise<respuesta|null> }.
  * `mensaje(resultado)` → texto del toast con «deshacer».
  */
-export function enviar(op, args, { mensaje = null } = {}) {
+export function enviar(op, args, { mensaje = null, accion = null } = {}) {
   if (st.caido) { toastError('Servidor parado · solo lectura'); return { local: null, respuesta: Promise.resolve(null) }; }
   let local = null;
   try {
@@ -119,8 +119,9 @@ export function enviar(op, args, { mensaje = null } = {}) {
       recomponer();
       // si mientras tanto se cambió de semana, se carga la que se está viendo
       if (st.ui.semana !== r.estado.meta.semana) cargar(); else avisar();
-      if (mensaje && r.inversaId) toast(mensaje(r.resultado ?? local?.resultado ?? {}, r), { deshacer: () => deshacer(r.inversaId) });
-      else if (mensaje) toast(mensaje(r.resultado ?? {}, r));
+      const extra = accion?.(r.resultado ?? local?.resultado ?? {}, r) ?? null;
+      if (mensaje && r.inversaId) toast(mensaje(r.resultado ?? local?.resultado ?? {}, r), { deshacer: () => deshacer(r.inversaId), accion: extra });
+      else if (mensaje) toast(mensaje(r.resultado ?? {}, r), { accion: extra });
       return r;
     } catch (e) {
       await manejarError(e);
@@ -129,6 +130,21 @@ export function enviar(op, args, { mensaje = null } = {}) {
   });
   cola = respuesta.catch(() => null);
   return { local: local?.resultado ?? null, respuesta };
+}
+
+/**
+ * Varias operaciones que el usuario hizo como una sola (un formulario): un único aviso y un «deshacer»
+ * que las deshace todas, de la última a la primera.
+ */
+export function enviarVarias(lista, { mensaje = null } = {}) {
+  const envios = lista.map(([op, args]) => enviar(op, args));
+  if (!mensaje) return envios;
+  Promise.all(envios.map((e) => e.respuesta)).then((rs) => {
+    if (rs.some((r) => r == null)) return; // alguna falló: su error ya se avisó
+    const ids = rs.map((r) => r.inversaId).filter(Boolean);
+    toast(mensaje(), ids.length ? { deshacer: () => ids.reverse().reduce((p, id) => p.then(() => deshacer(id)), Promise.resolve()) } : {});
+  });
+  return envios;
 }
 
 export function deshacer(inversaId) {

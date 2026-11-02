@@ -203,7 +203,7 @@ Se aceptan las claves sin tilde (`animo`, `linea`, `manana`); se escriben con ti
 
 ### 3.9 `inbox.md` y `tema.md`
 
-- `inbox.md`: texto libre, nunca se marca nada. «n notas» = líneas no vacías que no son títulos.
+- `inbox.md`: texto libre, nunca se marca nada. «n notas» = líneas no vacías que no son títulos. Desde la web: «💡 es una idea» añade `- texto`; «→ tarea» la quita de aquí y la pone en Más adelante.
 - `tema.md`: `- base: nordico-oscuro` y `- <token>: valor` (`fondo`, `superficie`, `superficie-2`, `texto`, `texto-2`, `texto-3`, `borde`, `acento`, `acento-texto`, `aviso`, `aviso-fondo`, `ok`, `ok-fondo`, `peligro`, `sombra`, `radio`, `fuente`, `fondo-deco`). Valores sin `; { } < >`.
 
 ---
@@ -231,20 +231,29 @@ Todas son puras: `aplicar(mundo, op, ctx) → { mundo, inversa, tocados, resulta
 | `bloque.crear {semana, bloque}` | semana | Añade al final de `## Bloques` (crea la sección si falta) |
 | `bloque.editar {semana, id, cambios}` | semana (+ plantilla si se marca ↻) | Mover, estirar, aceptar sugerencia, título, tipo, subtipo, paso |
 | `bloque.eliminar {semana, id}` | semana | Quita la línea |
-| `bloque.mover {semana, id, destino, cambios}` | dos semanas | Lleva un bloque a otra semana (vista que empieza en domingo) |
+| `bloque.duplicar {semana, id, dias}` | semana | Copia el bloque en otros días de la misma semana (idempotente; cuenta los solapes) |
+| `bloque.mover {semana, id, destino, cambios}` | dos semanas | Lleva un bloque a otra semana (vista que empieza en domingo, «otra fecha…» del editor) |
 | `bloque.hecho {semana, id, delta, nota?, cambios?}` | semana, estudio, proyectos | Marca hecho, guarda nota del simulacro, borra el `dejado` del tema, actualiza el proyecto |
 | `bloque.desmarcar {semana, id}` | semana | Quita `hecho` y `nota` |
 | `bloque.aMedias {semana, id, dejado, cambios?}` | estudio o proyectos | Guarda dónde lo dejaste |
-| `las3.crear / editar / eliminar` | semana | Las 3 en línea |
+| `las3.crear / editar / eliminar` | semana | Las 3 en línea (también el plan B `si` / `entonces`) |
+| `las3.pasar {desde, a}` | dos semanas | Lleva Las 3 de una semana a otra |
+| `semana.aplicarPlantilla {semana}` | semana | Añade lo que le falte de la plantilla (desde hoy en la actual) |
+| `semana.quitarSugerencias {semana}` | semana | Borra las sugerencias no aceptadas |
 | `semana.proponer {semana, horas?}` | semana | Borra sugerencias no aceptadas y añade las nuevas |
 | `semana.reabrir {semana}` | semana | `estado: reabierta` |
 | `semana.cerrar {semana, lecciones, decisiones, siguiente}` | semana N y N+1, tareas, estudio, proyectos, inbox, archivo | Cierre en 4 pasos |
-| `tarea.crear / editar / marcar / mover / eliminar` | tareas | Captura, casilla, ↑ hoy / ↓ luego |
+| `tarea.crear / editar / marcar / mover / eliminar` | tareas | Captura, casilla, ↑ hoy / ↓ luego (`exceder: true` sube a Hoy aunque esté lleno) |
+| `inbox.crear {texto} / eliminar / aTarea` | inbox, tareas | Ideas: apuntar, borrar o pasar a tarea (Más adelante) |
+| `diario.editar {fecha, animo?, linea?, manana?}` | diario | Corrige un día pasado o de hoy; solo cambia lo que se manda |
 | `dia.cerrar {fecha, animo, linea, manana, aplazar}` | diario, tareas, archivo | Cierre del día y archivo de tareas hechas antes de hoy |
 | `estudio.crear / cambiar / eliminar` | estudio | Metas de estudio |
-| `proyecto.crear / cambiar / eliminar` | proyectos | Siguiente paso, pausar |
-| `plantilla.crear / eliminar` | plantilla | Gestión → Plantilla |
-| `tipo.crear / color / banderas / eliminar` | tipos | Banderas trabajo/estudio; quitar bloqueado si está en uso |
+| `estudio.renombrar / proyecto.renombrar {id, nombre}` | estudio o proyectos, todas las semanas | Cambia el nombre y el prefijo «Nombre · …» de sus bloques, el `rel` de Las 3 y los objetivos |
+| `proyecto.crear / cambiar / eliminar` | proyectos | Siguiente paso, pausar y reactivar |
+| `plantilla.crear / editar / eliminar {…, aplicar?}` | plantilla (+ semanas actual y futuras con `aplicar`) | Gestión → Plantilla; respeta lo cambiado a mano |
+| `tipo.crear / color / banderas` | tipos | Banderas trabajo/estudio |
+| `tipo.renombrar {nombre, nuevo}` | tipos, todas las semanas, plantilla, tareas | Cambia el nombre en todas partes |
+| `tipo.eliminar {nombre, pasarA?}` | tipos (+ semanas, plantilla, tareas con `pasarA`) | Sin `pasarA`, bloqueado si está en uso |
 | `ajustes.cambiar {clave, valor}` | ajustes | Cualquier ajuste |
 | `datos.inicializar {plantilla?}` | ajustes, tipos, plantilla | Onboarding |
 
@@ -292,7 +301,7 @@ El usuario pidió avanzar sin paradas; estas son las preguntas que habría hecho
 | # | Caso | Cobertura |
 |---|---|---|
 | 1 | Bloques solapados: carriles + ⚠; Proponer nunca solapa | `semana-core.test.js` (carriles), `proponer.test.js` (invariantes de cada escenario) |
-| 2 | Más de `tareas_hoy`: lo nuevo a Más adelante con aviso; «↑ hoy» deshabilitado | `ops.test.js` (Hoy lleno), `captura.test.js` (destino); UI: aviso y botón deshabilitado |
+| 2 | Más de `tareas_hoy`: lo nuevo a Más adelante con aviso; «↑ hoy» y «hoy» en la captura lo ponen igualmente (`exceder`) | `ops.test.js` (Hoy lleno), `flexible.test.js` (`exceder`), `captura.test.js` (destino); e2e `hoy.spec`, `flexible.spec` |
 | 3 | Tareas vencidas arriba en rojo | Vista Hoy (grupo «Vencidas» primero), revisado en captura de pantalla |
 | 4 | Edición a mano con la web abierta; op en vuelo → 409 | `server.test.js` (409); sondeo cada 2 s por mtime/tamaño |
 | 5 | Líneas mal escritas se conservan y se marcan | `formato.test.js` (todos los formatos); UI «⚠ línea no reconocida» |
@@ -300,7 +309,7 @@ El usuario pidió avanzar sin paradas; estas son las preguntas que habría hecho
 | 7 | Semanas futuras se crean desde plantilla al abrirlas | `ops.test.js`; UI Gestión → Semanas → planificar |
 | 8 | Semanas pasadas sin fichero: vacías y solo lectura | `semana-core.test.js` (estado «sin datos»), `ops.test.js` (rechazo) |
 | 9 | Cambiar la plantilla no toca semanas existentes | `ops.test.js` (solo toca plantilla.md) |
-| 10 | Borrar un tipo en uso: bloqueado con explicación | `ops.test.js`, `server.test.js` (422 «en uso») |
+| 10 | Borrar un tipo en uso: sin `pasarA`, bloqueado con explicación; la UI pregunta a qué tipo pasar sus usos | `ops.test.js`, `server.test.js` (422 «en uso»), `flexible.test.js` (`pasarA`), e2e `flexible.spec` |
 | 11 | Bloque que cruza la hora visible máxima: se recorta al pintar | `capacidad.js` (`minutosVisibles`), `semana.js` (recorte al pintar, el fichero no cambia) |
 | 12 | Semana ISO 53 y cambio de año | `fechas.test.js`, `proponer.test.js` (escenario 12), `semana-core.test.js` |
 | 13 | Puerto ocupado → siguiente libre; segunda instancia → abre la primera | `cli.test.js` |

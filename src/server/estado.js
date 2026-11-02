@@ -34,7 +34,8 @@ export function usoTipos(docsSemanas) {
 /** Contexto de las operaciones (lo que necesitan y no está en los ficheros que tocan). */
 export async function contexto(store, { hoy, ahora }, extras = []) {
   const docs = await todasLasSemanas(store, hoy);
-  const ctx = { hoy, ahora, usoTipos: usoTipos(docs) };
+  // las semanas que existen: «aplicar la plantilla» también a las ya creadas
+  const ctx = { hoy, ahora, usoTipos: usoTipos(docs), semanasExistentes: Object.keys(docs) };
   for (const extra of extras) Object.assign(ctx, await extra({ store, docs, hoy, ahora }));
   return ctx;
 }

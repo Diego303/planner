@@ -34,11 +34,24 @@ Marca cada punto; si alguno falla, apunta qué viste (y la hora) y mira la termi
 17. [ ] Con **Automático**, cambia Windows entre modo claro y oscuro (Configuración → Personalización → Colores): el planner sigue al sistema sin recargar.
 18. [ ] Zoom del navegador al 125 % y al 200 % (Ctrl + +): nada se corta ni se solapa; el editor de un bloque del domingo cabe en la pantalla.
 
+## Editar sin bloqueos
+
+22. [ ] Gestión ▾ → Tipos: pulsa el nombre de un tipo, cámbialo y Enter. Tus bloques, la plantilla y las tareas de ese tipo cambian también (y el color se mantiene).
+23. [ ] Tipos → «quitar» uno que usas: pregunta a qué tipo pasar sus bloques; «Cancelar» no toca nada.
+24. [ ] Metas → ✎ en un estudio: cambia horas y nombre, y añade un simulacro. Un solo «deshacer» lo devuelve todo.
+25. [ ] Clic en un bloque → Cuándo → «otra fecha…»: elige un día de la semana que viene. El bloque desaparece de esta y aparece en esa.
+26. [ ] En el editor, pon un bloque a las 6:00 (si ves de 7 a 24): avisa y «Ver de 6 a 24» amplía el calendario.
+27. [ ] Editor → «Duplicar en otros días…»: márcalos y «Duplicar». El aviso dice cuántos y si alguno se solapa.
+28. [ ] Hoy lleno: ↑ en una de Más adelante la sube igualmente (avisando); «deshacer» la baja.
+29. [ ] «Apunta algo» → «💡 es una idea»: sale en Hoy, en «Ideas»; «→ tarea» la pasa a Más adelante.
+30. [ ] Diario (cajón): pulsa un día de esta semana, cambia el ánimo y guarda.
+31. [ ] Teclado: `?` enseña los atajos; `←` `→` cambian de semana; `n` va a «apunta algo»; escribiendo en un campo no hacen nada.
+
 ## Copias y cierre
 
-19. [ ] Tras el primer cambio del día, existe `D:\planner\.copias\AAAA-MM-DD\` con tus ficheros (aunque tarde un poco en terminar).
-20. [ ] Ctrl + C en la terminal (o `planner stop`) mientras guardas algo: al volver a arrancar, el cambio está entero o no está; nunca a medias.
-21. [ ] Con el planner parado y la pestaña abierta, sale la banda «Servidor parado · solo lectura»; al arrancarlo de nuevo desaparece sola en ≤ 5 s.
+32. [ ] Tras el primer cambio del día, existe `D:\planner\.copias\AAAA-MM-DD\` con tus ficheros (aunque tarde un poco en terminar).
+33. [ ] Ctrl + C en la terminal (o `planner stop`) mientras guardas algo: al volver a arrancar, el cambio está entero o no está; nunca a medias.
+34. [ ] Con el planner parado y la pestaña abierta, sale la banda «Servidor parado · solo lectura»; al arrancarlo de nuevo desaparece sola en ≤ 5 s.
 
 ## Si algo falla
 

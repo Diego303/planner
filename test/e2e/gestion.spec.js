@@ -84,44 +84,123 @@ test('cerrar semana: 4 pasos con todas las decisiones, lecciones en Progreso y L
   await expect(page.locator('#v-progreso')).toContainText('Menos reuniones el jueves');
 });
 
-test('Plantilla: alta, quitar y deshacer; no cambia las semanas que ya existen; un error no borra lo escrito', async ({ page, app }) => {
-  const W45 = app.leer('semanas/2026-W45.md');
+test('Plantilla: alta (también en las semanas ya creadas), quitar y deshacer; sin la casilla, solo la plantilla', async ({ page, app }) => {
   await abrir(page, app);
+  // la semana 46 ya existe (creada antes de cambiar la plantilla)
+  await page.getByRole('button', { name: 'Semana siguiente' }).click();
+  await esperarFichero(app, 'semanas/2026-W46.md', (t) => t != null);
+  await page.getByRole('button', { name: 'Semana anterior' }).click();
   await menu(page, /Plantilla de semana/);
   const m = modal(page);
   await m.getByLabel('Título').fill('Inglés');
   await m.getByRole('button', { name: 'Añadir a la plantilla' }).click();
-  await expect(m.getByRole('alert')).toHaveText('Pon un título y al menos un día');
+  await expect(m.getByRole('alert')).toHaveText('Elige al menos un día');
   await expect(m.getByLabel('Título')).toHaveValue('Inglés');
   await m.locator('[data-dia="1"]').check();
   await m.locator('[data-dia="3"]').check();
   await m.locator('#pl-tipo').selectOption('estudio');
-  await m.locator('#pl-inicio').selectOption({ label: '7:30' });
-  await m.locator('#pl-dur').selectOption({ label: '1 h' });
+  await m.getByLabel('Empieza').fill('07:30');
+  await m.getByLabel('Termina').fill('08:30');
+  await expect(m.locator('#pl-dur-texto')).toHaveText('1 h');
+  await expect(m.locator('#pl-aplicar')).toBeChecked(); // por defecto, también en las semanas ya creadas
   await m.getByRole('button', { name: 'Añadir a la plantilla' }).click();
+  await expect(page.locator('#toast')).toContainText('«Inglés» añadido a la plantilla · y añadido en 4 bloques de 2 semanas');
   await esperarFichero(app, 'plantilla.md', (t) => /^- M,J 07:30-08:30 \| estudio \| Inglés$/m.test(t));
-  await expect(m).toContainText('Inglés');
-  await m.locator('.pend', { hasText: 'Cerrar semana' }).locator('[data-quitar]').click();
-  await expect(page.locator('#toast')).toContainText('«Cerrar semana» quitado de la plantilla');
-  await esperarFichero(app, 'plantilla.md', (t) => !t.includes('Cerrar semana'));
+  for (const id of ['2026-W45', '2026-W46']) {
+    await esperarFichero(app, `semanas/${id}.md`, (t) => /^- M 07:30-08:30 \| estudio \| Inglés \| plantilla$/m.test(t) && /^- J 07:30-08:30 \| estudio \| Inglés \| plantilla$/m.test(t));
+  }
+  const W44 = app.leer('semanas/2026-W44.md');
+  // quitarlo lo quita también de esas semanas (y se puede deshacer)
+  await m.locator('.pend', { hasText: 'Inglés' }).locator('[data-quitar]').click();
+  await expect(page.locator('#toast')).toContainText('«Inglés» quitado de la plantilla · y quitado en 4 bloques de 2 semanas');
+  await esperarFichero(app, 'semanas/2026-W46.md', (t) => !t.includes('Inglés'));
   await page.locator('#toast [data-deshacer]').click();
-  await esperarFichero(app, 'plantilla.md', (t) => t.includes('- D 17:00-17:30 | personal | Cerrar semana'));
+  await esperarFichero(app, 'semanas/2026-W46.md', (t) => t.includes('Inglés'));
+  await esperarFichero(app, 'plantilla.md', (t) => t.includes('Inglés'));
+  expect(app.leer('semanas/2026-W44.md')).toBe(W44); // la pasada, nunca
+  // sin la casilla: solo la plantilla
+  const W45 = app.leer('semanas/2026-W45.md');
+  await m.locator('#pl-aplicar').uncheck();
+  await expect(m.getByLabel('Título')).toHaveValue(''); // el formulario se vació tras añadir
+  await m.getByLabel('Título').fill('Mercado');
+  await m.locator('[data-dia="5"]').check();
+  await m.getByRole('button', { name: 'Añadir a la plantilla' }).click();
+  await expect(page.locator('#toast span')).toHaveText('«Mercado» añadido a la plantilla');
+  await esperarFichero(app, 'plantilla.md', (t) => t.includes('Mercado'));
   expect(app.leer('semanas/2026-W45.md')).toBe(W45);
-  // una semana nueva sí la recibe
-  await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Semana siguiente' }).click();
-  await page.getByRole('button', { name: 'Proponer semana' }).click();
-  await esperarFichero(app, 'semanas/2026-W46.md', (t) => t != null && /- M 07:30-08:30 \| estudio \| Inglés \| plantilla/.test(t));
 });
 
-test('Tipos: color, banderas, alta y quitar bloqueado si está en uso', async ({ page, app }) => {
+test('Plantilla: editar una entrada (días y horas) cambia también las semanas ya creadas; lo que moviste se queda', async ({ page, app }) => {
+  app.escribir('plantilla.md', `${app.leer('plantilla.md')}- L,M,X,J,V 21:00-23:00 | entreno | Entreno\n`);
+  await abrir(page, app);
+  await page.getByRole('button', { name: '↻ Aplicar plantilla' }).click(); // la 45 ya lo tiene (desde hoy, lunes)
+  await esperarFichero(app, 'semanas/2026-W45.md', (t) => (t.match(/\| Entreno \| plantilla/g) ?? []).length === 5);
+  // el martes lo cambias esta semana a mano
+  await page.locator('#wk .blk', { hasText: 'Entreno' }).nth(1).click();
+  await page.locator('.pop').getByLabel('Empieza').fill('20:00');
+  await page.locator('.pop').getByLabel('Termina').fill('22:00');
+  await page.locator('.pop').getByRole('button', { name: 'Guardar' }).click();
+  await esperarFichero(app, 'semanas/2026-W45.md', (t) => /^- M 20:00-22:00 \| entreno \| Entreno \| plantilla$/m.test(t));
+  // ahora solo L, X y V, de 20:30 a 22:30
+  await menu(page, /Plantilla de semana/);
+  const m = modal(page);
+  await m.getByRole('button', { name: 'Editar Entreno' }).click();
+  await expect(m.locator('.lab', { hasText: 'Editar «Entreno»' })).toBeVisible();
+  await expect(m.getByLabel('Título')).toHaveValue('Entreno');
+  await expect(m.locator('[data-dia="4"]')).toBeChecked();
+  await m.getByRole('button', { name: 'ninguno' }).click();
+  for (const d of ['0', '2', '4']) await m.locator(`[data-dia="${d}"]`).check();
+  await m.getByLabel('Empieza').fill('20:30');
+  await m.getByLabel('Termina').fill('22:30');
+  await m.getByRole('button', { name: 'Guardar cambios' }).click();
+  await expect(page.locator('#toast')).toContainText('«Entreno» cambiado en la plantilla · y cambiado en 4 bloques de 1 semana');
+  await esperarFichero(app, 'plantilla.md', (t) => /^- L,X,V 20:30-22:30 \| entreno \| Entreno$/m.test(t));
+  const W45 = await esperarFichero(app, 'semanas/2026-W45.md', (t) => /^- L 20:30-22:30 \| entreno \| Entreno \| plantilla$/m.test(t));
+  expect(W45).toMatch(/^- X 20:30-22:30 \| entreno \| Entreno \| plantilla$/m);
+  expect(W45).toMatch(/^- V 20:30-22:30 \| entreno \| Entreno \| plantilla$/m);
+  expect(W45).not.toMatch(/^- J .*Entreno/m); // el jueves ya no está
+  expect(W45).toMatch(/^- M 20:00-22:00 \| entreno \| Entreno \| plantilla$/m); // el martes que cambiaste se queda
+  await expect(m.getByLabel('Título')).toHaveValue(''); // vuelve a «añadir»
+  // cancelar una edición no cambia nada
+  await m.getByRole('button', { name: 'Editar Entreno' }).click();
+  await m.getByLabel('Título').fill('Otra cosa');
+  await m.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(m.locator('.pend', { hasText: 'Entreno' })).toBeVisible();
+  expect(app.leer('plantilla.md')).not.toContain('Otra cosa');
+});
+
+test('↻ Aplicar plantilla en la semana: añade lo que falta aunque se solape, avisa, y los solapes se ven', async ({ page, app }) => {
+  // algo en la plantilla que la semana 45 no tiene y choca con el trabajo
+  app.escribir('plantilla.md', `${app.leer('plantilla.md')}- L,M,X,J,V 17:00-18:00 | personal | Llamar a casa\n`);
+  await abrir(page, app);
+  await page.getByRole('button', { name: '↻ Aplicar plantilla' }).click();
+  await expect(page.locator('#toast')).toContainText('Plantilla aplicada: 5 bloques ↻ · ⚠ 5 se solapan');
+  await esperarFichero(app, 'semanas/2026-W45.md', (t) => (t.match(/\| Llamar a casa \| plantilla/g) ?? []).length === 5);
+  await expect(page.locator('.wk-plan')).toContainText('⚠ 5 solapes');
+  await expect(page.locator('#wk .blk.ovl', { hasText: 'Llamar a casa' })).toHaveCount(5);
+  // otra vez: nada que añadir
+  await page.getByRole('button', { name: '↻ Aplicar plantilla' }).click();
+  await expect(page.locator('#toast')).toContainText('Esta semana ya tiene todo lo de la plantilla');
+  // en una semana pasada no se ofrece
+  await page.getByRole('button', { name: 'Semana anterior' }).click();
+  await expect(page.locator('.wk-num')).toHaveText('semana 44');
+  await expect(page.getByRole('button', { name: '↻ Aplicar plantilla' })).toHaveCount(0);
+});
+
+test('Tipos: color, banderas, alta y quitar (si está en uso, pregunta a qué tipo pasarlo)', async ({ page, app }) => {
   await abrir(page, app);
   await menu(page, /Tipos/);
   const m = modal(page);
   await m.getByRole('radiogroup', { name: 'Color de personal' }).getByRole('radio').nth(1).click();
   await esperarFichero(app, 'tipos.md', (t) => !/- personal \| #86651F/.test(t) && /- personal \| #[0-9A-F]{6}/.test(t));
-  await expect(m.locator('[data-quitar="personal"]')).toBeDisabled();
   await expect(m.locator('[data-quitar="personal"]')).toHaveAttribute('title', /En uso/);
+  // en uso: no se quita sin decir a dónde van sus bloques; «Cancelar» no toca nada
+  const antes = await app.leer('tipos.md');
+  await m.getByRole('button', { name: 'Quitar personal' }).click();
+  await expect(m.locator('#qt-destino')).toBeFocused();
+  await m.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(m.locator('#qt-destino')).toHaveCount(0);
+  expect(await app.leer('tipos.md')).toBe(antes);
   await m.getByLabel('Nuevo tipo').fill('lectura');
   await m.getByRole('button', { name: 'Añadir', exact: true }).click();
   await esperarFichero(app, 'tipos.md', (t) => /^- lectura \| #[0-9A-F]{6}$/m.test(t));
@@ -132,7 +211,7 @@ test('Tipos: color, banderas, alta y quitar bloqueado si está en uso', async ({
   await m.locator('[data-quitar="lectura"]').click();
   await esperarFichero(app, 'tipos.md', (t) => !t.includes('lectura'));
   // bandera «estudio» en proyectos
-  await m.locator('.pend', { hasText: 'proyectos' }).getByRole('button', { name: 'estudio' }).click();
+  await m.getByRole('button', { name: 'proyectos cuenta como estudio' }).click();
   await esperarFichero(app, 'tipos.md', (t) => /^- proyectos \| #2F6B4F \| estudio$/m.test(t));
 });
 
@@ -149,8 +228,22 @@ test('Ajustes: cada uno cambia la interfaz al momento', async ({ page, app }) =>
   await m.locator('#aj-tareas').fill('2');
   await m.locator('#aj-tareas').press('Tab');
   await esperarFichero(app, 'ajustes.md', (t) => /- tareas_hoy: 2/.test(t));
-  await m.locator('#aj-cierre').selectOption({ label: '21:00' });
-  await esperarFichero(app, 'ajustes.md', (t) => /- cierre: 21:00/.test(t));
+  await m.locator('#aj-cierre').fill('2130');
+  await m.locator('#aj-cierre').press('Tab');
+  await esperarFichero(app, 'ajustes.md', (t) => /- cierre: 21:30/.test(t));
+  await expect(m.locator('#aj-cierre')).toHaveValue('21:30');
+  await m.locator('#aj-cierre').fill('mañana');
+  await m.locator('#aj-cierre').press('Tab');
+  await expect(m.locator('#aj-error')).toContainText('Escribe la hora del cierre como 22:30');
+  expect(await app.leer('ajustes.md')).toMatch(/- cierre: 21:30/);
+  // horas visibles de 0 a 24
+  await m.locator('#aj-desde').selectOption('0');
+  await m.locator('#aj-hasta').selectOption('24');
+  await esperarFichero(app, 'ajustes.md', (t) => /- horas: 0-24/.test(t));
+  await expect(page.locator('#wk .horas span').first()).toHaveText('0');
+  await m.locator('#aj-desde').selectOption('7');
+  await m.locator('#aj-hasta').selectOption('22');
+  await esperarFichero(app, 'ajustes.md', (t) => /- horas: 7-22/.test(t));
   await m.locator('#aj-foco').selectOption({ label: '5 h' });
   await esperarFichero(app, 'ajustes.md', (t) => /- foco_max: 5/.test(t));
   // capacidad 50 %: el lunes (690 min de 900 visibles, 77 %, «aviso» con 70 %) pasa a «exceso»
@@ -176,7 +269,7 @@ test('Ajustes: cada uno cambia la interfaz al momento', async ({ page, app }) =>
   await expect(bloque(page, 'Deploy del pipeline')).toContainText('☾'); // 21:30 > 21:00
   await page.locator('#seg').getByRole('button', { name: 'Hoy' }).click();
   await expect(page.locator('#hoy-tareas .fila-lab .mut')).toHaveText('4/2');
-  await expect(page.locator('#hoy-cierre .fila-lab')).toContainText('a las 21:00');
+  await expect(page.locator('#hoy-cierre .fila-lab')).toContainText('a las 21:30');
   // los comentarios del fichero se conservan
   expect(app.leer('ajustes.md')).toContain('# % máximo del día ocupado (50–100)');
 });
