@@ -15,7 +15,7 @@ let abierta = false;
 let error = '';
 let aplicar = true; // también en las semanas ya creadas (la actual desde hoy y las futuras)
 
-const formVacio = () => ({ id: null, huella: null, titulo: '', tipo: null, dias: new Set(), inicio: '09:00', fin: '10:00' });
+const formVacio = () => ({ id: null, huella: null, titulo: '', tipo: null, dias: new Set(), inicio: '09:00', fin: '10:00', subtipo: null, paso: '' });
 let form = formVacio();
 
 /** Texto del toast tras añadir, cambiar o quitar con «aplicar». */
@@ -36,6 +36,8 @@ function formulario(d) {
   <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center"><span class="mut" style="font-size:11.5px;width:38px">días</span>${f.DIAS.map((l, i) => html`<label class="fila" style="margin:0;gap:2px"><input type="checkbox" data-dia="${i}" ${form.dias.has(i) ? 'checked' : ''}>${l}</label>`)}
     <span class="mut" style="font-size:11px">·</span>${ATAJOS.map(([t]) => html`<button type="button" class="add" style="font-size:11px" data-atajo-dias="${t}">${t}</button>`)}</div>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="mut" style="font-size:11.5px;width:38px">de</span>${campoHora('pl-inicio', form.inicio, 'Empieza')}<span class="mut" style="font-size:11.5px">a</span>${campoHora('pl-fin', form.fin, 'Termina')}${sugerenciasHora()}<span class="mut" style="font-size:11px" id="pl-dur-texto">${dur}</span></div>
+  ${m.esEstudio(d.tipos, tipo) ? html`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center"><span class="mut" style="font-size:11.5px;width:38px">cómo</span>${[['aprender', 'aprender'], ['repasar', '⟲ repasar'], ['simulacro', '◎ simulacro']].map(([k, t]) => html`<button type="button" class="ac ${form.subtipo === k ? 'on' : ''}" aria-pressed="${form.subtipo === k ? 'true' : 'false'}" data-pl-subtipo="${k}">${t}</button>`)}</div>` : ''}
+  <input id="pl-paso" value="${form.paso}" placeholder="primer paso (opcional): qué abres y qué haces primero" aria-label="Primer paso (opcional)" style="font-size:12px" autocomplete="off">
   <label class="fila" style="margin:4px 0 0"><input type="checkbox" id="pl-aplicar" ${aplicar ? 'checked' : ''}> ${form.id != null ? 'Cambiar' : 'Añadir'} también en esta semana (desde hoy) y en las siguientes ya creadas</label>
   <div class="error-form" role="alert">${error}</div>
   <div class="pie" style="margin-top:2px">${form.id != null
@@ -48,7 +50,7 @@ function contenido() {
   const d = derivados(), tema = temaActual();
   const entradas = m.plantillaDe(st.datos.ficheros['plantilla.md']);
   return html`${cabecera('Plantilla de semana')}<div class="mut mod-nota">Lo que se repite cada semana. Las semanas nuevas salen ya con esto. Lo que añadas, cambies o quites aquí llega también a esta semana (desde hoy) y a las siguientes que ya tengas, si dejas marcada la casilla. Las pasadas no cambian nunca.</div>
-${entradas.map((e) => html`<div class="pend ${form.id === e.id ? 'on' : ''}"><span><span class="dot" style="background:${colorSerie(m.colorDeTipo(d.tipos, e.tipo), tema)}"></span>${e.titulo} <span class="mut" style="font-size:10.5px">${e.dias.map((x) => f.DIAS[x]).join(',')} · ${f.horaCorta(e.inicio)}–${f.horaCorta(e.fin)}</span></span><span class="opts"><button type="button" data-editar-plantilla="${e.id}" aria-label="Editar ${e.titulo}">editar</button><button type="button" class="peligro-texto" data-quitar="${e.id}" aria-label="Quitar ${e.titulo}">quitar</button></span></div>`)}
+${entradas.map((e) => html`<div class="pend ${form.id === e.id ? 'on' : ''}"><span><span class="dot" style="background:${colorSerie(m.colorDeTipo(d.tipos, e.tipo), tema)}"></span>${e.titulo} <span class="mut" style="font-size:10.5px">${e.dias.map((x) => f.DIAS[x]).join(',')} · ${f.horaCorta(e.inicio)}–${f.horaCorta(e.fin)}${e.subtipo ? ` · ${e.subtipo}` : ''}${e.paso ? ` · → ${e.paso}` : ''}</span></span><span class="opts"><button type="button" data-editar-plantilla="${e.id}" aria-label="Editar ${e.titulo}">editar</button><button type="button" class="peligro-texto" data-quitar="${e.id}" aria-label="Quitar ${e.titulo}">quitar</button></span></div>`)}
 ${entradas.length ? '' : html`<div class="mut" style="font-size:12px;padding:8px 0">La plantilla está vacía. Añade abajo lo que haces cada semana.</div>`}
 ${formulario(d)}${avisoLineas('plantilla.md', st.datos.ficheros['plantilla.md'])}`;
 }
@@ -64,7 +66,12 @@ function leerFormulario() {
   if (!titulo) error = 'Pon qué es (el título)';
   else if (!dias.length) error = 'Elige al menos un día';
   else if (h.error) error = h.error;
-  else { error = ''; return { dias, inicio: h.inicio, fin: h.fin, tipo: form.tipo ?? derivados().tipos[0]?.nombre, titulo }; }
+  else {
+    error = '';
+    const tipo = form.tipo ?? derivados().tipos[0]?.nombre;
+    const subtipo = m.esEstudio(derivados().tipos, tipo) ? form.subtipo : null;
+    return { dias, inicio: h.inicio, fin: h.fin, tipo, titulo, subtipo, paso: form.paso.trim() || null };
+  }
   repintar();
   return null;
 }
@@ -72,7 +79,9 @@ function leerFormulario() {
 function enlazar() {
   const mod = cuerpoModal();
   on(mod, 'input', '#pl-titulo', (_ev, el) => { form.titulo = el.value; });
-  on(mod, 'change', '#pl-tipo', (_ev, el) => { form.tipo = el.value; });
+  on(mod, 'change', '#pl-tipo', (_ev, el) => { form.tipo = el.value; repintar(); });
+  on(mod, 'input', '#pl-paso', (_ev, el) => { form.paso = el.value; });
+  on(mod, 'click', '[data-pl-subtipo]', (_ev, el) => { form.subtipo = form.subtipo === el.dataset.plSubtipo ? null : el.dataset.plSubtipo; repintar(); });
   on(mod, 'change', '[data-dia]', (_ev, el) => { if (el.checked) form.dias.add(+el.dataset.dia); else form.dias.delete(+el.dataset.dia); });
   on(mod, 'click', '[data-atajo-dias]', (_ev, el) => { form.dias = new Set(ATAJOS.find(([t]) => t === el.dataset.atajoDias)[1]); repintar(); });
   on(mod, 'input', '#pl-inicio, #pl-fin', (_ev, el) => {
@@ -95,7 +104,7 @@ function enlazar() {
   on(mod, 'click', '[data-editar-plantilla]', (_ev, el) => {
     const e = m.plantillaDe(st.datos.ficheros['plantilla.md']).find((x) => x.id === +el.dataset.editarPlantilla);
     if (!e) return;
-    form = { id: e.id, huella: m.huellaDe(e), titulo: e.titulo, tipo: e.tipo, dias: new Set(e.dias), inicio: horaDeMinutos(e.inicio), fin: horaDeMinutos(e.fin) };
+    form = { id: e.id, huella: m.huellaDe(e), titulo: e.titulo, tipo: e.tipo, dias: new Set(e.dias), inicio: horaDeMinutos(e.inicio), fin: horaDeMinutos(e.fin), subtipo: e.subtipo ?? null, paso: e.paso ?? '' };
     error = '';
     repintar();
     const titulo = $('#pl-titulo', cuerpoModal());

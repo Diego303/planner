@@ -132,6 +132,21 @@ export function enviar(op, args, { mensaje = null, accion = null } = {}) {
   return { local: local?.resultado ?? null, respuesta };
 }
 
+/**
+ * Varias operaciones que el usuario hizo como una sola (un formulario): un único aviso y un «deshacer»
+ * que las deshace todas, de la última a la primera.
+ */
+export function enviarVarias(lista, { mensaje = null } = {}) {
+  const envios = lista.map(([op, args]) => enviar(op, args));
+  if (!mensaje) return envios;
+  Promise.all(envios.map((e) => e.respuesta)).then((rs) => {
+    if (rs.some((r) => r == null)) return; // alguna falló: su error ya se avisó
+    const ids = rs.map((r) => r.inversaId).filter(Boolean);
+    toast(mensaje(), ids.length ? { deshacer: () => ids.reverse().reduce((p, id) => p.then(() => deshacer(id)), Promise.resolve()) } : {});
+  });
+  return envios;
+}
+
 export function deshacer(inversaId) {
   cola = cola.then(async () => {
     try {

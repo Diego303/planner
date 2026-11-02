@@ -1,7 +1,8 @@
 // Arranque y orquestación: barra superior, cambio de vista, menú Gestión, teclado y repintado.
 import { html, $, on, pintar, hayRepintadoAplazado, olvidarAplazados } from './ui/dom.js';
-import { st, cargar, alCambiar, iniciarSondeo, derivados, acciones } from './estado.js';
-import { iniciarModal, cerrarModal, modalAbierto } from './ui/modal.js';
+import { st, cargar, alCambiar, iniciarSondeo, derivados, acciones, irASemana } from './estado.js';
+import * as f from '/core/fechas.js';
+import { iniciarModal, cerrarModal, modalAbierto, abrirModal, cabecera } from './ui/modal.js';
 import { cerrarPopover, popoverAbierto } from './ui/popover.js';
 import { pintarCajon, iniciarCajon } from './ui/cajon.js';
 import { pintarSemana, iniciarSemana } from './vistas/semana.js';
@@ -116,6 +117,45 @@ function iniciarBarra() {
     if (cerrarMenu()) { $('#gbtn').focus(); ev.preventDefault(); return; }
     acciones.escapeExtra?.(ev);
   });
+  document.addEventListener('keydown', atajo);
+}
+
+const ATAJOS = [
+  ['n', 'apuntar algo (va a la barra «＋ apunta algo»)'],
+  ['1 · 2 · 3', 'ir a Semana · Hoy · Progreso'],
+  ['← · →', 'semana anterior · siguiente (en Semana)'],
+  ['h', 'volver a la semana actual (en Semana)'],
+  ['?', 'esta ayuda'],
+  ['Esc', 'cerrar lo que esté abierto'],
+];
+
+function ayudaAtajos() {
+  abrirModal(html`${cabecera('Atajos de teclado')}<table class="atajos">${ATAJOS.map(([k, t]) => html`<tr><td><kbd>${k}</kbd></td><td>${t}</td></tr>`)}</table><div class="mut" style="font-size:11.5px;margin-top:8px">No funcionan mientras escribes en un campo.</div>`, { etiqueta: 'Atajos de teclado' });
+}
+
+acciones.atajos = ayudaAtajos;
+
+/** Atajos de una tecla: solo si no se está escribiendo, ni hay modal o popover abierto, ni modificadores. */
+function atajo(ev) {
+  if (ev.defaultPrevented || ev.ctrlKey || ev.metaKey || ev.altKey || ev.isComposing) return;
+  const t = ev.target;
+  if (t.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+  if (!st.datos) return;
+  if (ev.key === '?') { if (!modalAbierto()) { ev.preventDefault(); cerrarPopover(); ayudaAtajos(); } return; }
+  if (modalAbierto() || popoverAbierto() || menuAbierto) return;
+  const ids = Object.keys(vistas);
+  const orden = ['semana', 'hoy', 'progreso'].filter((v) => ids.includes(v));
+  if (/^[1-9]$/.test(ev.key) && orden[+ev.key - 1]) { ev.preventDefault(); acciones.irA(orden[+ev.key - 1]); return; }
+  if (ev.key === 'n' || ev.key === 'N') { const c = $('#cap'); if (c) { ev.preventDefault(); c.focus(); } return; }
+  if (st.ui.vista !== 'semana') return;
+  // las flechas sobre un bloque o un botón no cambian de semana (el foco está en otra cosa)
+  if ((ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') && !t.closest?.('.blk')) {
+    ev.preventDefault();
+    irASemana(f.sumarSemanas(st.ui.semana, ev.key === 'ArrowLeft' ? -1 : 1));
+  } else if (ev.key === 'h') {
+    ev.preventDefault();
+    irASemana(derivados().meta.semanaActual);
+  }
 }
 
 export async function iniciar() {

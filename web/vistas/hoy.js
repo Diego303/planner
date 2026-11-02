@@ -46,6 +46,15 @@ ${sig.lista.length ? html`<div class="recuadro" style="font-size:11.5px;margin-t
 <button type="button" class="add" style="margin-top:8px" data-las3-escribir>Escribirlas en la semana →</button></div>`;
 }
 
+/** Ideas sueltas del inbox: pasarlas a tarea o borrarlas. */
+function ideas() {
+  const notas = m.notasInbox(st.datos.ficheros['inbox.md']);
+  const texto = (n) => n.texto.replace(/^\s*[-*]\s+(\[[ xX]\]\s+)?/, '');
+  return html`<div class="card"><div class="fila-lab"><span class="lab">Ideas</span><span class="mut" style="font-size:12px">${notas.length || ''}</span></div>${notas.length
+    ? notas.map((n) => html`<div class="lt" style="grid-template-columns:1fr auto" data-idea="${n.id}"><span>${texto(n)}</span><span class="opts"><button type="button" class="mv" data-idea-tarea aria-label="Pasar a tarea: ${texto(n)}" title="Pasar a tarea (Más adelante)">→ tarea</button><button type="button" class="x" data-idea-borrar aria-label="Borrar idea: ${texto(n)}">×</button></span></div>`)
+    : html`<div class="mut" style="font-size:11.5px">Apunta ideas sueltas con «💡 es una idea» en «apunta algo»: salen aquí hasta que las ordenes.</div>`}</div>`;
+}
+
 // ---------- Editar y borrar tareas ----------
 
 let editando = null; // id de la tarea que se está editando
@@ -101,7 +110,7 @@ function filaTarea(d, t, tema) {
 function tareasHoy(d, tema) {
   const abiertas = d.tareas.hoy.filter((t) => !t.hecha).length;
   const lleno = abiertas >= d.ajustes.tareas_hoy;
-  return html`<div class="card"><div class="fila-lab"><span class="lab">Tareas de hoy</span><span class="mut" style="font-size:12px">${abiertas}/${d.ajustes.tareas_hoy}</span></div>${d.tareas.hoy.map((t) => filaTarea(d, t, tema))}${d.tareas.hoy.length ? '' : html`<div class="vacio" style="padding:8px 0">Nada para hoy. Apunta algo arriba o sube algo de «Más adelante».</div>`}${lleno ? html`<div class="lleno">Hoy está lleno (${d.ajustes.tareas_hoy}). Lo nuevo irá a Más adelante.</div>` : ''}</div>`;
+  return html`<div class="card"><div class="fila-lab"><span class="lab">Tareas de hoy</span><span class="mut" style="font-size:12px">${abiertas}/${d.ajustes.tareas_hoy}</span></div>${d.tareas.hoy.map((t) => filaTarea(d, t, tema))}${d.tareas.hoy.length ? '' : html`<div class="vacio" style="padding:8px 0">Nada para hoy. Apunta algo arriba o sube algo de «Más adelante».</div>`}${lleno ? html`<div class="lleno">Hoy está lleno (${d.ajustes.tareas_hoy}). Lo nuevo irá a Más adelante; si algo no puede esperar, súbelo con ↑.</div>` : ''}</div>`;
 }
 
 function masAdelante(d, tema) {
@@ -116,7 +125,7 @@ function masAdelante(d, tema) {
   ];
   const total = grupos.reduce((s, [, l]) => s + l.length, 0);
   const recordatorio = d.las3Actual.length ? html`<div class="recuadro" style="font-size:11.5px;margin-bottom:12px;line-height:1.5"><span class="mut">Antes de subir algo a Hoy, recuerda tus 3:</span><br>${raw(d.las3Actual.map((o) => String(html`<b style="font-weight:500">★ ${o.texto}</b>`)).join(' · '))}</div>` : '';
-  return html`<div class="card">${recordatorio}<div class="fila-lab"><span class="lab">Más adelante</span><span class="mut" style="font-size:12px">${total}</span></div>${grupos.map(([nombre, lista]) => (lista.length ? html`<div class="grp ${nombre === 'Vencidas' ? 'vencidas' : ''}">${nombre} · ${lista.length}</div>${lista.map((t) => (editando === t.id ? formularioTarea(d, t) : html`<div class="lt" data-tarea="${t.id}" style="${nombre === 'Algún día' ? 'opacity:.7' : ''}"><span>${punto(d, t.tipo, tema)}${t.prioridad ? html`<b class="peligro-texto">! </b>` : ''}${m.tareaAvanzaLas3(t, d.las3Actual) ? html`<span title="avanza las 3" class="aviso-texto">★ </span>` : ''}${t.texto}${t.dur ? html` <span class="mut" style="font-size:10.5px">${f.formatoDuracion(t.dur)}</span>` : ''}</span><span class="mut" style="font-size:10.5px">${t.fecha && nombre !== 'Vencidas' ? etiquetaFecha(t.fecha, hoy) : ''}</span><span style="display:flex;gap:4px">${botonEditar(t)}<button type="button" class="mv" data-subir ${lleno ? raw('disabled title="Hoy está lleno"') : ''} aria-label="Subir a hoy: ${t.texto}">↑ hoy</button></span></div>`))}` : ''))}${total ? '' : html`<div class="mut">Vacío</div>`}${avisoLineas('tareas.md', st.datos.ficheros['tareas.md'])}</div>`;
+  return html`<div class="card">${recordatorio}<div class="fila-lab"><span class="lab">Más adelante</span><span class="mut" style="font-size:12px">${total}</span></div>${grupos.map(([nombre, lista]) => (lista.length ? html`<div class="grp ${nombre === 'Vencidas' ? 'vencidas' : ''}">${nombre} · ${lista.length}</div>${lista.map((t) => (editando === t.id ? formularioTarea(d, t) : html`<div class="lt" data-tarea="${t.id}" style="${nombre === 'Algún día' ? 'opacity:.7' : ''}"><span>${punto(d, t.tipo, tema)}${t.prioridad ? html`<b class="peligro-texto">! </b>` : ''}${m.tareaAvanzaLas3(t, d.las3Actual) ? html`<span title="avanza las 3" class="aviso-texto">★ </span>` : ''}${t.texto}${t.dur ? html` <span class="mut" style="font-size:10.5px">${f.formatoDuracion(t.dur)}</span>` : ''}</span><span class="mut" style="font-size:10.5px">${t.fecha && nombre !== 'Vencidas' ? etiquetaFecha(t.fecha, hoy) : ''}</span><span style="display:flex;gap:4px">${botonEditar(t)}<button type="button" class="mv" data-subir ${lleno ? raw('title="Hoy está lleno: se sube igualmente"') : ''} aria-label="Subir a hoy: ${t.texto}">↑ hoy</button></span></div>`))}` : ''))}${total ? '' : html`<div class="mut">Vacío</div>`}${avisoLineas('tareas.md', st.datos.ficheros['tareas.md'])}</div>`;
 }
 
 // ---------- Cierre del día ----------
@@ -177,11 +186,12 @@ function cerrarDia() {
 export function pintarHoy() {
   const raiz = $('#v-hoy');
   if (!raiz.firstElementChild) {
-    raiz.innerHTML = '<div class="hoy-grid"><div class="hoy-col"><div id="hoy-horario"></div><div id="hoy-las3"></div></div><div class="hoy-col"><div id="hoy-tareas"></div><div id="hoy-mas"></div><div id="hoy-cierre"></div></div></div>';
+    raiz.innerHTML = '<div class="hoy-grid"><div class="hoy-col"><div id="hoy-horario"></div><div id="hoy-las3"></div><div id="hoy-ideas"></div></div><div class="hoy-col"><div id="hoy-tareas"></div><div id="hoy-mas"></div><div id="hoy-cierre"></div></div></div>';
   }
   const d = derivados(), tema = temaActual();
   pintar($('#hoy-horario'), horario(d, tema));
   pintar($('#hoy-las3'), las3Hoy(d));
+  pintar($('#hoy-ideas'), ideas());
   pintar($('#hoy-tareas'), tareasHoy(d, tema));
   pintar($('#hoy-mas'), masAdelante(d, tema));
   pintar($('#hoy-cierre'), cierreDelDia(d));
@@ -199,7 +209,12 @@ function iniciarHoy() {
     if (!t) return;
     if (ev.target.closest('[data-editar-tarea]')) { editando = t.id; pintarHoy(); $('#et-texto')?.focus(); return; }
     if (ev.target.closest('[data-bajar]')) { enviar('tarea.mover', { id: t.id, huella: m.huellaDe(t), seccion: 'mas' }); return; }
-    if (ev.target.closest('[data-subir]')) { enviar('tarea.mover', { id: t.id, huella: m.huellaDe(t), seccion: 'hoy' }); return; }
+    if (ev.target.closest('[data-subir]')) {
+      // el límite de Hoy es una guía: si está lleno, se sube igualmente y se avisa
+      const d = derivados(), lleno = d.tareas.hoy.filter((x) => !x.hecha).length >= d.ajustes.tareas_hoy;
+      enviar('tarea.mover', { id: t.id, huella: m.huellaDe(t), seccion: 'hoy', exceder: lleno }, lleno ? { mensaje: () => `Subida a Hoy · ya tienes más de ${d.ajustes.tareas_hoy}: quizá alguna puede esperar` } : {});
+      return;
+    }
     if (el.classList.contains('task')) enviar('tarea.marcar', { id: t.id, huella: m.huellaDe(t), hecha: !t.hecha });
   });
   on(raiz, 'click', '[data-et]', (_ev, el) => {
@@ -215,6 +230,13 @@ function iniciarHoy() {
     if (ev.key === 'Enter' && ev.target.id === 'et-texto') { ev.preventDefault(); guardarTarea(form); }
   });
   on(raiz, 'input', '#et-dur', (_ev, el) => el.setCustomValidity(''));
+  on(raiz, 'click', '[data-idea-tarea], [data-idea-borrar]', (ev, el) => {
+    const id = +el.closest('[data-idea]').dataset.idea;
+    const n = m.notasInbox(st.datos.ficheros['inbox.md']).find((x) => x.id === id);
+    if (!n) return;
+    if (el.matches('[data-idea-tarea]')) enviar('inbox.aTarea', { id, huella: m.huellaDe(n) }, { mensaje: () => 'Idea pasada a tarea (Más adelante)' });
+    else enviar('inbox.eliminar', { id, huella: m.huellaDe(n) }, { mensaje: () => 'Idea borrada' });
+  });
   on(raiz, 'click', '[data-las3-pasar]', (_ev, el) => {
     const d = derivados();
     enviar('las3.pasar', { desde: el.dataset.las3Pasar, a: d.meta.semanaActual }, { mensaje: (r) => `Las 3 pasadas a esta semana (${r.n ?? 0})` });

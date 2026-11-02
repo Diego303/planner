@@ -61,7 +61,7 @@ function cabecera(v) {
   return html`<div class="wk-cab">
     <div class="wk-titulo"><span class="wk-rango">${f.rangoFechas(v.columnas[0].fecha, v.columnas[6].fecha)}</span><button type="button" class="wk-num" data-accion="semanas" title="Elegir semana">semana ${f.numeroSemana(id)}</button><span class="pill ${clasePill}">${estado}</span></div>
     <div class="wk-acciones"><span class="wk-plan mut"><button type="button" data-accion="ir-hoy">más adelante · ${mas}</button>${sug ? ` · ${sug} sugerencia${sug === 1 ? '' : 's'}` : ''}${solapes ? html` · <span class="peligro-texto">⚠ ${solapes} solape${solapes === 1 ? '' : 's'}</span>` : ''}</span>
-      <button type="button" data-accion="anterior" aria-label="Semana anterior" style="padding:4px 10px">‹</button><button type="button" data-accion="hoy">hoy</button><button type="button" data-accion="siguiente" aria-label="Semana siguiente" style="padding:4px 10px">›</button>${!v.pasada && m.plantillaDe(st.datos.ficheros['plantilla.md']).length ? html`<button type="button" data-accion="aplicar-plantilla" ${v.ro ? 'disabled' : ''} title="Añade a esta semana lo que le falte de la plantilla${v.esActual ? ' (desde hoy)' : ''}, aunque se solape">↻ Aplicar plantilla</button>` : ''}${acciones.proponer && !v.pasada ? html`<button type="button" class="dark" data-accion="proponer" ${v.ro ? 'disabled' : ''}>Proponer semana</button>` : ''}</div>
+      <button type="button" data-accion="anterior" aria-label="Semana anterior" style="padding:4px 10px">‹</button><button type="button" data-accion="hoy">hoy</button><button type="button" data-accion="siguiente" aria-label="Semana siguiente" style="padding:4px 10px">›</button>${!v.pasada && m.plantillaDe(st.datos.ficheros['plantilla.md']).length ? html`<button type="button" data-accion="aplicar-plantilla" ${v.ro ? 'disabled' : ''} title="Añade a esta semana lo que le falte de la plantilla${v.esActual ? ' (desde hoy)' : ''}, aunque se solape">↻ Aplicar plantilla</button>` : ''}${sug && !v.ro ? html`<button type="button" data-accion="quitar-sugerencias" title="Quita las ${sug} sugerencias de «Proponer» (las aceptadas se quedan)">Quitar sugerencias</button>` : ''}${acciones.proponer && !v.pasada ? html`<button type="button" class="dark" data-accion="proponer" ${v.ro ? 'disabled' : ''}>Proponer semana</button>` : ''}</div>
   </div>`;
 }
 
@@ -79,7 +79,16 @@ function las3(v) {
   const etiqueta = v.esActual ? 'Las 3 de esta semana' : `Las 3 de la semana ${f.numeroSemana(v.id)}`;
   return html`<div class="las3"><span class="${v.esActual ? 'mut' : 'aviso-texto'}" style="font-size:12px;margin-right:4px" data-las3-etiqueta>${etiqueta}</span>${v.las3.map((o) => html`<div class="b3 ${o.hecha ? 'hecha' : ''}" data-las3="${o.id}">
       <button type="button" class="cb ${o.hecha ? 'on' : ''}" data-las3-marcar ${editable ? '' : 'disabled'} aria-label="${o.hecha ? 'Desmarcar' : 'Marcar como hecha'}: ${o.texto}">${o.hecha ? '✓' : ''}</button>
-      <span ${editable ? raw('contenteditable="true" spellcheck="false"') : ''} data-las3-texto role="textbox" aria-label="Objetivo de la semana">${o.texto}</span></div>`)}${editable && v.las3.length < 3 ? html`<div class="b3"><span class="cb" aria-hidden="true"></span><input data-las3-nueva maxlength="140" aria-label="Añadir uno de Las 3" placeholder="${v.esActual ? '＋ añadir lo que hará que esta semana merezca la pena' : `＋ añadir para la semana ${f.numeroSemana(v.id)}`}"></div>` : ''}${!v.las3.length && !editable ? html`<span class="mut" style="font-size:12px">—</span>` : ''}</div>`;
+      <span ${editable ? raw('contenteditable="true" spellcheck="false"') : ''} data-las3-texto role="textbox" aria-label="Objetivo de la semana">${o.texto}</span>${editable ? html`<button type="button" class="b3-si ${o.si ? 'on' : ''}" data-las3-si="${o.id}" aria-label="Plan B de «${o.texto}» (si → entonces)" aria-expanded="${las3Detalle === o.id ? 'true' : 'false'}" title="${o.si ? `si ${o.si} → ${o.entonces ?? '…'}` : 'Plan B: si pasa algo → entonces haré…'}">si→</button>` : ''}</div>`)}${editable && v.las3.length < 3 ? html`<div class="b3"><span class="cb" aria-hidden="true"></span><input data-las3-nueva maxlength="140" aria-label="Añadir uno de Las 3" placeholder="${v.esActual ? '＋ añadir lo que hará que esta semana merezca la pena' : `＋ añadir para la semana ${f.numeroSemana(v.id)}`}"></div>` : ''}${!v.las3.length && !editable ? html`<span class="mut" style="font-size:12px">—</span>` : ''}</div>${planB(v)}`;
+}
+
+let las3Detalle = null; // objetivo de Las 3 con su «si → entonces» abierto
+
+/** «si → entonces» del objetivo abierto: el plan B por si algo se tuerce. */
+function planB(v) {
+  const o = v.las3.find((x) => x.id === las3Detalle);
+  if (!o || v.ro) return '';
+  return html`<div class="frm" data-las3-planb="${o.id}" style="margin:6px 0 4px;font-size:12px"><div class="mut" style="font-size:11px">Plan B de «${o.texto}»</div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">si <input id="l3-si" value="${o.si ?? ''}" placeholder="el jueves llego tarde" style="flex:1;min-width:140px" aria-label="Si (lo que puede pasar)" autocomplete="off"> → entonces <input id="l3-entonces" value="${o.entonces ?? ''}" placeholder="lo hago el sábado a las 10" style="flex:1;min-width:140px" aria-label="Entonces haré" autocomplete="off"><button type="button" class="dark" data-l3-guardar>Guardar</button><button type="button" data-l3-cerrar>Cerrar</button></div></div>`;
 }
 
 function cabeceraDias(v) {
@@ -241,6 +250,9 @@ export function iniciarSemana() {
       case 'ir-hoy': acciones.irA?.('hoy'); break;
       case 'semanas': acciones.semanas?.(); break;
       case 'proponer': acciones.proponer?.(v.id); break;
+      case 'quitar-sugerencias':
+        enviar('semana.quitarSugerencias', { semana: v.id }, { mensaje: (r) => `${r.n} sugerencia${r.n === 1 ? '' : 's'} quitada${r.n === 1 ? '' : 's'}` });
+        break;
       case 'aplicar-plantilla':
         enviar('semana.aplicarPlantilla', { semana: v.id }, { mensaje: (r) => (r.n
           ? `Plantilla aplicada: ${r.n} bloque${r.n === 1 ? '' : 's'} ↻${r.solapes ? ` · ⚠ ${r.solapes} se solapa${r.solapes === 1 ? '' : 'n'}: muévelo${r.solapes === 1 ? '' : 's'} o bórralo${r.solapes === 1 ? '' : 's'}` : ''}`
@@ -268,6 +280,27 @@ export function iniciarSemana() {
     if (o && !v.ro) enviar('las3.editar', { semana: v.id, id, huella: m.huellaDe(o), cambios: { hecha: !o.hecha } });
   });
   raiz.addEventListener('focusout', (ev) => { if (ev.target.matches?.('[data-las3-texto]')) guardarLas3(ev.target); });
+  on(raiz, 'click', '[data-las3-si]', (_ev, el) => {
+    const id = +el.dataset.las3Si;
+    las3Detalle = las3Detalle === id ? null : id;
+    pintarSemana();
+    $('#l3-si')?.focus();
+  });
+  const guardarPlanB = () => {
+    const v = modeloSemana();
+    const o = v.las3.find((x) => x.id === las3Detalle);
+    las3Detalle = null;
+    if (!o) { pintarSemana(); return; }
+    const si = $('#l3-si').value.trim() || null, entonces = $('#l3-entonces').value.trim() || null;
+    if ((o.si ?? null) === si && (o.entonces ?? null) === entonces) { pintarSemana(); return; }
+    enviar('las3.editar', { semana: v.id, id: o.id, huella: m.huellaDe(o), cambios: { si, entonces } }, { mensaje: () => (si ? `Plan B: si ${si} → ${entonces ?? '…'}` : 'Plan B quitado') });
+  };
+  on(raiz, 'click', '[data-l3-guardar]', guardarPlanB);
+  on(raiz, 'click', '[data-l3-cerrar]', () => { las3Detalle = null; pintarSemana(); });
+  on(raiz, 'keydown', '[data-las3-planb] input', (ev) => {
+    if (ev.key === 'Enter') { ev.preventDefault(); guardarPlanB(); }
+    if (ev.key === 'Escape') { ev.stopPropagation(); las3Detalle = null; pintarSemana(); }
+  });
   on(raiz, 'keydown', '[data-las3-texto]', (ev, el) => {
     if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); }
     if (ev.key === 'Escape') {
