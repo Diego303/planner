@@ -384,6 +384,33 @@ registrar('bloque.hecho', (tx, a) => {
   return { tipo: b.tipo, titulo: b.titulo };
 });
 
+/** Copia un bloque a otros días de la misma semana (sin «hecho»), aunque se solape. → { n, solapes } */
+registrar('bloque.duplicar', (tx, a) => {
+  const ruta = semanaEditable(tx, a.semana);
+  const b = elemento(tx, ruta, a.id, 'bloque', 'El bloque', a.huella);
+  const dias = listaDe(a.dias, 'Los días');
+  exigir(dias.length && dias.every((d) => esEntero(d, 0, 6)), 'Elige al menos un día');
+  let n = 0, solapes = 0;
+  for (const dia of [...new Set(dias)].sort((x, y) => x - y)) {
+    if (dia === b.dia) continue;
+    const bloques = bloquesDe(tx.doc(ruta));
+    if (bloques.some((x) => x.dia === dia && x.inicio === b.inicio && x.fin === b.fin && normalizar(x.titulo) === normalizar(b.titulo))) continue;
+    const nuevo = fsem.bloque({ dia, inicio: b.inicio, fin: b.fin, tipo: b.tipo, titulo: b.titulo, subtipo: b.subtipo, paso: b.paso });
+    if (bloques.some((x) => !x.sugerido && x.dia === dia && seCruzan(x, nuevo))) solapes++;
+    anadirBloque(tx, ruta, nuevo);
+    n++;
+  }
+  return { n, solapes };
+});
+
+/** Quita todas las sugerencias de «Proponer» de una semana. */
+registrar('semana.quitarSugerencias', (tx, a) => {
+  const ruta = semanaEditable(tx, a.semana);
+  const n = quitarSugerencias(tx, ruta);
+  exigir(n, 'Esta semana no tiene sugerencias');
+  return { n };
+});
+
 registrar('bloque.desmarcar', (tx, a) => {
   const ruta = semanaEditable(tx, a.semana);
   elemento(tx, ruta, a.id, 'bloque', 'El bloque', a.huella);
@@ -645,9 +672,46 @@ registrar('tipo.eliminar', (tx, a) => {
   asegurarTipos(tx);
   const t = tipoPorNombre(tipos(tx), a.nombre);
   exigir(t, 'Ese tipo ya no existe');
-  exigir(usosDeTipo(tx, t.nombre) === 0, `«${t.nombre}» está en uso: cámbiales el tipo primero`);
+  // `pasarA`: sus bloques, plantilla y tareas pasan antes a otro tipo; sin él, solo si no se usa
+  if (a.pasarA != null) {
+    const otro = tipoPorNombre(tipos(tx), a.pasarA);
+    exigir(otro && otro.id !== t.id, 'Elige otro tipo al que pasar sus bloques');
+    reasignarTipo(tx, t.nombre, otro.nombre);
+  } else {
+    exigir(usosDeTipo(tx, t.nombre) === 0, `«${t.nombre}» está en uso: cámbiales el tipo primero`);
+  }
   tx.quitar('tipos.md', t.id);
 });
+
+/** Cambia el nombre de un tipo en tipos.md y en todo lo que lo usa (semanas, plantilla y tareas). */
+registrar('tipo.renombrar', (tx, a) => {
+  asegurarTipos(tx);
+  const t = tipoPorNombre(tipos(tx), a.nombre);
+  exigir(t, 'Ese tipo ya no existe');
+  const nuevo = nombreTipo(a.nuevo);
+  const otro = tipoPorNombre(tipos(tx), nuevo);
+  exigir(!otro || otro.id === t.id, `Ya hay un tipo «${otro?.nombre}»: para juntarlos, quita «${t.nombre}» y pasa sus bloques a «${otro?.nombre}»`);
+  if (nuevo === t.nombre) return { usos: 0 };
+  tx.cambiar('tipos.md', t.id, { nombre: nuevo });
+  return { usos: reasignarTipo(tx, t.nombre, nuevo) };
+});
+
+/** Todas las semanas con fichero (también las pasadas y cerradas: un nombre se cambia en todas). */
+const todasLasSemanasCtx = (tx) => (tx.ctx.semanasExistentes ?? []).filter(esSemana).sort();
+
+/** Pasa al tipo `a` todo lo que usa el tipo `de`: bloques de todas las semanas, plantilla y tareas. → usos */
+function reasignarTipo(tx, de, a) {
+  const n = normalizar(de);
+  let usos = 0;
+  for (const id of todasLasSemanasCtx(tx)) {
+    const ruta = rutaSemana(id);
+    if (!tx.doc(ruta)) continue;
+    for (const b of bloquesDe(tx.doc(ruta))) if (normalizar(b.tipo) === n) { tx.cambiar(ruta, b.id, { tipo: a }); usos++; }
+  }
+  for (const e of entidades(tx.doc('plantilla.md'), 'plantilla')) if (normalizar(e.tipo) === n) { tx.cambiar('plantilla.md', e.id, { tipo: a }); usos++; }
+  for (const t of entidades(tx.doc('tareas.md'), 'tarea')) if (normalizar(t.tipo ?? '') === n) { tx.cambiar('tareas.md', t.id, { tipo: a }); usos++; }
+  return usos;
+}
 
 // ---------- Plantilla ----------
 
@@ -831,7 +895,8 @@ registrar('tarea.crear', (tx, a) => {
   const hoy = exigirHoy(tx);
   exigir(SECCIONES_TAREA.includes(a.seccion), 'Sección no válida');
   asegurarTareas(tx);
-  if (a.seccion === 'hoy') exigir(!hoyLleno(tx.doc('tareas.md'), tx.doc('ajustes.md')), 'Hoy está lleno: va a Más adelante');
+  // `exceder`: el límite de Hoy es una guía; si lo pides, se pasa
+  if (a.seccion === 'hoy' && !a.exceder) exigir(!hoyLleno(tx.doc('tareas.md'), tx.doc('ajustes.md')), 'Hoy está lleno: va a Más adelante');
   const c = camposTarea({ ...a.tarea, texto: a.tarea?.texto });
   return { id: anadirTarea(tx, a.seccion, ftar.tarea({ ...c, creada: hoy })) };
 });
@@ -852,7 +917,7 @@ registrar('tarea.mover', (tx, a) => {
   const t = elemento(tx, 'tareas.md', a.id, 'tarea', 'La tarea', a.huella);
   exigir(SECCIONES_TAREA.includes(a.seccion), 'Sección no válida');
   if (t.seccion === a.seccion) return { id: a.id };
-  if (a.seccion === 'hoy' && !t.hecha) {
+  if (a.seccion === 'hoy' && !t.hecha && !a.exceder) {
     exigir(!hoyLleno(tx.doc('tareas.md'), tx.doc('ajustes.md')), 'Hoy está lleno: termina o baja alguna tarea primero');
   }
   const [linea] = tx.quitar('tareas.md', a.id);
@@ -927,6 +992,53 @@ registrar('dia.cerrar', (tx, a) => {
   }
 });
 
+// ---------- Inbox (ideas sueltas) y diario ----------
+
+/** Apunta una idea suelta en inbox.md (se ordena al cerrar la semana o desde Hoy). */
+registrar('inbox.crear', (tx, a) => {
+  const texto = textoObligatorio(a.texto, 'la idea');
+  const doc = tx.asegurar('inbox.md', () => listaVacia('inbox', 'Inbox'));
+  let pos = doc.lineas.length;
+  while (pos > 0 && doc.lineas[pos - 1].t === 'vacia') pos--;
+  tx.insertar('inbox.md', pos, [{ t: 'nota', texto: `- ${texto}` }]);
+  return { id: pos };
+});
+
+registrar('inbox.eliminar', (tx, a) => {
+  elemento(tx, 'inbox.md', a.id, 'nota', 'La idea', a.huella);
+  tx.quitar('inbox.md', a.id);
+});
+
+/** Convierte una idea del inbox en tarea (en Más adelante, o en la sección que digas). */
+registrar('inbox.aTarea', (tx, a) => {
+  const hoy = exigirHoy(tx);
+  const n = elemento(tx, 'inbox.md', a.id, 'nota', 'La idea', a.huella);
+  const seccion = a.seccion ?? 'mas';
+  exigir(SECCIONES_TAREA.includes(seccion), 'Sección no válida');
+  const texto = textoNota(n.texto);
+  exigir(texto, 'La idea está vacía');
+  tx.quitar('inbox.md', a.id);
+  asegurarTareas(tx);
+  return { id: anadirTarea(tx, seccion, ftar.tarea({ texto, creada: hoy })) };
+});
+
+/** Cambia el diario de un día (hoy o anterior) sin cerrar el día: ánimo, línea y «mañana empiezo por». */
+registrar('diario.editar', (tx, a) => {
+  const hoy = exigirHoy(tx);
+  exigir(esFecha(a.fecha) && a.fecha <= hoy, 'Solo se edita el diario de hoy o de días anteriores');
+  const ruta = `diario/${a.fecha}.md`;
+  tx.asegurar(ruta, () => listaVacia('diario'));
+  if (a.animo != null) exigir(esEntero(a.animo, 1, 5), 'El ánimo va de 1 a 5');
+  const valores = { animo: a.animo, linea: textoOpcional(a.linea), manana: textoOpcional(a.manana) };
+  for (const [clave, valor] of Object.entries(valores)) {
+    if (!Object.hasOwn(a, clave)) continue;
+    const i = tx.doc(ruta).lineas.findIndex((l) => l.t === 'kv' && l.clave === clave);
+    if (valor == null || valor === '') { if (i >= 0) tx.quitar(ruta, i); continue; }
+    if (i >= 0) tx.cambiar(ruta, i, { valor });
+    else tx.insertar(ruta, finUltimo(tx.doc(ruta), 'kv'), [fdiario.kv(clave, valor)]);
+  }
+});
+
 // ---------- Estudio y proyectos ----------
 
 const LISTAS = {
@@ -994,6 +1106,38 @@ registrar('estudio.crear', (tx, a) => {
   });
 });
 registrar('estudio.cambiar', (tx, a) => fijarClave(tx, 'estudio', a.id, a.clave, a.valor));
+registrar('estudio.renombrar', (tx, a) => renombrarTema(tx, 'estudio', a.id, a.nombre));
+
+/**
+ * Cambia el nombre de un tema de estudio o de un proyecto, y con él lo que lo nombra en todas las semanas:
+ * los bloques («AI-102 · visión» → «AZ-104 · visión»), el `rel` de Las 3 y las horas de `## Estudio`.
+ */
+function renombrarTema(tx, cual, id, nombre) {
+  const { ruta, lista } = LISTAS[cual];
+  const s = seccionPorId(tx, cual, id);
+  const nuevo = textoObligatorio(nombre, 'el nombre');
+  exigir(!nuevo.includes(' · '), 'El nombre no puede llevar « · » (separa el tema del resto en los bloques)');
+  const otro = buscarTema(lista(tx.doc(ruta)), nuevo);
+  exigir(!otro || otro.id === id, 'Ya hay uno con ese nombre');
+  const viejo = s.nombre;
+  if (nuevo === viejo) return { n: 0 };
+  tx.cambiar(ruta, id, { texto: nuevo, seccion: nuevo });
+  let n = 0;
+  for (const sid of todasLasSemanasCtx(tx)) {
+    const r = rutaSemana(sid);
+    const doc = tx.doc(r);
+    if (!doc) continue;
+    for (const b of bloquesDe(doc)) {
+      if (!mismoTema(temaDe(b.titulo), viejo)) continue;
+      const i = b.titulo.indexOf(' · ');
+      tx.cambiar(r, b.id, { titulo: i >= 0 ? `${nuevo}${b.titulo.slice(i)}` : nuevo });
+      n++;
+    }
+    for (const o of las3De(tx.doc(r))) if (o.rel && mismoTema(o.rel, viejo)) { tx.cambiar(r, o.id, { rel: nuevo }); n++; }
+    for (const o of entidades(tx.doc(r), 'objetivo')) if (mismoTema(o.tema, viejo)) { tx.cambiar(r, o.id, { tema: nuevo }); n++; }
+  }
+  return { n };
+}
 registrar('estudio.eliminar', (tx, a) => eliminarSeccionLista(tx, 'estudio', a.id));
 
 registrar('proyecto.crear', (tx, a) => crearSeccionLista(tx, 'proyecto', a.nombre, {
@@ -1004,6 +1148,7 @@ registrar('proyecto.cambiar', (tx, a) => {
   if (a.clave === 'siguiente' || a.clave === 'dejado') fijarClave(tx, 'proyecto', a.id, 'actualizado', exigirHoy(tx));
 });
 registrar('proyecto.eliminar', (tx, a) => eliminarSeccionLista(tx, 'proyecto', a.id));
+registrar('proyecto.renombrar', (tx, a) => renombrarTema(tx, 'proyecto', a.id, a.nombre));
 
 // ---------- Onboarding ----------
 
