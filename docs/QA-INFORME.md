@@ -190,3 +190,15 @@ Revisión «quirúrgica» de lo que obligaba a editar ficheros a mano o a borrar
 4. El diario se edita desde el cajón solo para los últimos 7 días (la operación acepta cualquier fecha hasta hoy).
 5. El plan de diseño dejaba los atajos de teclado fuera; los he añadido porque estaban en la lista que aprobaste. Son de una tecla y no actúan mientras escribes.
 
+### Indicador de guardado (2 nov. 2026)
+Petición: saber de un vistazo que lo de la web está ya en los ficheros Markdown.
+- Junto a Semana · Hoy · Progreso: **● Guardado**, **○ Guardando…**, **No se guardó el último cambio** (6 s tras un error, por ejemplo un 409 por edición externa) y **Sin conexión · no se guarda** (servidor parado). El `title` dice la carpeta y la hora del último cambio. En pantallas estrechas, solo el punto (sin scroll horizontal a 1024 px al 200 %).
+- «Guardado» solo aparece cuando el servidor ha confirmado **todas** las operaciones y deshaceres en camino: no al pulsar, sino cuando ya está en disco. Cerrar la pestaña con algo en camino pide confirmación.
+- No toca datos: solo lee el estado del cliente.
+- Encontrado al probarlo: con el reloj fijo de los e2e (`setFixedTime`), el mínimo de 400 ms medido con `Date.now()` no terminaba nunca y se quedaba en «Guardando…». Los intervalos se miden ahora con `performance.now()`, que además no se ve afectado si cambia la hora del sistema.
+- Pruebas: e2e en `sincronizacion.spec` (Guardando… mientras el servidor retiene la petición y el fichero aún no tiene el cambio; Guardado tras varias seguidas y tras deshacer; «No se guardó» tras un 409; «Sin conexión» con el servidor parado), 3 de 3 repeticiones; suite completa en verde (195 unitarias, 65 e2e, 171 visuales). Capturas del README regeneradas.
+
+### Revisión de la documentación (2 nov. 2026)
+- `DISENO.md`: el caso límite 9 decía que cambiar la plantilla no toca las semanas existentes; ya no es así desde «plantilla editable» (con la casilla llega a la actual y futuras donde el bloque sigue tal cual). Corregido, junto con el 11 (aviso de horas) y la parte web (indicador y `enviarVarias`).
+- README: capturas regeneradas con la interfaz actual y sus pies al día.
+

@@ -375,14 +375,14 @@ Entrada: semana, estudio, proyectos, Las 3, ajustes, factores. Salida: lista de 
 1. Bloques solapados: se permiten; carriles + ⚠; Proponer nunca solapa.
 2. Más de `tareas_hoy` tareas: lo nuevo va a Más adelante con aviso; «↑ hoy» o «hoy» en la captura lo ponen igualmente, avisando.
 3. Tareas vencidas → grupo Vencidas arriba en rojo.
-4. Edición a mano mientras la web está abierta: sondeo recarga; si había una op en vuelo → `409` → recarga + toast.
+4. Edición a mano mientras la web está abierta: sondeo recarga; si había una op en vuelo → `409` → recarga + toast, y el indicador dice «No se guardó el último cambio».
 5. Líneas mal escritas: se conservan y se marcan; ningún fichero se reescribe perdiendo texto.
 6. Semana cerrada por error: Reabrir; la semana siguiente no cambia.
 7. Navegar a semanas futuras: se crean desde plantilla solo al abrirlas; se pueden planificar.
 8. Semanas pasadas sin fichero: vacías y solo lectura.
-9. Cambiar la plantilla: no toca semanas existentes.
-10. Borrar un tipo en uso: bloqueado con explicación.
-11. Bloque que cruza la hora visible máxima: se recorta al pintar, no al guardar.
+9. Cambiar la plantilla: con la casilla (por defecto) llega a la semana actual desde hoy y a las futuras ya creadas, solo donde el bloque sigue tal cual; nunca a semanas pasadas o cerradas. Sin la casilla, solo la plantilla. *(Cambiado tras el uso: antes no tocaba ninguna semana existente.)*
+10. Borrar un tipo en uso: se pregunta a qué tipo pasar sus bloques, plantilla y tareas (sin elegir, no se borra). *(Cambiado tras el uso: antes, bloqueado.)*
+11. Bloque que cruza la hora visible máxima: se recorta al pintar, no al guardar; el editor avisa y ofrece ampliar las horas visibles.
 12. Semana ISO 53 y cambio de año (2026-W53 → 2027-W01).
 13. Puerto ocupado → siguiente libre. Dos instancias → la segunda abre la pestaña de la primera.
 14. Carpeta de datos inexistente o vacía → onboarding.

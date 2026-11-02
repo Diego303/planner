@@ -11,9 +11,9 @@ Con los datos inventados de [`ejemplo/`](ejemplo/) (`planner --ejemplo --hoy 202
 | | |
 |---|---|
 | ![Vista Semana](docs/capturas/semana.png) | ![Editor de bloque](docs/capturas/editor.png) |
-| **Semana**: bloques por horas, carriles, ocupación del día, Las 3 y ★ | **Editor**: tipo, subtipo de estudio, primer paso, «Hecho ✓» y «A medias» |
+| **Semana**: bloques por horas, carriles, ocupación del día, Las 3 con su plan B (si→), ★ y «● Guardado» | **Editor**: tipo (o uno nuevo), subtipo de estudio, día u otra fecha, horas libres, primer paso, duplicar, «Hecho ✓» y «A medias» |
 | ![Proponer semana](docs/capturas/proponer.png) | ![Vista Hoy](docs/capturas/hoy.png) |
-| **Proponer semana**: sugerencias discontinuas, sin solapes, con deshacer | **Hoy**: horario, tareas, más adelante por grupos y cierre del día |
+| **Proponer semana**: sugerencias discontinuas, sin solapes, con deshacer y «Quitar sugerencias» | **Hoy**: horario, Las 3, ideas, tareas, más adelante por grupos y cierre del día |
 | ![Progreso](docs/capturas/progreso.png) | ![Cerrar semana](docs/capturas/cerrar-semana.png) |
 | **Progreso**: certificaciones, plan frente a real, constancia, ánimo y lecciones | **Cerrar semana**: pendientes con una decisión cada uno |
 | ![Selector de tema](docs/capturas/temas.png) | ![Tema nórdico oscuro](docs/capturas/oscuro.png) |

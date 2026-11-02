@@ -4,7 +4,7 @@ La pantalla tiene cinco partes. Esto es lo que puedes rellenar en cada una.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ planner [Semana][Hoy][Progreso] ● Guardado ＋ apunta Gestión▾│  ← barra de arriba
+│ planner [Semana][Hoy][Progreso] ● Guardado + apunta Gestión▾│  ← barra de arriba
 ├───────────────────────────────────────────┬─────────────────┤
 │                                           │  Hoy·Metas·Diario│
 │   la vista que elijas                     │  (el cajón)      │
