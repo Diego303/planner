@@ -211,7 +211,7 @@ estado: en curso          # en curso | sin cerrar | cerrada | reabierta (las fut
 ```
 
 ### `inbox.md`
-Texto libre. El planner no lo interpreta (lo usa el plugin opcional `/planner:ordenar`). En la UI se muestra «INBOX: n notas» si no está vacío.
+Texto libre. El planner no lo interpreta (lo usa el plugin opcional `/planner:ordenar`). En la UI se muestra «INBOX: n notas» si no está vacío. *Tras el uso:* «💡 es una idea» en la captura añade una línea, y la tarjeta «Ideas» de Hoy las lista con «→ tarea» (a Más adelante) y «×».
 
 ---
 
@@ -418,7 +418,7 @@ Cada fase termina con: tests en verde (`pnpm test`), `pnpm check` limpio, compro
 ---
 
 ## 10. Fuera de alcance (decidido)
-Importar/exportar ICS · notificaciones del navegador · atajos de teclado para capturar · cuentas, sincronización o nube · temporizador Pomodoro · rachas, puntos o medallas · matriz de Eisenhower · registro de tiempo minuto a minuto · IA en el uso diario.
+Importar/exportar ICS · notificaciones del navegador · ~~atajos de teclado para capturar~~ (añadidos tras el uso: `n`, `1` `2` `3`, `←` `→`, `h`, `?`) · cuentas, sincronización o nube · temporizador Pomodoro · rachas, puntos o medallas · matriz de Eisenhower · registro de tiempo minuto a minuto · IA en el uso diario.
 
 ## 11. Por qué cada pieza (resumen de la investigación)
 | Pieza | Base |

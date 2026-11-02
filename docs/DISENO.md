@@ -231,20 +231,29 @@ Todas son puras: `aplicar(mundo, op, ctx) → { mundo, inversa, tocados, resulta
 | `bloque.crear {semana, bloque}` | semana | Añade al final de `## Bloques` (crea la sección si falta) |
 | `bloque.editar {semana, id, cambios}` | semana (+ plantilla si se marca ↻) | Mover, estirar, aceptar sugerencia, título, tipo, subtipo, paso |
 | `bloque.eliminar {semana, id}` | semana | Quita la línea |
-| `bloque.mover {semana, id, destino, cambios}` | dos semanas | Lleva un bloque a otra semana (vista que empieza en domingo) |
+| `bloque.duplicar {semana, id, dias}` | semana | Copia el bloque en otros días de la misma semana (idempotente; cuenta los solapes) |
+| `bloque.mover {semana, id, destino, cambios}` | dos semanas | Lleva un bloque a otra semana (vista que empieza en domingo, «otra fecha…» del editor) |
 | `bloque.hecho {semana, id, delta, nota?, cambios?}` | semana, estudio, proyectos | Marca hecho, guarda nota del simulacro, borra el `dejado` del tema, actualiza el proyecto |
 | `bloque.desmarcar {semana, id}` | semana | Quita `hecho` y `nota` |
 | `bloque.aMedias {semana, id, dejado, cambios?}` | estudio o proyectos | Guarda dónde lo dejaste |
-| `las3.crear / editar / eliminar` | semana | Las 3 en línea |
+| `las3.crear / editar / eliminar` | semana | Las 3 en línea (también el plan B `si` / `entonces`) |
+| `las3.pasar {desde, a}` | dos semanas | Lleva Las 3 de una semana a otra |
+| `semana.aplicarPlantilla {semana}` | semana | Añade lo que le falte de la plantilla (desde hoy en la actual) |
+| `semana.quitarSugerencias {semana}` | semana | Borra las sugerencias no aceptadas |
 | `semana.proponer {semana, horas?}` | semana | Borra sugerencias no aceptadas y añade las nuevas |
 | `semana.reabrir {semana}` | semana | `estado: reabierta` |
 | `semana.cerrar {semana, lecciones, decisiones, siguiente}` | semana N y N+1, tareas, estudio, proyectos, inbox, archivo | Cierre en 4 pasos |
-| `tarea.crear / editar / marcar / mover / eliminar` | tareas | Captura, casilla, ↑ hoy / ↓ luego |
+| `tarea.crear / editar / marcar / mover / eliminar` | tareas | Captura, casilla, ↑ hoy / ↓ luego (`exceder: true` sube a Hoy aunque esté lleno) |
+| `inbox.crear {texto} / eliminar / aTarea` | inbox, tareas | Ideas: apuntar, borrar o pasar a tarea (Más adelante) |
+| `diario.editar {fecha, animo?, linea?, manana?}` | diario | Corrige un día pasado o de hoy; solo cambia lo que se manda |
 | `dia.cerrar {fecha, animo, linea, manana, aplazar}` | diario, tareas, archivo | Cierre del día y archivo de tareas hechas antes de hoy |
 | `estudio.crear / cambiar / eliminar` | estudio | Metas de estudio |
-| `proyecto.crear / cambiar / eliminar` | proyectos | Siguiente paso, pausar |
-| `plantilla.crear / eliminar` | plantilla | Gestión → Plantilla |
-| `tipo.crear / color / banderas / eliminar` | tipos | Banderas trabajo/estudio; quitar bloqueado si está en uso |
+| `estudio.renombrar / proyecto.renombrar {id, nombre}` | estudio o proyectos, todas las semanas | Cambia el nombre y el prefijo «Nombre · …» de sus bloques, el `rel` de Las 3 y los objetivos |
+| `proyecto.crear / cambiar / eliminar` | proyectos | Siguiente paso, pausar y reactivar |
+| `plantilla.crear / editar / eliminar {…, aplicar?}` | plantilla (+ semanas actual y futuras con `aplicar`) | Gestión → Plantilla; respeta lo cambiado a mano |
+| `tipo.crear / color / banderas` | tipos | Banderas trabajo/estudio |
+| `tipo.renombrar {nombre, nuevo}` | tipos, todas las semanas, plantilla, tareas | Cambia el nombre en todas partes |
+| `tipo.eliminar {nombre, pasarA?}` | tipos (+ semanas, plantilla, tareas con `pasarA`) | Sin `pasarA`, bloqueado si está en uso |
 | `ajustes.cambiar {clave, valor}` | ajustes | Cualquier ajuste |
 | `datos.inicializar {plantilla?}` | ajustes, tipos, plantilla | Onboarding |
 
