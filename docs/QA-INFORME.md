@@ -165,3 +165,12 @@ Datos: `test/rendimiento/generar.js` crea tres años realistas (157 semanas, 5.0
 - `pnpm qa:validar -- --datos <ruta>`: copia la carpeta a un temporal, la parsea entera, comprueba la ida y vuelta byte a byte y lista líneas no reconocidas (con el motivo), ficheros ignorados, solapes, temas huérfanos, tipos sin uso y tipos sin definir. Comprueba al final que la carpeta original no ha cambiado (`test/qa-validar.test.js` lo verifica byte a byte y por fecha de modificación). Salida 0, 1 (avisos) o 2 (ida y vuelta no exacta).
 - Sobre `ejemplo/`: ida y vuelta exacta en 50 ficheros, 1 línea sin casilla (a propósito) y un solape cada domingo pasado («Cerrar semana» 17:00 dentro del bloque de proyectos de 16:00 a 17:30). Es un detalle de los datos de ejemplo, no del planner.
 - **Con permiso (2 nov. 2026), pero sin ejecutar:** `/mnt/d/planner` todavía no existe (el planner no se ha empezado a usar). Cuando haya datos: `pnpm qa:validar -- --datos /mnt/d/planner` (solo lee; trabaja sobre una copia).
+
+### Después de la QA · uso (2 nov. 2026)
+A partir del uso real:
+- **Las 3 «no salían» en Hoy:** estaban escritas en la semana siguiente sin que la pantalla lo dejara claro. Ahora la etiqueta dice siempre de qué semana son, Hoy ofrece pasarlas a esta semana y el cajón las enseña.
+- **Plantilla:** se puede editar cada entrada y los cambios llegan a las semanas ya creadas (respetando lo cambiado a mano; «tal cual» incluye el primer paso y el subtipo). «↻ Aplicar plantilla» en la semana.
+- **Sin límites de horas:** «de … a …» libres en el editor y en la plantilla (campos en 24 h).
+- **«Apunta algo» sin memorizar:** botones de tipo, cuándo e importante, «/» para el tipo y «✎ editar» al guardar.
+- Pruebas: 187 unitarias (con `plantilla.editar`, `las3.pasar` y el fuzzer con las operaciones nuevas), 55 e2e (nuevos: captura con botones y «/», horas libres, editar la plantilla, Las 3 entre semanas), 171 visuales regeneradas y revisadas.
+- **Test intermitente encontrado y explicado:** «edición a mano en ≤ 3 s» fallaba con 4 navegadores a la vez por contienda de CPU (lo normal: 1,5–2 s). Los tests que miden tiempos (`@tiempo`) se pasan aparte y de uno en uno.

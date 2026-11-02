@@ -58,12 +58,12 @@ Copia [`scripts/windows/planner-inicio.vbs`](scripts/windows/) a la carpeta `she
 
 | Vista | Para qué |
 |---|---|
-| **Semana** | Doble clic en un hueco crea un bloque de 1 h; arrastra para mover (ajuste a 30 min y a otro día); estira el borde inferior; clic para editar (título, tipo, ◎ simulacro / ⟲ repaso, primer paso, ↻ plantilla). **Hecho ✓** pregunta cuánto duró de verdad; **A medias** guarda dónde lo dejaste. **Proponer semana** coloca tus horas de estudio y proyectos sin solapar. |
+| **Semana** | Doble clic en un hueco crea un bloque de 1 h; arrastra para mover (ajuste a 30 min y a otro día); estira el borde inferior; clic para editar (título, tipo, ◎ simulacro / ⟲ repaso, de qué hora a qué hora, primer paso, ↻ plantilla). **↻ Aplicar plantilla** añade lo que falte de la plantilla. **Hecho ✓** pregunta cuánto duró de verdad; **A medias** guarda dónde lo dejaste. **Proponer semana** coloca tus horas de estudio y proyectos sin solapar. |
 | **Hoy** | Horario del día, Las 3, tareas de hoy (máx. configurable) y más adelante por grupos; **cierre del día** en 4 pasos que termina en «mañana empiezo por…». |
 | **Progreso** | Certificaciones (bullet graph), plan frente a real, lo que tardas de verdad, constancia sin rachas, ánimo y horas, lecciones. |
-| **Gestión ▾** | Semanas (−4…+5), Cerrar semana (asistente de 4 pasos), Plantilla, Tipos, Tema y Ajustes. |
+| **Gestión ▾** | Semanas (−4…+5), Cerrar semana (asistente de 4 pasos), Plantilla (editable; los cambios llegan a las semanas ya creadas), Tipos, Tema y Ajustes. |
 
-**Apunta algo** (barra superior): `#área` (prefijo de un tipo), `hoy | mañana | lun…dom | dd/mm`, `!` prioridad, `45m | 2h | 1h30`, `algún día`. Enter guarda.
+**Apunta algo** (barra superior): escribe y Enter. Al pulsarla, botones para el tipo, cuándo e importante; `/` para elegir el tipo; al guardar, «✎ editar» para la duración y demás. También valen `#área`, `hoy | mañana | lun…dom | dd/mm`, `!`, `45m | 2h | 1h30`, `algún día`.
 
 Teclado: `Esc` cierra popovers, modales y menús; `Enter` abre el bloque con foco y guarda formularios.
 

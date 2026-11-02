@@ -150,12 +150,12 @@ El `.vbs` ejecuta `wsl.exe -e bash -lic "planner --silencioso"`. Más detalles e
 
 | Dónde | Qué haces |
 |---|---|
-| **Semana** | Doble clic en un hueco = bloque de 1 h. Arrastra para mover, estira el borde inferior, clic para editar. **Hecho ✓** pregunta cuánto duró; **A medias** guarda dónde lo dejaste. **Proponer semana** reparte tus horas de estudio y proyectos. Escribe **Las 3** arriba. |
+| **Semana** | Doble clic en un hueco = bloque de 1 h. Arrastra para mover, estira el borde inferior, clic para editar (horas libres, «de 8:30 a 18:00», sin límite de duración). **Hecho ✓** pregunta cuánto duró; **A medias** guarda dónde lo dejaste. **Proponer semana** reparte tus horas de estudio y proyectos; **↻ Aplicar plantilla** añade lo que le falte de tu plantilla (avisa si algo se solapa). Escribe **Las 3** arriba: la etiqueta dice si son de esta semana o de otra. |
 | **Hoy** | Tus tareas (✎ en cada una para editar, mover o borrar), lo de más adelante y, al final del día, **Cerrar el día** (termina con «mañana empiezo por…»). |
-| **Apunta algo** (barra de arriba) | `Llamar al gestor mañana #pers 30m !` → Enter. Fichas: `#área`, `hoy`/`mañana`/`lun…dom`/`dd/mm`, `!`, `45m`/`2h`/`1h30`, `algún día`. |
+| **Apunta algo** (barra de arriba) | Escribe qué es y Enter. Al pulsar la barra salen botones para el **tipo**, **cuándo** (hoy, mañana, otro día, más adelante, algún día) e **importante**; con **/** eliges el tipo con el teclado. Al guardar, **✎ editar** abre la tarea para la duración, la fecha exacta, etc. Si te los sabes, también valen `#área`, `mañana`/`lun…dom`/`dd/mm`, `!`, `45m`/`2h`/`1h30`, `algún día`. |
 | **Metas** (cajón derecho) | Horas de estudio de la semana, simulacros y el siguiente paso de cada proyecto. |
 | **Progreso** | Cómo vas con cada certificación, lo que tardas de verdad, constancia, ánimo y lecciones. |
-| **Gestión ▾** | Semanas, **Cerrar semana** (el domingo o el lunes, 4 pasos), Plantilla, Tipos, Tema y Ajustes. |
+| **Gestión ▾** | Semanas, **Cerrar semana** (el domingo o el lunes, 4 pasos), Plantilla (cada entrada se puede **editar**; los cambios llegan también a las semanas ya creadas), Tipos, Tema y Ajustes. |
 
 Cada cambio se puede **deshacer** durante 10 s desde el aviso de abajo. `Esc` cierra lo que esté abierto.
 
