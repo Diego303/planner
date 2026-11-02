@@ -1,6 +1,6 @@
 // Arranque y orquestación: barra superior, cambio de vista, menú Gestión, teclado y repintado.
 import { html, $, on, pintar, hayRepintadoAplazado, olvidarAplazados } from './ui/dom.js';
-import { st, cargar, alCambiar, iniciarSondeo, derivados, acciones, irASemana } from './estado.js';
+import { st, cargar, alCambiar, iniciarSondeo, derivados, acciones, irASemana, estadoGuardado, horaUltimoGuardado } from './estado.js';
 import * as f from '/core/fechas.js';
 import { iniciarModal, cerrarModal, modalAbierto, abrirModal, cabecera } from './ui/modal.js';
 import { cerrarPopover, popoverAbierto } from './ui/popover.js';
@@ -27,6 +27,33 @@ function pintarBarra() {
   $('#gbtn').setAttribute('aria-expanded', menuAbierto);
   pintar($('#gmenu'), menuAbierto ? html`<div class="dd" role="menu">${menuGestion.map((e) => e.pintar(d))}<div class="sep"></div><div class="mut" style="font-size:11px;padding:4px 10px 6px">Guardado en ${d.meta.datos.ruta} · copia ${d.ajustes.copias}</div></div>` : '');
 }
+
+// «Guardado» / «Guardando…»: si lo que ves ya está en tus ficheros. «Guardando…» se ve al menos 400 ms
+// (sin parpadeos en las operaciones rápidas).
+let guardandoDesde = 0, esperaGuardado = null;
+function pintarGuardado() {
+  const el = $('#guardado');
+  if (!el || !st.datos) return;
+  let e = estadoGuardado();
+  if (e === 'guardando') guardandoDesde ||= performance.now();
+  else if (guardandoDesde) {
+    const falta = 400 - (performance.now() - guardandoDesde);
+    if (falta > 0) { clearTimeout(esperaGuardado); esperaGuardado = setTimeout(pintarGuardado, falta); e = 'guardando'; } else guardandoDesde = 0;
+  }
+  const h = horaUltimoGuardado();
+  const ruta = derivados().meta.datos.ruta;
+  const [texto, ayuda] = {
+    guardando: ['Guardando…', 'Escribiendo tus cambios en los ficheros Markdown'],
+    guardado: ['Guardado', `Todo lo que ves está en tus ficheros (${ruta})${h ? ` · último cambio a las ${String(h.getHours()).padStart(2, '0')}:${String(h.getMinutes()).padStart(2, '0')}` : ''}`],
+    fallo: ['No se guardó el último cambio', 'El aviso de abajo explica por qué; lo que ves es lo que hay en tus ficheros'],
+    caido: ['Sin conexión · no se guarda', 'El servidor está parado: arranca planner y se recupera solo'],
+  }[e];
+  if (el.dataset.estado === e && el.textContent === texto) { el.title = ayuda; return; }
+  el.dataset.estado = e;
+  el.textContent = texto;
+  el.title = ayuda;
+}
+acciones.alGuardar = pintarGuardado;
 
 /** Aplica el tema al <html> (atributos y tokens del personalizado). Los colores de tipo se recalculan al pintar. */
 function aplicarTema() {
@@ -61,6 +88,7 @@ export function pintarTodo() {
   if (!vistas[st.ui.vista]) st.ui.vista = 'semana';
   aplicarTema();
   pintarBarra();
+  pintarGuardado();
   pintarBanda();
   for (const id of Object.keys(vistas)) $(`#v-${id}`).hidden = id !== st.ui.vista;
   $('#maingrid').classList.toggle('ancho', st.ui.vista === 'progreso');

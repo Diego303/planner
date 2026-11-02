@@ -319,3 +319,16 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 table.atajos { border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
 table.atajos td { padding: 4px 10px 4px 0; vertical-align: top; }
 kbd { font: 11.5px ui-monospace, monospace; padding: 1px 6px; border: 1px solid var(--borde-control); border-bottom-width: 2px; border-radius: 5px; background: var(--superficie); white-space: nowrap; }
+
+/* Guardado / Guardando… (junto a las vistas) */
+.guardado { font-size: 11.5px; color: var(--texto-2); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; min-width: 92px; }
+.guardado::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; }
+.guardado[data-estado="guardando"]::before { background: transparent; border: 1.5px solid var(--texto-3); width: 4px; height: 4px; }
+.guardado[data-estado="fallo"] { color: var(--aviso); }
+.guardado[data-estado="fallo"]::before { background: var(--aviso); }
+.guardado[data-estado="caido"] { color: var(--peligro); }
+.guardado[data-estado="caido"]::before { background: var(--peligro); }
+/* en pantallas estrechas, solo el punto (el texto sigue para lectores de pantalla y en el title) */
+@media (max-width: 760px) {
+  .guardado { min-width: 0; font-size: 0; gap: 0; }
+}
