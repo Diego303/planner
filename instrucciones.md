@@ -206,6 +206,34 @@ Luego elige una de estas tres formas:
 
 La app instalada no cambia: sigue abriendo `http://localhost:4321/` y enseña lo que sirva el planner que esté en marcha.
 
+### Paso a paso: «siempre en esta carpeta»
+
+Ejemplo con `D:\GoogleDrive\Vida-Diego\PLANNER` (en WSL, `/mnt/d/GoogleDrive/Vida-Diego/PLANNER`):
+
+1. Para el planner si está en marcha: `planner stop`.
+2. Copia esta línea tal cual (una sola línea; las comillas hacen falta si la ruta tiene espacios):
+
+   ```bash
+   echo 'export PLANNER_DATOS="/mnt/d/GoogleDrive/Vida-Diego/PLANNER"' >> ~/.bashrc
+   ```
+
+3. Cierra la terminal, abre una nueva y comprueba: `echo $PLANNER_DATOS` tiene que enseñar la ruta.
+4. Arranca con `planner`. Si la carpeta no existe o está vacía, sale la guía de inicio y la crea al guardar el primer paso. `planner status` confirma la carpeta.
+5. El arranque con Windows (`planner-inicio.vbs`) no hay que tocarlo: carga tu `~/.bashrc` y usa la misma carpeta.
+
+Para volver a la de siempre, borra esa línea del final de `~/.bashrc` (con `nano ~/.bashrc`) y abre una terminal nueva.
+
+### En una carpeta sincronizada (Google Drive, OneDrive, Dropbox)
+
+Funciona: son ficheros Markdown normales. Ten en cuenta:
+
+- **Copias:** `.copias/` guarda hasta 14 copias diarias dentro de la carpeta y el servicio las subirá todas. Si no quieres, en **Gestión → Ajustes → Copia de seguridad** elige «al cerrar semana» (el servicio ya guarda su propio historial de versiones).
+- **Temporales:** al guardar, el planner escribe un instante `.fichero.md.tmp-…` y lo renombra. Si el servicio llega a subir alguno, es inofensivo; el planner los borra al arrancar.
+- **Un solo ordenador a la vez:** si editas desde dos PCs a la vez, el servicio crea copias en conflicto («tareas (1).md») y el planner solo lee el fichero original. Si te pasa, junta a mano lo que haga falta.
+- **Bloqueos:** si el servicio tiene un fichero bloqueado mientras lo sube, el planner reintenta; si aun así no puede, te lo dice («no se ha guardado nada») y no se pierde nada.
+- **Ficheros solo en la nube** (modo «transmitir» de Google Drive, «Archivos a petición» de OneDrive): el primer arranque va más lento mientras se descargan. Marca la carpeta como «disponible sin conexión» o usa el modo «duplicar».
+- Para revisar tus ficheros sin tocarlos (sobre una copia temporal): `cd /mnt/d/GitHub/planner && pnpm qa:validar -- --datos "/mnt/d/GoogleDrive/Vida-Diego/PLANNER"`.
+
 ## 8. Empezar un planner limpio
 
 ### Opción A: carpeta nueva, la antigua intacta (recomendada)

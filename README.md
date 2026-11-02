@@ -35,7 +35,7 @@ Enlazado al repo en `/mnt/d`, arrancar tarda ~1 s; instalado desde un paquete (`
 
 ```bash
 planner                          # arranca en http://localhost:4321 y abre el navegador
-planner --datos /mnt/d/planner   # otra carpeta de datos (también: PLANNER_DATOS=…)
+planner --datos /mnt/d/planner   # otra carpeta de datos; para siempre: PLANNER_DATOS (instrucciones.md, punto 7)
 planner --puerto 5000            # otro puerto (si está ocupado, usa el siguiente libre)
 planner --silencioso             # sin abrir el navegador
 planner status                   # ¿está en marcha? puerto, carpeta y PID
