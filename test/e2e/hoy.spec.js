@@ -17,24 +17,30 @@ test('horario del día con «ahora» (a las 10:00, el trabajo de 9:00 a 17:30)',
   await expect(page.locator('#hoy-horario .tl.hecho')).toContainText('AI-102 · visión');
 });
 
-test('límite de Hoy: ↑ sube hasta llenarlo, entonces ↑ se desactiva; ↓ baja', async ({ page, app }) => {
+test('límite de Hoy: ↑ sube hasta llenarlo; lleno, ↑ sube igualmente avisando; ↓ baja', async ({ page, app }) => {
   await irAHoy(page, app);
   const contador = page.locator('#hoy-tareas .fila-lab .mut');
   await expect(contador).toHaveText('4/5');
   await page.getByRole('button', { name: 'Subir a hoy: Revisar contrato del piso' }).click();
   await expect(contador).toHaveText('5/5');
-  await expect(page.locator('#hoy-tareas .lleno')).toHaveText('Hoy está lleno (5). Lo nuevo irá a Más adelante.');
-  await expect(page.getByRole('button', { name: 'Subir a hoy: Post del blog: evaluar RAG' })).toBeDisabled();
+  await expect(page.locator('#hoy-tareas .lleno')).toHaveText('Hoy está lleno (5). Lo nuevo irá a Más adelante; si algo no puede esperar, súbelo con ↑.');
   await esperarFichero(app, 'tareas.md', (t) => /## Hoy[^#]*Revisar contrato del piso[\s\S]*## Más adelante/.test(t));
+  // lleno: ↑ sigue activo, sube igualmente y lo dice; deshacer la devuelve
+  await page.getByRole('button', { name: 'Subir a hoy: Post del blog: evaluar RAG' }).click();
+  await expect(contador).toHaveText('6/5');
+  await expect(page.locator('#toast')).toContainText('Subida a Hoy');
+  await esperarFichero(app, 'tareas.md', (t) => /## Hoy[^#]*Post del blog: evaluar RAG[\s\S]*## Más adelante/.test(t));
+  await page.locator('#toast [data-deshacer]').click();
+  await expect(contador).toHaveText('5/5');
+  await esperarFichero(app, 'tareas.md', (t) => /## Más adelante[\s\S]*Post del blog: evaluar RAG/.test(t) && !/## Hoy[^#]*Post del blog/.test(t));
   await page.getByRole('button', { name: 'Bajar a más adelante: Llamar al gestor' }).click();
   await expect(contador).toHaveText('4/5');
-  await expect(page.getByRole('button', { name: 'Subir a hoy: Post del blog: evaluar RAG' })).toBeEnabled();
   await esperarFichero(app, 'tareas.md', (t) => /## Más adelante[\s\S]*Llamar al gestor/.test(t) && !/## Hoy[^#]*Llamar al gestor/.test(t));
   // con Hoy lleno, la captura manda lo de hoy a Más adelante
   await page.getByRole('button', { name: 'Subir a hoy: Llamar al gestor' }).click();
   await expect(contador).toHaveText('5/5');
   await page.locator('#cap').fill('Comprar pilas');
-  await expect(page.locator('#cap-panel')).toContainText('Irá a Más adelante (Hoy está lleno)');
+  await expect(page.locator('#cap-panel')).toContainText('Irá a Más adelante (Hoy está lleno: pulsa «hoy» para ponerla igualmente)');
   await page.keyboard.press('Enter');
   await expect(page.locator('#capp')).toContainText('guardado en Más adelante ✓ · Hoy está lleno');
 });

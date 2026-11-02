@@ -187,14 +187,20 @@ test('↻ Aplicar plantilla en la semana: añade lo que falta aunque se solape, 
   await expect(page.getByRole('button', { name: '↻ Aplicar plantilla' })).toHaveCount(0);
 });
 
-test('Tipos: color, banderas, alta y quitar bloqueado si está en uso', async ({ page, app }) => {
+test('Tipos: color, banderas, alta y quitar (si está en uso, pregunta a qué tipo pasarlo)', async ({ page, app }) => {
   await abrir(page, app);
   await menu(page, /Tipos/);
   const m = modal(page);
   await m.getByRole('radiogroup', { name: 'Color de personal' }).getByRole('radio').nth(1).click();
   await esperarFichero(app, 'tipos.md', (t) => !/- personal \| #86651F/.test(t) && /- personal \| #[0-9A-F]{6}/.test(t));
-  await expect(m.locator('[data-quitar="personal"]')).toBeDisabled();
   await expect(m.locator('[data-quitar="personal"]')).toHaveAttribute('title', /En uso/);
+  // en uso: no se quita sin decir a dónde van sus bloques; «Cancelar» no toca nada
+  const antes = await app.leer('tipos.md');
+  await m.getByRole('button', { name: 'Quitar personal' }).click();
+  await expect(m.locator('#qt-destino')).toBeFocused();
+  await m.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(m.locator('#qt-destino')).toHaveCount(0);
+  expect(await app.leer('tipos.md')).toBe(antes);
   await m.getByLabel('Nuevo tipo').fill('lectura');
   await m.getByRole('button', { name: 'Añadir', exact: true }).click();
   await esperarFichero(app, 'tipos.md', (t) => /^- lectura \| #[0-9A-F]{6}$/m.test(t));
@@ -205,7 +211,7 @@ test('Tipos: color, banderas, alta y quitar bloqueado si está en uso', async ({
   await m.locator('[data-quitar="lectura"]').click();
   await esperarFichero(app, 'tipos.md', (t) => !t.includes('lectura'));
   // bandera «estudio» en proyectos
-  await m.locator('.pend', { hasText: 'proyectos' }).getByRole('button', { name: 'estudio' }).click();
+  await m.getByRole('button', { name: 'proyectos cuenta como estudio' }).click();
   await esperarFichero(app, 'tipos.md', (t) => /^- proyectos \| #2F6B4F \| estudio$/m.test(t));
 });
 
@@ -222,8 +228,22 @@ test('Ajustes: cada uno cambia la interfaz al momento', async ({ page, app }) =>
   await m.locator('#aj-tareas').fill('2');
   await m.locator('#aj-tareas').press('Tab');
   await esperarFichero(app, 'ajustes.md', (t) => /- tareas_hoy: 2/.test(t));
-  await m.locator('#aj-cierre').selectOption({ label: '21:00' });
-  await esperarFichero(app, 'ajustes.md', (t) => /- cierre: 21:00/.test(t));
+  await m.locator('#aj-cierre').fill('2130');
+  await m.locator('#aj-cierre').press('Tab');
+  await esperarFichero(app, 'ajustes.md', (t) => /- cierre: 21:30/.test(t));
+  await expect(m.locator('#aj-cierre')).toHaveValue('21:30');
+  await m.locator('#aj-cierre').fill('mañana');
+  await m.locator('#aj-cierre').press('Tab');
+  await expect(m.locator('#aj-error')).toContainText('Escribe la hora del cierre como 22:30');
+  expect(await app.leer('ajustes.md')).toMatch(/- cierre: 21:30/);
+  // horas visibles de 0 a 24
+  await m.locator('#aj-desde').selectOption('0');
+  await m.locator('#aj-hasta').selectOption('24');
+  await esperarFichero(app, 'ajustes.md', (t) => /- horas: 0-24/.test(t));
+  await expect(page.locator('#wk .horas span').first()).toHaveText('0');
+  await m.locator('#aj-desde').selectOption('7');
+  await m.locator('#aj-hasta').selectOption('22');
+  await esperarFichero(app, 'ajustes.md', (t) => /- horas: 7-22/.test(t));
   await m.locator('#aj-foco').selectOption({ label: '5 h' });
   await esperarFichero(app, 'ajustes.md', (t) => /- foco_max: 5/.test(t));
   // capacidad 50 %: el lunes (690 min de 900 visibles, 77 %, «aviso» con 70 %) pasa a «exceso»
@@ -249,7 +269,7 @@ test('Ajustes: cada uno cambia la interfaz al momento', async ({ page, app }) =>
   await expect(bloque(page, 'Deploy del pipeline')).toContainText('☾'); // 21:30 > 21:00
   await page.locator('#seg').getByRole('button', { name: 'Hoy' }).click();
   await expect(page.locator('#hoy-tareas .fila-lab .mut')).toHaveText('4/2');
-  await expect(page.locator('#hoy-cierre .fila-lab')).toContainText('a las 21:00');
+  await expect(page.locator('#hoy-cierre .fila-lab')).toContainText('a las 21:30');
   // los comentarios del fichero se conservan
   expect(app.leer('ajustes.md')).toContain('# % máximo del día ocupado (50–100)');
 });
