@@ -7,7 +7,6 @@ import { request } from 'node:http';
 import { arrancar } from '../src/server/index.js';
 import { EJEMPLO } from './ayudas.js';
 import * as m from '../src/core/modelo.js';
-import { fechaDe } from '../src/core/fechas.js';
 
 const HOY = '2026-11-02';
 let app, dir, base;
@@ -72,7 +71,7 @@ test('seguridad: Host ajeno, Origin ajeno, sin JSON, cuerpo grande y rutas fuera
   assert.equal((await cruda({ method: 'POST', path: '/api/op', headers: { host: `127.0.0.1:${app.puerto}`, origin: 'http://evil.example', 'content-type': 'application/json' }, body: op })).estado, 403);
   assert.equal((await cruda({ method: 'POST', path: '/api/op', headers: { host: `127.0.0.1:${app.puerto}`, 'content-type': 'text/plain' }, body: op })).estado, 415);
   const grande = JSON.stringify({ op: 'x', relleno: 'a'.repeat(300 * 1024) });
-  const r = await cruda({ method: 'POST', path: '/api/op', headers: { host: `127.0.0.1:${app.puerto}`, 'content-type': 'application/json' }, body: grande }).catch(() => ({ estado: 413 }));
+  const r = await cruda({ method: 'POST', path: '/api/op', headers: { host: `127.0.0.1:${app.puerto}`, 'content-type': 'application/json' }, body: grande });
   assert.equal(r.estado, 413);
   for (const ruta of ['/%2e%2e/package.json', '/core/%2e%2e/server/store.js', '/..%2fpackage.json', '/core/..%2f..%2fpackage.json']) {
     assert.equal((await cruda({ path: ruta, headers: { host: `127.0.0.1:${app.puerto}` } })).estado, 404, ruta);
@@ -95,8 +94,13 @@ test('POST /api/op escribe de forma atómica, cambia la versión y hace la copia
   assert.notEqual(r.json.estado.versiones['semanas/2026-W45.md'], antes.json.versiones['semanas/2026-W45.md']);
   assert.notEqual((await get(`/api/version?hoy=${HOY}`)).json.version, v0);
   assert.ok(!readdirSync(join(dir, 'semanas')).some((n) => n.includes('.tmp-')), 'sin temporales');
-  assert.ok(existsSync(join(dir, '.copias', fechaDe(new Date()), 'semanas', '2026-W45.md')), 'copia del día');
-  assert.ok(!existsSync(join(dir, '.copias', fechaDe(new Date()), '.copias')));
+  // la copia lleva la fecha real del día (no la simulada); sin depender de la hora a la que corre el test
+  await app.copias.esperar(); // va en segundo plano
+  const copias = readdirSync(join(dir, '.copias'));
+  assert.equal(copias.length, 1);
+  assert.match(copias[0], /^\d{4}-\d{2}-\d{2}$/);
+  assert.ok(existsSync(join(dir, '.copias', copias[0], 'semanas', '2026-W45.md')), 'copia del día');
+  assert.ok(!existsSync(join(dir, '.copias', copias[0], '.copias')));
 });
 
 test('409 si el fichero cambió fuera del planner', async () => {

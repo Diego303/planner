@@ -43,3 +43,31 @@ export function sinInternos(v) {
 }
 
 export const vuelta = (ruta, texto) => serializar(parsear(ruta, texto));
+
+// ---------- Servidor sin HTTP (para pruebas de datos) ----------
+import { mkdtempSync, cpSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { crearStore } from '../src/server/store.js';
+import { crearApi } from '../src/server/api.js';
+import { crearDeshacer } from '../src/server/deshacer.js';
+
+/** Copia de ejemplo/ en un temporal; devuelve { dir, borrar } */
+export function copiaEjemplo(prefijo = 'planner-test-') {
+  const dir = mkdtempSync(join(tmpdir(), prefijo));
+  cpSync(EJEMPLO, dir, { recursive: true });
+  return { dir, borrar: () => rmSync(dir, { recursive: true, force: true }) };
+}
+
+export const SIN_COPIAS = { antesDeEscribir() {}, async despuesDeEscribir() {} };
+
+/** API real sobre una carpeta, sin servidor HTTP. */
+export function apiDirecta(dir, { copias = SIN_COPIAS, hoySimulado = null } = {}) {
+  const store = crearStore(dir);
+  const api = crearApi({ store, copias, deshacer: crearDeshacer(), hoySimulado });
+  return {
+    store, api,
+    op: (cuerpo) => api.rutas['POST /api/op'](new URLSearchParams(), cuerpo),
+    estado: (q) => api.rutas['GET /api/estado'](new URLSearchParams(q)),
+    deshacer: (cuerpo) => api.rutas['POST /api/deshacer'](new URLSearchParams(), cuerpo),
+  };
+}

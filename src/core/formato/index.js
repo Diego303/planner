@@ -3,7 +3,7 @@ import * as semana from './semana.js';
 import * as tareas from './tareas.js';
 import * as tiposPlantilla from './tipos.js';
 import { ajustes, estudio, proyectos, diario, tema } from './listas.js';
-import { clasificar, partirTexto, serializarDoc, canonComun, nuevoDoc } from './comun.js';
+import { clasificar, partirTexto, documento, serializarDoc, canonComun, nuevoDoc } from './comun.js';
 
 // inbox.md: texto libre. Cada línea no vacía que no es título es una nota (nunca «no reconocida»).
 const canonInbox = (l) => canonComun(l) ?? l.texto;
@@ -12,7 +12,7 @@ const inbox = {
     const p = partirTexto(texto);
     const nota = (raw) => ({ t: 'nota', texto: raw });
     const lineas = clasificar(p.lineas, { seccionDe: (t) => t, enCabecera: nota, enSeccion: nota, canon: canonInbox });
-    return { tipo: 'inbox', lineas, bom: p.bom, eol: p.eol, finalNL: p.finalNL };
+    return documento('inbox', p, lineas);
   },
   serializar: (doc) => serializarDoc(doc, canonInbox),
 };

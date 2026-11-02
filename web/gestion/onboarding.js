@@ -30,7 +30,7 @@ ${meta.datos.existe ? '' : html`<div class="banda aviso" style="margin-top:10px"
 <div class="steps">${[1, 2, 3].map((n) => html`<span class="${n <= actual ? 'on' : ''}"></span>`)}</div>
 <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
   <div style="${actual === 1 ? '' : 'opacity:.55'}"><div class="lab" style="color:var(--texto);font-weight:500">1 · Tu semana tipo</div>
-    <div class="chips">${Object.entries(PLANTILLAS_RAPIDAS).map(([k, v]) => html`<button type="button" class="ac ${sesion.plantillas.has(k) ? 'on' : ''}" aria-pressed="${sesion.plantillas.has(k)}" data-onb-plantilla="${k}" ${paso1 ? 'disabled' : ''}>${v.titulo}</button>`)}<button type="button" class="ac ${sesion.plantillas.size ? '' : 'on'}" data-onb-plantilla="" ${paso1 ? 'disabled' : ''}>vacía</button></div>
+    <div class="chips">${Object.entries(PLANTILLAS_RAPIDAS).map(([k, v]) => html`<button type="button" class="ac ${sesion.plantillas.has(k) ? 'on' : ''}" aria-pressed="${(sesion.plantillas.has(k)) ? 'true' : 'false'}" data-onb-plantilla="${k}" ${paso1 ? 'disabled' : ''}>${v.titulo}</button>`)}<button type="button" class="ac ${sesion.plantillas.size ? '' : 'on'}" data-onb-plantilla="" ${paso1 ? 'disabled' : ''}>vacía</button></div>
     <div class="mut" style="font-size:10.5px;margin-top:6px">Se repite cada semana. Luego la cambias en Gestión → Plantilla.</div>
     ${paso1 ? html`<div class="ok-texto" style="font-size:12px;margin-top:8px">✓ Guardada en plantilla.md</div>` : html`<button type="button" class="dark" style="margin-top:8px" data-onb="paso1">Guardar semana tipo</button>`}</div>
   <div style="${actual === 2 ? '' : 'opacity:.55'}"><div class="lab" style="color:var(--texto);font-weight:500">2 · Estudio y proyectos</div>

@@ -1,11 +1,11 @@
 // Gestión → Tema (y también en Ajustes): miniaturas de cada tema, decoración y tema de temporada.
-import { html, raw, on, $$ } from '../ui/dom.js';
+import { html, on, $$ } from '../ui/dom.js';
 import { abrirModal, cabecera, cuerpoModal, modalAbierto } from '../ui/modal.js';
 import { st, enviar, derivados, alCambiar } from '../estado.js';
 import { seccionesAjustes, alPintarAjustes } from './ajustes.js';
 import { entradaMenu, itemMenu } from './comun.js';
-import { TEMAS, cssPersonalizado, tieneTemaPersonal, atributosTema } from '/core/temas.js';
-import { valoresTema } from '/core/modelo.js';
+import { TEMAS, atributosTema } from '/core/temas.js';
+import { rejillaTemas } from '../ui/miniaturas.js';
 import { colorBloque, contraste, hexARgb } from '/core/color.js';
 import * as m from '/core/modelo.js';
 
@@ -22,18 +22,10 @@ function avisoContraste() {
   return malos.length ? html`<div class="aviso-contraste" role="alert">⚠ El texto sobre tu fondo tiene poco contraste (${malos.map(([a, b]) => `${a} sobre ${b}`).join(', ')}). Se respeta tu tema; revisa tema.md.</div>` : '';
 }
 
-/** Cuadrícula de miniaturas: fondo, tarjeta y tres bloques de muestra en cada tema. */
+/** Cuadrícula de miniaturas, decoración y tema de temporada. */
 export function selectorTemas() {
   const d = derivados();
-  const temaDoc = st.datos.ficheros['tema.md'];
-  const hayPersonal = tieneTemaPersonal(temaDoc);
-  const anchos = ['78%', '55%', '66%'];
-  return html`<div class="temas-grid" role="radiogroup" aria-label="Tema">${TEMAS.map((t) => {
-    const personal = t.id === 'personalizado';
-    const muestra = personal ? valoresTema(temaDoc).base : t.id;
-    const on = d.ajustes.tema === t.id;
-    return html`<button type="button" class="miniatura ${on ? 'on' : ''}" role="radio" aria-checked="${on}" data-elegir-tema="${t.id}" ${personal && !hayPersonal ? raw('disabled title="Crea tema.md en tu carpeta de datos (base y colores)"') : ''}><div class="muestra" data-tema-muestra="${muestra}" style="${personal ? raw(cssPersonalizado(temaDoc)) : ''}"><div class="m-tarjeta"><span class="m-titulo"></span>${anchos.map((w, i) => html`<span class="m-blk" data-muestra-bloque="${i}" style="width:${w}"></span>`)}</div></div>${t.nombre}</button>`;
-  })}</div>
+  return html`${rejillaTemas(d.ajustes.tema, st.datos.ficheros['tema.md'])}
 <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px"><label class="fila" style="margin:0"><input type="checkbox" data-ajuste-tema="decoracion" ${d.ajustes.decoracion ? 'checked' : ''}> Decoración del tema <span class="mut">(Universo y Halloween)</span></label><label class="fila" style="margin:0"><input type="checkbox" data-ajuste-tema="tema_temporada" ${d.ajustes.tema_temporada ? 'checked' : ''}> Halloween del 25 al 31 de octubre</label></div>${avisoContraste()}`;
 }
 

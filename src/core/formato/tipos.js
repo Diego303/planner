@@ -1,6 +1,6 @@
 // tipos.md y plantilla.md — ver docs/DISENO.md §3.3 y §3.4
 import {
-  clasificar, partirTexto, serializarDoc, canonComun, nuevoDoc, elementoLista, separarComentario,
+  clasificar, partirTexto, documento, serializarDoc, canonComun, nuevoDoc, elementoLista, separarComentario,
   conComentario, dividirCampos, claveValor, normalizar,
 } from './comun.js';
 import { DIAS, parsearRango, formatoRango } from '../fechas.js';
@@ -49,7 +49,7 @@ export function parsearTipos(texto) {
     enCabecera: (raw) => leerTipo(raw, ctx),
     canon: canonTipos,
   });
-  return { tipo: 'tipos', lineas, bom: p.bom, eol: p.eol, finalNL: p.finalNL };
+  return documento('tipos', p, lineas);
 }
 
 export const serializarTipos = (doc) => serializarDoc(doc, canonTipos);
@@ -99,7 +99,7 @@ export const canonPlantilla = (l) => canonComun(l) ?? canonEntrada(l);
 export function parsearPlantilla(texto) {
   const p = partirTexto(texto);
   const lineas = clasificar(p.lineas, { seccionDe: () => null, enCabecera: leerEntrada, canon: canonPlantilla });
-  return { tipo: 'plantilla', lineas, bom: p.bom, eol: p.eol, finalNL: p.finalNL };
+  return documento('plantilla', p, lineas);
 }
 
 export const serializarPlantilla = (doc) => serializarDoc(doc, canonPlantilla);

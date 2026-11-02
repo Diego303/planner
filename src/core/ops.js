@@ -5,7 +5,7 @@
 // Toda operación se reduce a primitivas exactas sobre líneas; su inversa es la lista de inversas al revés.
 // ctx = { hoy: 'AAAA-MM-DD', ahora?: minutos, factores?, usoTipos? }. Nunca se lee el reloj.
 import { esFecha, esSemana, semanaDe, compararSemanas, DIAS, sumarSemanas, lunesDe, sumarDias } from './fechas.js';
-import { normalizar, limpiarTexto } from './formato/comun.js';
+import { normalizar, limpiarTexto, claveValor } from './formato/comun.js';
 import * as fsem from './formato/semana.js';
 import * as ftar from './formato/tareas.js';
 import { entradaPlantilla, tipo as nuevoTipo, tiposVacio, plantillaVacia } from './formato/tipos.js';
@@ -29,6 +29,11 @@ export class FaltaFichero extends Error {
 const OPS = {};
 export const registrar = (nombre, fn) => { OPS[nombre] = fn; };
 export const existeOp = (nombre) => Object.hasOwn(OPS, nombre);
+/** Primitivas: solo las usan las inversas que guarda el servidor (deshacer), nunca una petición de fuera. */
+export const PRIMITIVAS = new Set(['lineas.insertar', 'lineas.quitar', 'linea.cambiar', 'fichero.crear', 'fichero.borrar', 'lote']);
+export const esOpPublica = (nombre) => typeof nombre === 'string' && existeOp(nombre) && !PRIMITIVAS.has(nombre);
+/** Nombres de las operaciones que acepta la API (para pruebas y documentación). */
+export const opsPublicas = () => Object.keys(OPS).filter((n) => !PRIMITIVAS.has(n)).sort();
 
 // ---------- Transacción ----------
 
@@ -73,6 +78,9 @@ function transaccion(mundo, ctx) {
         antes[k] = l[k];
         if (v === undefined) delete nueva[k]; else nueva[k] = v;
       }
+      // La inversa lleva también el texto original: el servidor relee el fichero antes de deshacer y,
+      // sin él, la línea se reescribiría en forma canónica (comentarios alineados y espacios se perderían).
+      for (const k of ['_raw', '_canon']) if (!Object.hasOwn(cambios, k)) antes[k] = l[k];
       d.lineas[indice] = nueva;
       inversas.push({ op: 'linea.cambiar', args: { ruta, indice, cambios: antes } });
     },
@@ -125,6 +133,11 @@ registrar('lote', (tx, a) => { for (const o of a.ops ?? []) tx.aplicar(o.op, o.a
 // ---------- Validación ----------
 
 const exigir = (cond, mensaje) => { if (!cond) throw new ErrorOp(mensaje); };
+/** Lista que llega del cliente: nada = vacía; cualquier otra cosa que no sea una lista es un error claro. */
+const listaDe = (v, que) => { if (v == null) return []; exigir(Array.isArray(v), `${que}: se esperaba una lista`); return v; };
+const esObjeto = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
+/** Lista de objetos del cliente ([{ clase, id… }]). */
+const objetosDe = (v, que) => { const l = listaDe(v, que); exigir(l.every(esObjeto), `${que}: elemento no válido`); return l; };
 
 function textoObligatorio(v, que) {
   const t = limpiarTexto(v);
@@ -133,6 +146,17 @@ function textoObligatorio(v, que) {
   return t;
 }
 const textoOpcional = (v) => (v == null ? null : limpiarTexto(v) || null);
+
+/**
+ * Nombre de tipo que el formato puede volver a leer: no puede parecer «clave: valor» (en tipos.md, en los
+ * bloques y en las tareas se leería como un campo) ni ser una bandera de tarea («prioridad», «las3»).
+ */
+function nombreTipo(v, obligatorio = true) {
+  const t = obligatorio ? textoObligatorio(v, 'el tipo') : textoOpcional(v);
+  if (t == null) return null;
+  exigir(!claveValor(t) && !['prioridad', 'las3'].includes(normalizar(t)), `Ese nombre de tipo no se puede usar: «${t}» (sin «:» detrás de una palabra, ni «prioridad» ni «las3»)`);
+  return t;
+}
 const esEntero = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
 
 function exigirHoy(tx) {
@@ -217,7 +241,7 @@ function validarCamposBloque(c, parcial) {
   if (!parcial || tiene('dia')) { exigir(esEntero(c.dia, 0, 6), 'Día no válido'); out.dia = c.dia; }
   if (!parcial || tiene('inicio')) { exigir(esEntero(c.inicio, 0, 1439), 'Hora de inicio no válida'); out.inicio = c.inicio; }
   if (!parcial || tiene('fin')) { exigir(esEntero(c.fin, 1, 1440), 'Hora de fin no válida'); out.fin = c.fin; }
-  if (!parcial || tiene('tipo')) out.tipo = textoObligatorio(c.tipo, 'el tipo');
+  if (!parcial || tiene('tipo')) out.tipo = nombreTipo(c.tipo);
   if (!parcial || tiene('titulo')) out.titulo = textoObligatorio(c.titulo, 'el título');
   if (tiene('subtipo')) {
     exigir(c.subtipo == null || fsem.SUBTIPOS.includes(c.subtipo), 'Subtipo no válido');
@@ -449,7 +473,9 @@ registrar('semana.cerrar', (tx, a) => {
   exigir(estadoSemana(id, tx.doc(ruta), actual) !== 'cerrada', 'La semana ya está cerrada');
   const nueva = semanaNueva(id, actual);
   const rutaNueva = rutaSemana(nueva);
-  const decisiones = a.decisiones ?? [];
+  const decisiones = objetosDe(a.decisiones, 'Las decisiones');
+  for (const k of ['lecciones', 'siguiente']) exigir(a[k] == null || esObjeto(a[k]), `${k}: no válido`);
+  exigir(a.siguiente?.horas == null || esObjeto(a.siguiente.horas), 'Las horas: no válidas');
 
   // Referencias antes de mover nada (los índices cambian al quitar y poner líneas)
   const bloques = decisiones.filter((d) => d.clase === 'bloque').map((d) => ({ d, l: elemento(tx, ruta, d.id, 'bloque', 'El bloque', d.huella) }));
@@ -489,7 +515,7 @@ registrar('semana.cerrar', (tx, a) => {
     if (d.opcion === 'pausar') fijarClave(tx, 'proyecto', proyecto(d.nombre).id, 'estado', 'pausado');
     if (d.opcion === 'mantener') fijarClave(tx, 'proyecto', proyecto(d.nombre).id, 'actualizado', hoy);
   }
-  for (const p of a.proyectos ?? []) {
+  for (const p of objetosDe(a.proyectos, 'Los proyectos')) {
     const siguiente = limpiarTexto(p.siguiente);
     if (!proyecto(p.nombre) || !siguiente || siguiente === proyecto(p.nombre).siguiente) continue;
     fijarClave(tx, 'proyecto', proyecto(p.nombre).id, 'siguiente', siguiente);
@@ -515,7 +541,7 @@ registrar('semana.cerrar', (tx, a) => {
   // 3. Semana nueva: Las 3, horas de estudio y Proponer (solo lo que falte)
   if (!nuevaAbierta()) return { nueva, n: 0, noCaben: [], nuevaCerrada: true, resumen: res.texto };
   crearSemanaSiFalta(tx, nueva);
-  if (a.siguiente?.las3) reemplazarLas3(tx, rutaNueva, a.siguiente.las3);
+  if (a.siguiente?.las3) reemplazarLas3(tx, rutaNueva, objetosDe(a.siguiente.las3, 'Las 3'));
   const temas = temasEstudio(tx.doc('estudio.md'));
   if (a.siguiente?.horas) fijarObjetivos(tx, rutaNueva, a.siguiente.horas, temas);
   const r = proponerEn(tx, rutaNueva, nueva);
@@ -554,7 +580,7 @@ function asegurarTipos(tx) {
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 
 registrar('tipo.crear', (tx, a) => {
-  const nombre = textoObligatorio(a.nombre, 'el nombre').toLowerCase();
+  const nombre = nombreTipo(a.nombre).toLowerCase();
   exigir(COLOR.test(a.color ?? ''), 'Color no válido');
   asegurarTipos(tx);
   exigir(!tipoPorNombre(tipos(tx), nombre), 'Ya existe');
@@ -652,7 +678,7 @@ export function hoyLleno(tareasDoc, ajustesDoc) {
 function camposTarea(c) {
   const out = {};
   if (Object.hasOwn(c, 'texto')) out.texto = textoObligatorio(c.texto, 'el texto');
-  if (Object.hasOwn(c, 'tipo')) out.tipo = textoOpcional(c.tipo);
+  if (Object.hasOwn(c, 'tipo')) out.tipo = nombreTipo(c.tipo, false);
   if (Object.hasOwn(c, 'prioridad')) out.prioridad = !!c.prioridad;
   if (Object.hasOwn(c, 'las3')) out.las3 = !!c.las3;
   if (Object.hasOwn(c, 'fecha')) { exigir(c.fecha == null || esFecha(c.fecha), 'Fecha no válida'); out.fecha = c.fecha ?? null; }
@@ -713,8 +739,11 @@ function archivarTareas(tx, lineas, hoy) {
 }
 
 /** Líneas de tarea a partir de [{ id, huella }] del cliente (antes de mover nada, los índices cambian). */
-function lineasDeTareas(tx, lista = []) {
-  return lista.map((x) => elemento(tx, 'tareas.md', x.id, 'tarea', 'La tarea', x.huella ?? null));
+function lineasDeTareas(tx, lista) {
+  return listaDe(lista, 'Las tareas').map((x) => {
+    exigir(x && typeof x === 'object', 'Tarea no válida');
+    return elemento(tx, 'tareas.md', x.id, 'tarea', 'La tarea', x.huella ?? null);
+  });
 }
 
 /** Mueve una tarea (por referencia de línea) al final de una sección. */
@@ -743,7 +772,9 @@ registrar('dia.cerrar', (tx, a) => {
   if (a.animo != null) exigir(esEntero(a.animo, 1, 5), 'El ánimo va de 1 a 5');
   fijar('animo', a.animo ?? null);
   fijar('linea', textoOpcional(a.linea));
-  fijar('avanzado', (a.avanzado ?? []).map((x) => limpiarTexto(x).replace(/;/g, ',')).filter(Boolean));
+  const avanzado = listaDe(a.avanzado, 'Lo avanzado');
+  exigir(avanzado.every((x) => typeof x === 'string'), 'Lo avanzado: se esperaban textos');
+  fijar('avanzado', avanzado.map((x) => limpiarTexto(x).replace(/;/g, ',')).filter(Boolean));
   fijar('manana', textoOpcional(a.manana));
 
   if (tx.doc('tareas.md')) {
@@ -850,8 +881,8 @@ registrar('datos.inicializar', (tx, a) => {
   }
   asegurarTipos(tx);
   tx.asegurar('plantilla.md', plantillaVacia);
-  for (const nombre of a.plantillas ?? []) {
-    const def = PLANTILLAS_RAPIDAS[nombre];
+  for (const nombre of listaDe(a.plantillas, 'Las plantillas')) {
+    const def = typeof nombre === 'string' && Object.hasOwn(PLANTILLAS_RAPIDAS, nombre) ? PLANTILLAS_RAPIDAS[nombre] : null;
     exigir(def, 'Plantilla rápida desconocida');
     for (const e of def.entradas) {
       const ya = entidades(tx.doc('plantilla.md'), 'plantilla').some((x) => normalizar(x.titulo) === normalizar(e.titulo));

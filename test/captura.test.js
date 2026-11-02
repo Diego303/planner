@@ -46,8 +46,16 @@ test('destino: algún día, hoy con hueco, más adelante', () => {
 test('fechas de tokens y etiquetas', () => {
   assert.equal(fechaDeToken('Miércoles', HOY), '2026-11-04');
   assert.equal(fechaDeToken('sáb', HOY), '2026-11-07');
-  assert.equal(fechaDeToken('29/02', '2027-03-01'), null);
+  assert.equal(fechaDeToken('29/02', '2027-03-01'), '2028-02-29'); // el próximo 29 de febrero
   assert.equal(etiquetaFecha('2026-11-03', HOY), 'mañana');
   assert.equal(etiquetaFecha('2026-11-05', HOY), 'jue 5');
   assert.equal(etiquetaFecha('2026-12-12', HOY), '12 dic');
+});
+
+test('dd/mm imposible este año (29/02) toma el próximo, y «1h30m» es una duración', () => {
+  assert.equal(p('Revisar contrato 29/02').fecha, '2028-02-29');
+  assert.equal(p('Revisar contrato 29/02').titulo, 'Revisar contrato');
+  assert.equal(fechaDeToken('29/02', '2028-03-01'), '2032-02-29');
+  assert.equal(fechaDeToken('31/04', HOY), null);
+  assert.deepEqual([p('Leer 1h30m').dur, p('Leer 1h30m').titulo], [90, 'Leer']);
 });

@@ -1,6 +1,6 @@
 // tareas.md y archivo/tareas-AAAA-MM.md — ver docs/DISENO.md §3.6
 import {
-  clasificar, partirTexto, serializarDoc, canonComun, nuevoDoc, elementoLista, casilla, separarComentario,
+  clasificar, partirTexto, documento, serializarDoc, canonComun, nuevoDoc, elementoLista, casilla, separarComentario,
   conComentario, dividirCampos, claveValor, normalizar,
 } from './comun.js';
 import { esFecha, parsearDuracion, formatoDuracion } from '../fechas.js';
@@ -78,7 +78,7 @@ export function parsear(texto) {
     enSeccion: (raw, sec) => leerTarea(raw, sec),
     canon,
   });
-  return { tipo: 'tareas', lineas, bom: p.bom, eol: p.eol, finalNL: p.finalNL };
+  return documento('tareas', p, lineas);
 }
 
 export const serializar = (doc) => serializarDoc(doc, canon);
@@ -97,7 +97,7 @@ export function parsearArchivo(texto) {
     enSeccion: (raw) => leerTarea(raw, 'archivo'),
     canon,
   });
-  return { tipo: 'archivo', lineas, bom: p.bom, eol: p.eol, finalNL: p.finalNL };
+  return documento('archivo', p, lineas);
 }
 
 export const archivoVacio = (mes) => nuevoDoc('archivo', [{ t: 'h1', texto: `Archivo de tareas · ${mes}` }, { t: 'vacia' }]);

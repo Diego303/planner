@@ -21,24 +21,91 @@ planner no tiene dependencias: no descarga nada más.
 
 ## 2. Instalarlo (una vez)
 
-El repo está en `D:\GitHub\planner`, que en WSL es `/mnt/d/GitHub/planner`.
+El repo está en `D:\GitHub\planner`, que en WSL es `/mnt/d/GitHub/planner`. Haz estos pasos en orden, en la terminal de WSL.
+
+### Paso 2.1 · Preparar el proyecto
 
 ```bash
 cd /mnt/d/GitHub/planner
-pnpm install                      # no instala paquetes: prepara el proyecto
-pnpm setup                        # crea la carpeta global de pnpm y la añade a ~/.bashrc
+pnpm install
 ```
 
-**Cierra la terminal y abre otra** (para que cargue el `PATH` nuevo) y después:
+No descarga paquetes (planner no tiene dependencias): solo prepara el proyecto.
+
+### Paso 2.2 · Configurar la carpeta global de pnpm
 
 ```bash
-pnpm add -g /mnt/d/GitHub/planner # deja el comando «planner» disponible en cualquier carpeta
-planner --version                 # → 0.1.0
+pnpm setup
 ```
 
-El comando queda **enlazado al repo**: si actualizas el repo (`git pull`), `planner` usa la versión nueva sin reinstalar.
+Crea la carpeta donde pnpm guarda los comandos globales y la apunta en `~/.bashrc`.
 
-> ¿`planner: command not found`? Abre una terminal nueva, o comprueba que `~/.bashrc` tiene la línea de `PNPM_HOME` que añadió `pnpm setup`. Como alternativa, sin pnpm global: `echo 'alias planner="node /mnt/d/GitHub/planner/bin/planner.js"' >> ~/.bashrc`.
+> **Si termina con `Error: × create the pnpm alias scripts ╰─▶ Text file busy (os error 26)`**: no pasa nada grave. pnpm se ha instalado, pero falló justo al final (intentó sobrescribir su propio ejecutable mientras lo estaba usando) y **no llegó a escribir su configuración en `~/.bashrc`**. No vuelvas a ejecutar `pnpm setup` (daría el mismo error); haz el paso 2.3.
+
+### Paso 2.3 · Solo si `pnpm setup` dio el error: añadir la configuración a mano
+
+Pega estas dos líneas tal cual (cada una añade una línea al final de `~/.bashrc`):
+
+```bash
+echo 'export PNPM_HOME="$HOME/.local/share/pnpm"' >> ~/.bashrc
+echo 'export PATH="$PNPM_HOME/bin:$PATH"' >> ~/.bashrc
+```
+
+Comprueba que se han añadido:
+
+```bash
+tail -2 ~/.bashrc
+```
+
+Tienen que salir exactamente estas dos líneas:
+
+```
+export PNPM_HOME="$HOME/.local/share/pnpm"
+export PATH="$PNPM_HOME/bin:$PATH"
+```
+
+Si salen repetidas (por haberlas pegado dos veces), no pasa nada malo.
+
+> **Si al pegar algo la terminal se queda con `>` y te pide escribir más**, es que el bloque se pegó a medias o con espacios delante. Pulsa **`Ctrl + C`** para cancelar (no se escribe nada) y vuelve a pegar las dos líneas `echo` de arriba, que no dependen de los espacios.
+
+### Paso 2.4 · Cerrar la terminal y abrir una nueva
+
+Así se carga la configuración. Comprueba que está bien:
+
+```bash
+echo $PNPM_HOME
+```
+
+Tiene que salir `/home/<tu-usuario>/.local/share/pnpm` (por ejemplo `/home/diego/.local/share/pnpm`). Si sale una línea vacía, repite el paso 2.3.
+
+### Paso 2.5 · Instalar el comando `planner`
+
+```bash
+pnpm add -g /mnt/d/GitHub/planner
+planner --version
+```
+
+Tiene que salir `0.1.0`. El comando queda **enlazado al repo**: si actualizas el repo (`git pull`), `planner` usa la versión nueva sin reinstalar.
+
+> **¿Quieres que arranque más rápido?** Enlazado al repo, el código se carga desde `/mnt/d` y arrancar tarda alrededor de 1 s (Windows hace lento leer muchos ficheros pequeños desde WSL). Si lo instalas desde un paquete, el código se copia dentro de Linux y arranca en unos 0,2 s, aunque tus datos sigan en `/mnt/d`:
+>
+> ```bash
+> cd /mnt/d/GitHub/planner
+> pnpm pack --pack-destination ~        # crea ~/planner-0.1.0.tgz
+> pnpm add -g ~/planner-0.1.0.tgz
+> ```
+>
+> La contrapartida: después de un `git pull` hay que repetir esos dos comandos para usar la versión nueva.
+
+> **¿`planner: command not found`?** Abre una terminal nueva y repite el paso 2.4. Si `echo $PNPM_HOME` sale vacío, falta el paso 2.3. Como alternativa sin pnpm global, un alias: `echo 'alias planner="node /mnt/d/GitHub/planner/bin/planner.js"' >> ~/.bashrc` (y terminal nueva).
+
+### Paso 2.6 · Comprobarlo con datos de ejemplo
+
+```bash
+planner --ejemplo --hoy 2026-11-02
+```
+
+Se abre el navegador en `http://localhost:4321` con datos inventados en una carpeta temporal (tus datos no se tocan). Para pararlo: **`Ctrl + C`**. Si todo se ve bien, ya está instalado: sigue en el punto 4 para usarlo con tus datos.
 
 ## 3. Probarlo sin tocar nada tuyo
 
@@ -139,6 +206,34 @@ Luego elige una de estas tres formas:
 
 La app instalada no cambia: sigue abriendo `http://localhost:4321/` y enseña lo que sirva el planner que esté en marcha.
 
+### Paso a paso: «siempre en esta carpeta»
+
+Ejemplo con `D:\GoogleDrive\Vida-Diego\PLANNER` (en WSL, `/mnt/d/GoogleDrive/Vida-Diego/PLANNER`):
+
+1. Para el planner si está en marcha: `planner stop`.
+2. Copia esta línea tal cual (una sola línea; las comillas hacen falta si la ruta tiene espacios):
+
+   ```bash
+   echo 'export PLANNER_DATOS="/mnt/d/GoogleDrive/Vida-Diego/PLANNER"' >> ~/.bashrc
+   ```
+
+3. Cierra la terminal, abre una nueva y comprueba: `echo $PLANNER_DATOS` tiene que enseñar la ruta.
+4. Arranca con `planner`. Si la carpeta no existe o está vacía, sale la guía de inicio y la crea al guardar el primer paso. `planner status` confirma la carpeta.
+5. El arranque con Windows (`planner-inicio.vbs`) no hay que tocarlo: carga tu `~/.bashrc` y usa la misma carpeta.
+
+Para volver a la de siempre, borra esa línea del final de `~/.bashrc` (con `nano ~/.bashrc`) y abre una terminal nueva.
+
+### En una carpeta sincronizada (Google Drive, OneDrive, Dropbox)
+
+Funciona: son ficheros Markdown normales. Ten en cuenta:
+
+- **Copias:** `.copias/` guarda hasta 14 copias diarias dentro de la carpeta y el servicio las subirá todas. Si no quieres, en **Gestión → Ajustes → Copia de seguridad** elige «al cerrar semana» (el servicio ya guarda su propio historial de versiones).
+- **Temporales:** al guardar, el planner escribe un instante `.fichero.md.tmp-…` y lo renombra. Si el servicio llega a subir alguno, es inofensivo; el planner los borra al arrancar.
+- **Un solo ordenador a la vez:** si editas desde dos PCs a la vez, el servicio crea copias en conflicto («tareas (1).md») y el planner solo lee el fichero original. Si te pasa, junta a mano lo que haga falta.
+- **Bloqueos:** si el servicio tiene un fichero bloqueado mientras lo sube, el planner reintenta; si aun así no puede, te lo dice («no se ha guardado nada») y no se pierde nada.
+- **Ficheros solo en la nube** (modo «transmitir» de Google Drive, «Archivos a petición» de OneDrive): el primer arranque va más lento mientras se descargan. Marca la carpeta como «disponible sin conexión» o usa el modo «duplicar».
+- Para revisar tus ficheros sin tocarlos (sobre una copia temporal): `cd /mnt/d/GitHub/planner && pnpm qa:validar -- --datos "/mnt/d/GoogleDrive/Vida-Diego/PLANNER"`.
+
 ## 8. Empezar un planner limpio
 
 ### Opción A: carpeta nueva, la antigua intacta (recomendada)
@@ -195,7 +290,9 @@ Tus datos no se tocan: viven fuera del repo.
 
 | Síntoma | Solución |
 |---|---|
-| `planner: command not found` | Terminal nueva; o repite `pnpm setup` y `pnpm add -g /mnt/d/GitHub/planner`; o usa el alias del punto 2 |
+| `pnpm setup` → `Text file busy (os error 26)` | No repitas `pnpm setup`: haz los pasos 2.3 a 2.5 |
+| Al pegar algo, la terminal se queda con `>` pidiendo más | `Ctrl + C` y pega las dos líneas `echo` del paso 2.3 |
+| `planner: command not found` | Terminal nueva y `echo $PNPM_HOME` (paso 2.4); si sale vacío, paso 2.3; luego paso 2.5. O usa el alias del paso 2.5 |
 | «Ya hay un planner en marcha con otra carpeta» | `planner stop` y vuelve a arrancar con la carpeta que quieras |
 | No se abre el navegador | Abre `http://localhost:4321/` a mano. (Con `sudo apt install wslu` se usa `wslview`) |
 | La app instalada dice que no puede acceder | El servidor no está en marcha: `planner` o el arranque con Windows |

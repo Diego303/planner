@@ -1,6 +1,6 @@
 // semanas/AAAA-Www.md — ver docs/DISENO.md §3.5
 import {
-  clasificar, partirTexto, serializarDoc, canonComun, nuevoDoc, elementoLista, casilla, separarComentario,
+  clasificar, partirTexto, documento, serializarDoc, canonComun, nuevoDoc, elementoLista, casilla, separarComentario,
   conComentario, dividirCampos, claveValor, normalizar, parsearNumero, formatoNumero, parsearNota,
 } from './comun.js';
 import { DIAS, parsearRango, formatoRango, parsearDelta, formatoDelta, lunesDe, sumarDias, numeroSemana } from '../fechas.js';
@@ -104,8 +104,9 @@ function leerCampoBloque({ clave, valor }) {
 function leerObjetivo(raw) {
   const c = elementoLista(raw);
   if (c == null) return null;
-  const { cuerpo, comentario } = separarComentario(c, true);
-  const m = /^(.+?)[ \t]*:[ \t]*(\d+(?:[.,]\d+)?)[ \t]*h?$/.exec(cuerpo);
+  // el nombre del tema es texto libre (puede llevar « # » o «:»): comentario solo con dos espacios y el último «:» separa
+  const { cuerpo, comentario } = separarComentario(c);
+  const m = /^(.+)[ \t]*:[ \t]*(\d+(?:[.,]\d+)?)[ \t]*h?$/.exec(cuerpo);
   const horas = m && parsearNumero(m[2]);
   return horas == null ? null : { t: 'objetivo', tema: m[1].trim(), horas, comentario };
 }
@@ -144,7 +145,7 @@ export function parsear(texto) {
     },
     canon,
   });
-  return { tipo: 'semana', lineas, bom: p.bom, eol: p.eol, finalNL: p.finalNL };
+  return documento('semana', p, lineas);
 }
 
 // ---------- Escritura ----------

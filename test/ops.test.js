@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { aplicar, ErrorOp, FaltaFichero } from '../src/core/ops.js';
-import { serializar } from '../src/core/formato/index.js';
+import { serializar, parsear } from '../src/core/formato/index.js';
 import * as m from '../src/core/modelo.js';
 import { mundoEjemplo } from './ayudas.js';
 
@@ -201,4 +201,18 @@ test('bloque.mover entre semanas y tipo.banderas, con inversa exacta', () => {
   assert.throws(() => aplicar(mu, { op: 'bloque.mover', args: { semana: S, id: curso.id, destino: '2026-W43', cambios: { dia: 6 } } }, CTX), /cerrada/);
   const t = idaYVuelta(mu, { op: 'tipo.banderas', args: { nombre: 'proyectos', estudio: true } });
   assert.equal(serializar(t.mundo.ficheros['tipos.md']).split('\n')[3], '- proyectos | #2F6B4F | estudio');
+});
+
+test('nombres de tipo que el formato no puede releer se rechazan con un mensaje claro', () => {
+  const mu = mundo();
+  for (const nombre of ['fecha: 2026-11-03', 'nota:', 'prioridad', 'las3', 'LAS3']) {
+    assert.throws(() => aplicar(mu, { op: 'tipo.crear', args: { nombre, color: '#2D7A80' } }, CTX), /Ese nombre de tipo no se puede usar/, nombre);
+    assert.throws(() => aplicar(mu, { op: 'tarea.crear', args: { seccion: 'mas', tarea: { texto: 'x', tipo: nombre } } }, CTX), /Ese nombre de tipo no se puede usar/, nombre);
+  }
+  assert.throws(() => aplicar(mu, { op: 'bloque.crear', args: { semana: S, bloque: { dia: 0, inicio: 420, fin: 480, tipo: 'hecho: +30m', titulo: 'x' } } }, CTX), /Ese nombre de tipo no se puede usar/);
+  // nombres raros pero válidos siguen funcionando y se releen igual
+  for (const nombre of ['c++', 'año 2027', '12:00 libre', 'idiomas (inglés)']) {
+    const r = aplicar(mu, { op: 'tipo.crear', args: { nombre, color: '#2D7A80' } }, CTX);
+    assert.ok(m.tiposDe(parsear('tipos.md', serializar(r.mundo.ficheros['tipos.md']))).some((t) => t.nombre === nombre), nombre);
+  }
 });

@@ -15,10 +15,11 @@ export function fechaDeToken(token, hoy) {
   if (i >= 0) return sumarDias(hoy, (i - diaSemana(hoy) + 7) % 7);
   const m = /^(\d{1,2})\/(\d{1,2})$/.exec(t);
   if (m) {
+    // la próxima vez que llegue ese día (el 29/02 de un año no bisiesto, el del siguiente bisiesto)
     const año = +hoy.slice(0, 4);
     const f = (a) => `${a}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
-    if (!esFecha(f(año))) return null;
-    return f(año) < hoy ? (esFecha(f(año + 1)) ? f(año + 1) : null) : f(año);
+    for (let a = año; a <= año + 8; a++) if (esFecha(f(a)) && f(a) >= hoy) return f(a);
+    return null;
   }
   return null;
 }
@@ -42,7 +43,7 @@ export function parsearCaptura(texto, { tipos = [], hoy }) {
       if (tipo) { r.tipo = tipo.nombre; continue; }
     }
     if (!r.prioridad && p === '!') { r.prioridad = true; continue; }
-    if (r.dur == null && /^\d{1,3}(h(\d{1,2})?|m|min)$/i.test(p)) {
+    if (r.dur == null && /^\d{1,3}(h(\d{1,2}(m|min)?)?|m|min)$/i.test(p)) {
       const d = parsearDuracion(p);
       if (d) { r.dur = d; continue; }
     }

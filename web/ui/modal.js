@@ -1,5 +1,5 @@
 // Modal único: se abre con contenido HTML, se cierra con ×, Esc o clic fuera. Al cerrar devuelve el foco.
-import { html, raw } from './dom.js';
+import { html, raw, sustituir } from './dom.js';
 
 let anterior = null;
 let alCerrar = null;
@@ -16,7 +16,8 @@ export function abrirModal(contenido, { etiqueta = 'Diálogo', onCerrar = null }
   if (!yaAbierto) anterior = document.activeElement;
   alCerrar = onCerrar;
   const scroll = yaAbierto ? cuerpoModal().scrollTop : 0;
-  raiz().innerHTML = String(html`<div class="mwrap" data-velo><div class="mod" role="dialog" aria-modal="true" aria-label="${etiqueta}">${raw(contenido)}</div></div>`);
+  // abierto ya (repintado tras un cambio): sin perder lo que se esté escribiendo ni el foco
+  sustituir(raiz(), html`<div class="mwrap" data-velo><div class="mod" role="dialog" aria-modal="true" aria-label="${etiqueta}">${raw(contenido)}</div></div>`);
   const mod = cuerpoModal();
   mod.scrollTop = scroll;
   if (!yaAbierto) (mod.querySelector('[autofocus], input, select, button:not(.cerrar)') ?? mod).focus?.();

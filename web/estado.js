@@ -42,10 +42,16 @@ function recomponer() {
   st.datos = { ...st.base, ficheros };
 }
 
+// Solo vale la respuesta de la última carga pedida: al pasar semanas deprisa con el disco lento, una respuesta
+// de antes que llega tarde devolvería la vista a una semana que ya has dejado atrás.
+let ultimaCarga = 0;
+
 export async function cargar(semana = st.ui.semana) {
+  const n = ++ultimaCarga;
   st.cargando = true;
   try {
     const e = await api.estado({ semana, hoy: hoy(), ahora: ahora() });
+    if (n !== ultimaCarga) return;
     st.base = e;
     st.caido = false;
     st.ui.semana = e.meta.semana;
@@ -53,9 +59,10 @@ export async function cargar(semana = st.ui.semana) {
     avisar();
     asegurarSemana();
   } catch (e) {
+    if (n !== ultimaCarga) return;
     if (e instanceof ErrorApi && e.estado === 0) { st.caido = true; avisar(); } else toastError(e.message);
   } finally {
-    st.cargando = false;
+    if (n === ultimaCarga) st.cargando = false;
   }
 }
 
@@ -80,7 +87,8 @@ function manejarError(e) {
   if (e instanceof ErrorApi && e.estado === 0) { st.caido = true; recomponer(); avisar(); toastError('Servidor parado · solo lectura'); return; }
   if (e instanceof ErrorApi && e.estado === 409) toast(e.message);
   else toastError(e.message);
-  cargar();
+  // dentro de la cola: la siguiente operación sale ya con las versiones recargadas (si no, otro 409)
+  return cargar();
 }
 
 /**
@@ -115,7 +123,7 @@ export function enviar(op, args, { mensaje = null } = {}) {
       else if (mensaje) toast(mensaje(r.resultado ?? {}, r));
       return r;
     } catch (e) {
-      manejarError(e);
+      await manejarError(e);
       return null;
     }
   });
@@ -132,8 +140,8 @@ export function deshacer(inversaId) {
       avisar();
       toast('Deshecho', { duracion: 2500 });
     } catch (e) {
-      if (e instanceof ErrorApi && e.estado === 0) manejarError(e);
-      else { toastError(e.message); cargar(); }
+      if (e instanceof ErrorApi && e.estado === 0) await manejarError(e);
+      else { toastError(e.message); await cargar(); }
     }
   });
   return cola;

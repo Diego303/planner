@@ -6,3 +6,6 @@ node_modules/
 Thumbs.db
 # Nunca datos reales en el repo: solo ejemplo/
 /planner-datos/
+
+# directorio temporal de las pruebas de QA en /mnt/d
+.tmp-qa/

@@ -7,6 +7,15 @@
   "bin": {
     "planner": "./bin/planner.js"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "web/",
+    "ejemplo/",
+    "plugin/",
+    "README.md",
+    "instrucciones.md"
+  ],
   "engines": {
     "node": ">=20"
   },
@@ -15,8 +24,15 @@
     "start": "node bin/planner.js",
     "dev": "node --watch-path=src --watch-path=bin bin/planner.js --ejemplo --silencioso",
     "test": "node --test test/*.test.js",
-    "check": "node scripts/check.js"
+    "check": "node scripts/check.js",
+    "test:zonas": "TZ=UTC node --test test/*.test.js && TZ=Europe/Madrid node --test test/*.test.js && TZ=America/Los_Angeles node --test test/*.test.js",
+    "test:e2e": "playwright test",
+    "test:visual": "playwright test --config=playwright.visual.config.js",
+    "qa:validar": "node scripts/qa-validar.js",
+    "test:todo": "pnpm check && PLANNER_SIGKILL=200 pnpm test && PLANNER_SESION_MIN=3 pnpm test:e2e && pnpm test:visual"
   },
-  "dependencies": {},
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  },
   "license": "MIT"
 }

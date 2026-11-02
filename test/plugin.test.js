@@ -26,8 +26,9 @@ test('manifiesto y comandos del plugin', () => {
 });
 
 test('ayudas: hoy, carpeta, semanas (las cerradas no se tocan) y copia', () => {
+  const antes = fechaDe(new Date());
   const [fecha, semana] = correr(['hoy']).split('\t');
-  assert.equal(fecha, fechaDe(new Date()));
+  assert.ok([antes, fechaDe(new Date())].includes(fecha), 'hoy (aunque se cruce la medianoche)');
   assert.equal(semana, semanaDe(fecha));
   const dir = mkdtempSync(join(tmpdir(), 'planner-plugin-'));
   cpSync(EJEMPLO, dir, { recursive: true });

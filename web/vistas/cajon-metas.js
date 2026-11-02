@@ -97,15 +97,23 @@ ${avisoLineas('estudio.md', st.datos.ficheros['estudio.md'])}${avisoLineas('proy
   },
 };
 
+/** Error de validación sin repintar el formulario (repintarlo borraría lo ya escrito); el foco va al campo que falta. */
+function avisarForm(mensaje, campo) {
+  errorForm = mensaje;
+  const caja = $('#drawer .error-form');
+  if (caja) caja.textContent = mensaje; else pintarCajon();
+  $(campo)?.focus();
+}
+
 function guardarFormulario() {
   if (formulario === 'estudio') {
     const nombre = $('#fe-nombre').value.trim();
     const horas = parseFloat(String($('#fe-horas').value).replace(',', '.'));
-    if (!nombre || !(horas > 0)) { errorForm = 'Pon un nombre y las horas a la semana'; pintarCajon(); return; }
+    if (!nombre || !(horas > 0)) { avisarForm('Pon un nombre y las horas a la semana', nombre ? '#fe-horas' : '#fe-nombre'); return; }
     enviar('estudio.crear', { nombre, horas_semana: horas, examen: $('#fe-examen').value || null });
   } else if (formulario === 'proyecto') {
     const nombre = $('#fp-nombre').value.trim(), siguiente = $('#fp-siguiente').value.trim();
-    if (!nombre || !siguiente) { errorForm = 'Pon el nombre y el siguiente paso'; pintarCajon(); return; }
+    if (!nombre || !siguiente) { avisarForm('Pon el nombre y el siguiente paso', nombre ? '#fp-siguiente' : '#fp-nombre'); return; }
     enviar('proyecto.crear', { nombre, siguiente });
   }
   formulario = null;

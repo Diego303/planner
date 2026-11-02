@@ -35,18 +35,26 @@ function responder(res, estado, cuerpo, cabeceras = {}) {
 const json = (res, estado, datos) =>
   responder(res, estado, JSON.stringify(datos), { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
 
-/** Lee el cuerpo JSON con límite de tamaño. */
+/**
+ * Lee el cuerpo JSON con límite de tamaño. Lo que pasa del límite se sigue leyendo (sin guardarlo) para poder
+ * responder 413: si se cortara la conexión a mitad, el cliente vería «conexión cortada» en vez del error.
+ * Solo se corta si alguien manda muchísimo más.
+ */
 function leerCuerpo(req) {
   return new Promise((ok, mal) => {
     let tam = 0;
     const trozos = [];
     req.on('data', (t) => {
       tam += t.length;
-      if (tam > LIMITE_CUERPO) { mal(new ErrorHttp(413, 'Petición demasiado grande')); req.destroy(); return; }
-      trozos.push(t);
+      if (tam > LIMITE_CUERPO * 64) { req.destroy(); return; }
+      if (tam <= LIMITE_CUERPO) trozos.push(t);
     });
     req.on('end', () => {
-      try { ok(JSON.parse(Buffer.concat(trozos).toString('utf8') || '{}')); } catch { mal(new ErrorHttp(400, 'JSON no válido')); }
+      if (tam > LIMITE_CUERPO) { mal(new ErrorHttp(413, 'Petición demasiado grande')); return; }
+      let v;
+      try { v = JSON.parse(Buffer.concat(trozos).toString('utf8') || '{}'); } catch { mal(new ErrorHttp(400, 'JSON no válido')); return; }
+      if (v === null || typeof v !== 'object' || Array.isArray(v)) mal(new ErrorHttp(400, 'Se espera un objeto JSON'));
+      else ok(v);
     });
     req.on('error', mal);
   });
@@ -69,12 +77,16 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
   if (store.existe()) store.limpiarTemporales();
   const copias = crearCopias(store.raiz, { avisar: (m) => console.warn(m) });
   const api = crearApi({ store, copias, deshacer: crearDeshacer(), hoySimulado, extrasContexto, metricas });
+  api.alArrancar();
   let puertoReal = puerto;
 
   const hostValido = (h) => h === `localhost:${puertoReal}` || h === `127.0.0.1:${puertoReal}`;
   const origenValido = (o) => o === `http://localhost:${puertoReal}` || o === `http://127.0.0.1:${puertoReal}`;
 
+  let parando = false;
+
   async function manejar(req, res) {
+    if (parando) return responder(res, 503, 'El planner se está parando', { 'Content-Type': 'text/plain; charset=utf-8', Connection: 'close' });
     // Defensa contra DNS rebinding: solo nombres locales con nuestro puerto.
     if (!hostValido(req.headers.host)) return responder(res, 403, 'Host no permitido', { 'Content-Type': 'text/plain; charset=utf-8' });
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -82,7 +94,11 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
     if (url.pathname.startsWith('/api/')) {
       const clave = `${req.method} ${url.pathname}`;
       const ruta = api.rutas[clave];
-      if (!ruta) return json(res, 404, { error: 'Ruta desconocida' });
+      if (!ruta) {
+        const metodos = Object.keys(api.rutas).filter((k) => k.endsWith(` ${url.pathname}`)).map((k) => k.split(' ')[0]);
+        if (metodos.length) return responder(res, 405, JSON.stringify({ error: 'Método no permitido' }), { Allow: metodos.join(', '), 'Content-Type': 'application/json; charset=utf-8' });
+        return json(res, 404, { error: 'Ruta desconocida' });
+      }
       try {
         let cuerpo = {};
         if (req.method === 'POST') {
@@ -93,12 +109,12 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
         return json(res, 200, await ruta(url.searchParams, cuerpo));
       } catch (e) {
         if (e instanceof ErrorHttp) return json(res, e.estado, { error: e.message, ...e.extra });
-        console.error(e);
-        return json(res, 500, { error: `Error interno: ${e.message}` });
+        console.error(e); // el detalle (con rutas y trazas) solo en la consola del servidor
+        return json(res, 500, { error: 'Error interno del planner. El detalle está en la terminal donde corre.' });
       }
     }
 
-    if (req.method !== 'GET' && req.method !== 'HEAD') return responder(res, 405, 'Método no permitido');
+    if (req.method !== 'GET' && req.method !== 'HEAD') return responder(res, 405, 'Método no permitido', { Allow: 'GET, HEAD', 'Content-Type': 'text/plain; charset=utf-8' });
     const [raiz, rel] = url.pathname.startsWith('/core/')
       ? [RAIZ_CORE, url.pathname.slice('/core/'.length)]
       : [RAIZ_WEB, url.pathname === '/' ? 'index.html' : url.pathname.slice(1)];
@@ -111,13 +127,31 @@ export async function iniciarServidor({ datos, puerto = 4321, host = '127.0.0.1'
     });
   }
 
+  // Peticiones en marcha: al parar se espera a que terminen (una escritura de varios ficheros no se corta).
+  const enCurso = new Set();
   const servidor = createServer((req, res) => {
-    manejar(req, res).catch((e) => { console.error(e); if (!res.headersSent) json(res, 500, { error: 'Error interno' }); });
+    const p = manejar(req, res)
+      .catch((e) => { console.error(e); if (!res.headersSent) json(res, 500, { error: 'Error interno' }); })
+      .finally(() => enCurso.delete(p));
+    enCurso.add(p);
   });
   await new Promise((ok, mal) => { servidor.once('error', mal); servidor.listen(puerto, host, ok); });
   puertoReal = servidor.address().port;
   return {
-    servidor, store, api, puerto: puertoReal, url: `http://localhost:${puertoReal}/`,
-    cerrar: () => new Promise((ok) => { servidor.closeAllConnections?.(); servidor.close(() => ok()); }),
+    servidor, store, api, copias, puerto: puertoReal, url: `http://localhost:${puertoReal}/`,
+    /** Deja de aceptar peticiones, espera a las que están en marcha (como mucho `espera` ms) y cierra. */
+    async cerrar({ espera = 5000 } = {}) {
+      parando = true;
+      const cerrado = new Promise((ok) => servidor.close(() => ok()));
+      servidor.closeIdleConnections?.();
+      let plazo;
+      await Promise.race([Promise.allSettled([...enCurso]), new Promise((ok) => { plazo = setTimeout(ok, espera); })]);
+      clearTimeout(plazo);
+      // y a la copia de seguridad en marcha (si no, quedaría una carpeta temporal a medias)
+      await Promise.race([copias.esperar(), new Promise((ok) => { plazo = setTimeout(ok, espera); })]);
+      clearTimeout(plazo);
+      servidor.closeAllConnections?.();
+      await cerrado;
+    },
   };
 }

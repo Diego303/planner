@@ -24,16 +24,18 @@ Con los datos inventados de [`ejemplo/`](ejemplo/) (`planner --ejemplo --hoy 202
 Requisitos: Node ≥ 20 y pnpm. Paso a paso, desde cero, en [`instrucciones.md`](instrucciones.md).
 
 ```bash
-pnpm setup                               # una vez: carpeta global de pnpm (abre otra terminal después)
+pnpm setup                               # una vez (si da «Text file busy», mira instrucciones.md, paso 2.3)
 pnpm install
 pnpm add -g /mnt/d/GitHub/planner        # deja el comando `planner` disponible (enlazado al repo)
 ```
+
+Enlazado al repo en `/mnt/d`, arrancar tarda ~1 s; instalado desde un paquete (`pnpm pack --pack-destination ~ && pnpm add -g ~/planner-0.1.0.tgz`), ~0,2 s. Detalles en [`instrucciones.md`](instrucciones.md), paso 2.5.
 
 ## Uso
 
 ```bash
 planner                          # arranca en http://localhost:4321 y abre el navegador
-planner --datos /mnt/d/planner   # otra carpeta de datos (también: PLANNER_DATOS=…)
+planner --datos /mnt/d/planner   # otra carpeta de datos; para siempre: PLANNER_DATOS (instrucciones.md, punto 7)
 planner --puerto 5000            # otro puerto (si está ocupado, usa el siguiente libre)
 planner --silencioso             # sin abrir el navegador
 planner status                   # ¿está en marcha? puerto, carpeta y PID

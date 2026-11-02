@@ -4,7 +4,7 @@ import { readFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { parsearArgs, AYUDA, ErrorArgs } from '../src/cli/args.js';
 import {
-  leerPid, escribirPid, borrarPid, vivo, salud, puertoLibre, abrirNavegador, copiarEjemplo, CARPETA_POR_DEFECTO, existe,
+  leerPid, escribirPid, borrarPid, vivo, salud, puertoLibre, abrirNavegador, copiarEjemplo, CARPETA_POR_DEFECTO, existe, esPlanner,
 } from '../src/cli/sistema.js';
 import { arrancar } from '../src/server/index.js';
 import { parsear } from '../src/core/formato/index.js';
@@ -67,7 +67,13 @@ async function start(o) {
 
 async function stop() {
   const p = leerPid();
-  if (!p || !vivo(p.pid)) {
+  // Solo se para lo que responde como este planner: si el PID se reutilizó, matarlo sería matar otro programa.
+  if (!p || !vivo(p.pid) || !(await enMarcha())) {
+    if (p && vivo(p.pid) && esPlanner(p.pid) !== false) {
+      console.log(`El proceso ${p.pid} no responde como planner: no lo paro. Si es un planner colgado, páralo con «kill ${p.pid}».`);
+      process.exitCode = 1;
+      return;
+    }
     borrarPid(p?.pid);
     console.log('planner no está en marcha');
     return;
