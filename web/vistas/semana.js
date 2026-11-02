@@ -61,7 +61,7 @@ function cabecera(v) {
   return html`<div class="wk-cab">
     <div class="wk-titulo"><span class="wk-rango">${f.rangoFechas(v.columnas[0].fecha, v.columnas[6].fecha)}</span><button type="button" class="wk-num" data-accion="semanas" title="Elegir semana">semana ${f.numeroSemana(id)}</button><span class="pill ${clasePill}">${estado}</span></div>
     <div class="wk-acciones"><span class="wk-plan mut"><button type="button" data-accion="ir-hoy">más adelante · ${mas}</button>${sug ? ` · ${sug} sugerencia${sug === 1 ? '' : 's'}` : ''}${solapes ? html` · <span class="peligro-texto">⚠ ${solapes} solape${solapes === 1 ? '' : 's'}</span>` : ''}</span>
-      <button type="button" data-accion="anterior" aria-label="Semana anterior" style="padding:4px 10px">‹</button><button type="button" data-accion="hoy">hoy</button><button type="button" data-accion="siguiente" aria-label="Semana siguiente" style="padding:4px 10px">›</button>${acciones.proponer && !v.pasada ? html`<button type="button" class="dark" data-accion="proponer" ${v.ro ? 'disabled' : ''}>Proponer semana</button>` : ''}</div>
+      <button type="button" data-accion="anterior" aria-label="Semana anterior" style="padding:4px 10px">‹</button><button type="button" data-accion="hoy">hoy</button><button type="button" data-accion="siguiente" aria-label="Semana siguiente" style="padding:4px 10px">›</button>${!v.pasada && m.plantillaDe(st.datos.ficheros['plantilla.md']).length ? html`<button type="button" data-accion="aplicar-plantilla" ${v.ro ? 'disabled' : ''} title="Añade a esta semana lo que le falte de la plantilla${v.esActual ? ' (desde hoy)' : ''}, aunque se solape">↻ Aplicar plantilla</button>` : ''}${acciones.proponer && !v.pasada ? html`<button type="button" class="dark" data-accion="proponer" ${v.ro ? 'disabled' : ''}>Proponer semana</button>` : ''}</div>
   </div>`;
 }
 
@@ -239,6 +239,11 @@ export function iniciarSemana() {
       case 'ir-hoy': acciones.irA?.('hoy'); break;
       case 'semanas': acciones.semanas?.(); break;
       case 'proponer': acciones.proponer?.(v.id); break;
+      case 'aplicar-plantilla':
+        enviar('semana.aplicarPlantilla', { semana: v.id }, { mensaje: (r) => (r.n
+          ? `Plantilla aplicada: ${r.n} bloque${r.n === 1 ? '' : 's'} ↻${r.solapes ? ` · ⚠ ${r.solapes} se solapa${r.solapes === 1 ? '' : 'n'}: muévelo${r.solapes === 1 ? '' : 's'} o bórralo${r.solapes === 1 ? '' : 's'}` : ''}`
+          : 'Esta semana ya tiene todo lo de la plantilla') });
+        break;
       case 'cerrar': acciones.cerrarSemana?.(v.id); break;
       case 'reabrir': {
         const n = f.numeroSemana(v.id), sig = f.numeroSemana(f.sumarSemanas(v.id, 1));

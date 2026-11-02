@@ -20,7 +20,7 @@ La pantalla tiene cinco partes. Esto es lo que puedes rellenar en cada una.
 |---|---|
 | **Ajustes** | Cuánto llenas el día como mucho, cuántas tareas caben en Hoy, qué horas ves en el calendario, a qué hora cierras el día y tus mejores horas para estudiar. |
 | **Tipos** | Los tipos de bloque y su color (trabajo, estudio, entreno, personal…). Puedes crear los tuyos. |
-| **Plantilla de semana** | Lo que se repite cada semana: título, tipo, días, hora y duración. Por ejemplo: trabajo L–V de 8:30 a 18:00. |
+| **Plantilla de semana** | Lo que se repite cada semana: título, tipo, días, hora y duración. Por ejemplo: trabajo L–V de 8:30 a 18:00. Las semanas nuevas salen ya con ello, y lo que añadas o quites también cambia la semana actual (desde hoy) y las siguientes que ya tengas (casilla marcada por defecto). |
 | **Tema** | Los colores de la app. |
 
 ## 2. Cajón → pestaña **Metas** (a la derecha) · lo que quieres conseguir
@@ -36,6 +36,7 @@ La pantalla tiene cinco partes. Esto es lo que puedes rellenar en cada una.
 |---|---|
 | **Las 3** (fila de arriba) | Las 3 cosas que harían que la semana merezca la pena. Escribe y Enter. |
 | **Bloques** (el calendario) | **Doble clic** en un hueco para crear un bloque. Clic en un bloque para editarlo: título, tipo, día, hora, duración y el **primer paso** (qué haces nada más empezar). Arrástralo para moverlo; estira el borde de abajo para cambiar su duración. |
+| **↻ Aplicar plantilla** (botón) | Añade a la semana que estás viendo lo que le falte de tu plantilla. Si algo se solapa te avisa (⚠) y lo mueves tú. |
 | **Proponer semana** (botón) | No rellenas nada: coloca solo tus horas de estudio y proyectos en los huecos libres. Acepta o mueve lo que proponga. |
 | **Al terminar un bloque** | Clic en el bloque → **Hecho ✓** y cuánto duró de verdad. O **A medias** y dónde lo dejaste. |
 

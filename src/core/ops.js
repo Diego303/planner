@@ -4,7 +4,7 @@
 // en el mundo, lanza FaltaFichero: quien llama (servidor o navegador) lo carga y repite (es pura, repetir es seguro).
 // Toda operación se reduce a primitivas exactas sobre líneas; su inversa es la lista de inversas al revés.
 // ctx = { hoy: 'AAAA-MM-DD', ahora?: minutos, factores?, usoTipos? }. Nunca se lee el reloj.
-import { esFecha, esSemana, semanaDe, compararSemanas, DIAS, sumarSemanas, lunesDe, sumarDias } from './fechas.js';
+import { esFecha, esSemana, semanaDe, compararSemanas, DIAS, sumarSemanas, lunesDe, sumarDias, diaSemana } from './fechas.js';
 import { normalizar, limpiarTexto, claveValor } from './formato/comun.js';
 import * as fsem from './formato/semana.js';
 import * as ftar from './formato/tareas.js';
@@ -12,8 +12,9 @@ import { entradaPlantilla, tipo as nuevoTipo, tiposVacio, plantillaVacia } from 
 import { ajustes as fajustes, estudio as festudio, proyectos as fproyectos, diario as fdiario, vacio as listaVacia, AJUSTES_DEFECTO as AJUSTES_DEFECTO_OPS } from './formato/listas.js';
 import {
   indiceSeccion, finContenido, finSeccion, entidades, bloquesDe, tareasDe, valoresAjustes, tiposDe, TIPOS_DEFECTO,
-  seccionesDe, temaDe, mismoTema, temasEstudio, proyectosDe, buscarTema, tipoPorNombre, las3De, huellaDe,
+  seccionesDe, temaDe, mismoTema, temasEstudio, proyectosDe, buscarTema, tipoPorNombre, las3De, huellaDe, plantillaDe,
 } from './modelo.js';
+import { seCruzan } from './carriles.js';
 import { estadoSemana, crearDesdePlantilla, soloLectura, semanaNueva, resumenSemana } from './semanas.js';
 import { proponer } from './proponer.js';
 import { fechaDeDia, diasDeSemana } from './fechas.js';
@@ -637,12 +638,81 @@ registrar('plantilla.crear', (tx, a) => {
   const c = validarCamposBloque({ dia: a.dias[0], inicio: a.inicio, fin: a.fin, tipo: a.tipo, titulo: a.titulo, subtipo: a.subtipo ?? null, paso: a.paso ?? null }, false);
   exigir(c.fin > c.inicio, 'El bloque termina antes de empezar');
   const doc = tx.asegurar('plantilla.md', plantillaVacia);
-  tx.insertar('plantilla.md', finUltimo(doc, 'plantilla'), [entradaPlantilla({ ...c, dias: a.dias })]);
+  const entrada = entradaPlantilla({ ...c, dias: a.dias });
+  tx.insertar('plantilla.md', finUltimo(doc, 'plantilla'), [entrada]);
+  // `aplicar`: también a las semanas ya creadas (la actual desde hoy y las futuras), aunque se solape
+  return a.aplicar ? aplicarEnSemanas(tx, (ruta, desde) => aplicarEntradas(tx, ruta, [entrada], desde)) : null;
 });
 
 registrar('plantilla.eliminar', (tx, a) => {
-  elemento(tx, 'plantilla.md', a.id, 'plantilla', 'Esa entrada de la plantilla', a.huella);
+  const e = elemento(tx, 'plantilla.md', a.id, 'plantilla', 'Esa entrada de la plantilla', a.huella);
   tx.quitar('plantilla.md', a.id);
+  // `aplicar`: también de las semanas ya creadas, pero solo donde el bloque siga tal cual (ni movido, ni cambiado, ni hecho)
+  return a.aplicar ? aplicarEnSemanas(tx, (ruta, desde) => quitarEntrada(tx, ruta, e, desde)) : null;
+});
+
+// ---------- Aplicar la plantilla a semanas que ya existen ----------
+
+/** Primer día que se toca de la semana `id`: en la actual, desde hoy; en las futuras, todos; en las pasadas, ninguno (null). */
+function primerDiaAplicable(tx, id) {
+  const actual = tx.ctx.semanaActual;
+  exigir(actual, 'Falta la fecha de hoy');
+  const c = compararSemanas(id, actual);
+  if (c < 0) return null;
+  return c === 0 ? diaSemana(tx.ctx.hoy) : 0;
+}
+
+const mismoBloque = (b, dia, e) => b.dia === dia && b.inicio === e.inicio && b.fin === e.fin && normalizar(b.titulo) === normalizar(e.titulo);
+
+/** Añade a la semana los bloques de `entradas` que le falten (desde el día `desde`), aunque se solapen. → { n, solapes } */
+function aplicarEntradas(tx, ruta, entradas, desde) {
+  let n = 0, solapes = 0;
+  for (const e of entradas) {
+    for (const dia of e.dias) {
+      if (dia < desde) continue;
+      const bloques = bloquesDe(tx.doc(ruta));
+      if (bloques.some((b) => mismoBloque(b, dia, e))) continue; // ya está: aplicar dos veces no duplica
+      const nuevo = fsem.bloque({ dia, inicio: e.inicio, fin: e.fin, tipo: e.tipo, titulo: e.titulo, subtipo: e.subtipo, paso: e.paso, plantilla: true });
+      if (bloques.some((b) => !b.sugerido && b.dia === dia && seCruzan(b, nuevo))) solapes++;
+      anadirBloque(tx, ruta, nuevo);
+      n++;
+    }
+  }
+  return { n, solapes };
+}
+
+/** Quita de la semana los bloques de la entrada `e` que sigan tal cual (desde el día `desde`). → { n } */
+function quitarEntrada(tx, ruta, e, desde) {
+  const sobran = bloquesDe(tx.doc(ruta)).filter((b) => b.dia >= desde && e.dias.includes(b.dia) && mismoBloque(b, b.dia, e)
+    && b.plantilla && b.hecho == null && !b.sugerido && normalizar(b.tipo) === normalizar(e.tipo));
+  for (const b of sobran.reverse()) tx.quitar(ruta, b.id);
+  return { n: sobran.length, solapes: 0 };
+}
+
+/** Aplica `fn(ruta, desde)` a las semanas ya creadas desde la actual que se pueden editar. → { semanas, n, solapes } */
+function aplicarEnSemanas(tx, fn) {
+  const actual = tx.ctx.semanaActual;
+  const out = { semanas: 0, n: 0, solapes: 0 };
+  if (!actual) return out;
+  const ids = (tx.ctx.semanasExistentes ?? []).filter((id) => esSemana(id) && compararSemanas(id, actual) >= 0).sort();
+  for (const id of ids) {
+    const ruta = rutaSemana(id);
+    const doc = tx.doc(ruta);
+    if (!doc || soloLectura(estadoSemana(id, doc, actual))) continue; // las cerradas no se tocan
+    const r = fn(ruta, primerDiaAplicable(tx, id));
+    if (r.n) { out.semanas++; out.n += r.n; out.solapes += r.solapes; }
+  }
+  return out;
+}
+
+/** Añade a una semana (la actual desde hoy, o una futura) lo que le falte de la plantilla, aunque se solape. */
+registrar('semana.aplicarPlantilla', (tx, a) => {
+  const desde = primerDiaAplicable(tx, a.semana);
+  exigir(desde != null, 'A una semana pasada no se le aplica la plantilla');
+  const ruta = semanaEditable(tx, a.semana);
+  const entradas = plantillaDe(tx.doc('plantilla.md'));
+  exigir(entradas.length, 'La plantilla está vacía: añade algo en Gestión → Plantilla de semana');
+  return aplicarEntradas(tx, ruta, entradas, desde);
 });
 
 // ---------- Ajustes ----------

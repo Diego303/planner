@@ -84,9 +84,12 @@ test('cerrar semana: 4 pasos con todas las decisiones, lecciones en Progreso y L
   await expect(page.locator('#v-progreso')).toContainText('Menos reuniones el jueves');
 });
 
-test('Plantilla: alta, quitar y deshacer; no cambia las semanas que ya existen; un error no borra lo escrito', async ({ page, app }) => {
-  const W45 = app.leer('semanas/2026-W45.md');
+test('Plantilla: alta (también en las semanas ya creadas), quitar y deshacer; sin la casilla, solo la plantilla', async ({ page, app }) => {
   await abrir(page, app);
+  // la semana 46 ya existe (creada antes de cambiar la plantilla)
+  await page.getByRole('button', { name: 'Semana siguiente' }).click();
+  await esperarFichero(app, 'semanas/2026-W46.md', (t) => t != null);
+  await page.getByRole('button', { name: 'Semana anterior' }).click();
   await menu(page, /Plantilla de semana/);
   const m = modal(page);
   await m.getByLabel('Título').fill('Inglés');
@@ -98,20 +101,49 @@ test('Plantilla: alta, quitar y deshacer; no cambia las semanas que ya existen; 
   await m.locator('#pl-tipo').selectOption('estudio');
   await m.locator('#pl-inicio').selectOption({ label: '7:30' });
   await m.locator('#pl-dur').selectOption({ label: '1 h' });
+  await expect(m.locator('#pl-aplicar')).toBeChecked(); // por defecto, también en las semanas ya creadas
   await m.getByRole('button', { name: 'Añadir a la plantilla' }).click();
+  await expect(page.locator('#toast')).toContainText('«Inglés» añadido a la plantilla · y añadido en 4 bloques de 2 semanas');
   await esperarFichero(app, 'plantilla.md', (t) => /^- M,J 07:30-08:30 \| estudio \| Inglés$/m.test(t));
-  await expect(m).toContainText('Inglés');
-  await m.locator('.pend', { hasText: 'Cerrar semana' }).locator('[data-quitar]').click();
-  await expect(page.locator('#toast')).toContainText('«Cerrar semana» quitado de la plantilla');
-  await esperarFichero(app, 'plantilla.md', (t) => !t.includes('Cerrar semana'));
+  for (const id of ['2026-W45', '2026-W46']) {
+    await esperarFichero(app, `semanas/${id}.md`, (t) => /^- M 07:30-08:30 \| estudio \| Inglés \| plantilla$/m.test(t) && /^- J 07:30-08:30 \| estudio \| Inglés \| plantilla$/m.test(t));
+  }
+  const W44 = app.leer('semanas/2026-W44.md');
+  // quitarlo lo quita también de esas semanas (y se puede deshacer)
+  await m.locator('.pend', { hasText: 'Inglés' }).locator('[data-quitar]').click();
+  await expect(page.locator('#toast')).toContainText('«Inglés» quitado de la plantilla · y quitado en 4 bloques de 2 semanas');
+  await esperarFichero(app, 'semanas/2026-W46.md', (t) => !t.includes('Inglés'));
   await page.locator('#toast [data-deshacer]').click();
-  await esperarFichero(app, 'plantilla.md', (t) => t.includes('- D 17:00-17:30 | personal | Cerrar semana'));
+  await esperarFichero(app, 'semanas/2026-W46.md', (t) => t.includes('Inglés'));
+  await esperarFichero(app, 'plantilla.md', (t) => t.includes('Inglés'));
+  expect(app.leer('semanas/2026-W44.md')).toBe(W44); // la pasada, nunca
+  // sin la casilla: solo la plantilla
+  const W45 = app.leer('semanas/2026-W45.md');
+  await m.locator('#pl-aplicar').uncheck();
+  await m.getByLabel('Título').fill('Mercado');
+  await m.locator('[data-dia="5"]').check();
+  await m.getByRole('button', { name: 'Añadir a la plantilla' }).click();
+  await expect(page.locator('#toast span')).toHaveText('«Mercado» añadido a la plantilla');
+  await esperarFichero(app, 'plantilla.md', (t) => t.includes('Mercado'));
   expect(app.leer('semanas/2026-W45.md')).toBe(W45);
-  // una semana nueva sí la recibe
-  await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Semana siguiente' }).click();
-  await page.getByRole('button', { name: 'Proponer semana' }).click();
-  await esperarFichero(app, 'semanas/2026-W46.md', (t) => t != null && /- M 07:30-08:30 \| estudio \| Inglés \| plantilla/.test(t));
+});
+
+test('↻ Aplicar plantilla en la semana: añade lo que falta aunque se solape, avisa, y los solapes se ven', async ({ page, app }) => {
+  // algo en la plantilla que la semana 45 no tiene y choca con el trabajo
+  app.escribir('plantilla.md', `${app.leer('plantilla.md')}- L,M,X,J,V 17:00-18:00 | personal | Llamar a casa\n`);
+  await abrir(page, app);
+  await page.getByRole('button', { name: '↻ Aplicar plantilla' }).click();
+  await expect(page.locator('#toast')).toContainText('Plantilla aplicada: 5 bloques ↻ · ⚠ 5 se solapan');
+  await esperarFichero(app, 'semanas/2026-W45.md', (t) => (t.match(/\| Llamar a casa \| plantilla/g) ?? []).length === 5);
+  await expect(page.locator('.wk-plan')).toContainText('⚠ 5 solapes');
+  await expect(page.locator('#wk .blk.ovl', { hasText: 'Llamar a casa' })).toHaveCount(5);
+  // otra vez: nada que añadir
+  await page.getByRole('button', { name: '↻ Aplicar plantilla' }).click();
+  await expect(page.locator('#toast')).toContainText('Esta semana ya tiene todo lo de la plantilla');
+  // en una semana pasada no se ofrece
+  await page.getByRole('button', { name: 'Semana anterior' }).click();
+  await expect(page.locator('.wk-num')).toHaveText('semana 44');
+  await expect(page.getByRole('button', { name: '↻ Aplicar plantilla' })).toHaveCount(0);
 });
 
 test('Tipos: color, banderas, alta y quitar bloqueado si está en uso', async ({ page, app }) => {

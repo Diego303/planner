@@ -262,7 +262,7 @@ Reglas visuales: sin tartas ni velocímetros; color solo para tipos y un ámbar 
   2. *Pendientes*: cada bloque no hecho, horas de estudio que faltaron, tarea vencida, proyecto parado, INBOX → decisión por fila con botones.
   3. *Proyectos y algún día*: siguiente paso de cada proyecto; repaso de Algún día.
   4. *Nueva semana*: Las 3 de N+1 con «si … → entonces …» opcional; horas de estudio por certificación con aviso de ritmo hasta el examen. Botón **Cerrar y planificar la semana N+1** → escribe `## Cierre`, `estado: cerrada`, descarta sugerencias no aceptadas, crea N+1 desde plantilla si no existe y ejecuta Proponer.
-- **Plantilla de semana**: lista + alta (título, tipo, días, hora, duración) + quitar (con deshacer). Afecta a semanas futuras sin crear todavía, no a las existentes.
+- **Plantilla de semana**: lista + alta (título, tipo, días, hora, duración) + quitar (con deshacer). Las semanas nuevas se crean con ella; al añadir o quitar una entrada, por defecto también cambia la semana actual (desde hoy) y las futuras ya creadas (añade aunque se solape; quita solo los bloques que siguen tal cual). En la semana, «↻ Aplicar plantilla» añade lo que falte. Las semanas pasadas y cerradas no cambian nunca.
 - **Tipos de bloque**: color (paleta), alta, quitar (bloqueado si está en uso).
 - **Ajustes**: todos los de `ajustes.md`, aplicados al momento.
 - Pie: «Guardado en ~/planner · copia diaria».
