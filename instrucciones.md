@@ -172,7 +172,7 @@ D:\planner\
 ├── tareas.md           Hoy · Más adelante · Algún día
 ├── estudio.md          certificaciones y cursos (horas/semana, examen, simulacros)
 ├── proyectos.md        proyectos y su siguiente paso
-├── inbox.md            notas sueltas (las ordena el plugin opcional)
+├── inbox.md            ideas sueltas («💡 es una idea»; salen en Hoy, en «Ideas»)
 ├── tema.md             (opcional) tu tema personalizado
 ├── semanas\2026-W45.md una por semana: Las 3, bloques y cierre
 ├── diario\2026-11-02.md uno por día cerrado: ánimo, una línea, «mañana empiezo por»

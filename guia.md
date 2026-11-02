@@ -48,7 +48,7 @@ En la pestaña **Diario**, pulsa cualquiera de los últimos 7 días para escribi
 
 | Qué | Qué rellenas |
 |---|---|
-| **＋ apunta algo** | Cualquier tarea. Escribe qué es y Enter. Al pulsar la barra salen botones para elegir el **tipo**, **cuándo** (hoy, mañana, otro día, más adelante, algún día) y si es **importante**; abajo te dice a qué lista irá. Escribe **/** para elegir el tipo con el teclado. Al guardar, el aviso trae **✎ editar** para poner la duración y lo demás. Si no es una tarea sino una idea suelta, pulsa **💡 es una idea**: va a «Ideas». |
+| **＋ apunta algo** | Cualquier tarea. Escribe qué es y Enter. Al pulsar la barra salen botones para elegir el **tipo**, **cuándo** (hoy, mañana, otro día, más adelante, algún día) y si es **importante**; abajo te dice a qué lista irá. Escribe **/** para elegir el tipo con el teclado. Al guardar, el aviso trae **✎ editar** para poner la duración y lo demás. Si Hoy está lleno, irá a Más adelante; si no puede esperar, pulsa **hoy** y se pone igualmente. Si no es una tarea sino una idea suelta, pulsa **💡 es una idea**: va a «Ideas». |
 | **Tareas de hoy** | Márcalas al hacerlas. ✎ para editarlas, ↓ para dejarlas para más adelante. |
 | **Más adelante** | ↑ para subirlas a hoy cuando toque (aunque Hoy esté lleno: te avisa). |
 | **Ideas** | Lo que apuntaste como idea. **→ tarea** la pasa a Más adelante; **×** la borra. |

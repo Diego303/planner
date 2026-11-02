@@ -203,7 +203,7 @@ Se aceptan las claves sin tilde (`animo`, `linea`, `manana`); se escriben con ti
 
 ### 3.9 `inbox.md` y `tema.md`
 
-- `inbox.md`: texto libre, nunca se marca nada. «n notas» = líneas no vacías que no son títulos.
+- `inbox.md`: texto libre, nunca se marca nada. «n notas» = líneas no vacías que no son títulos. Desde la web: «💡 es una idea» añade `- texto`; «→ tarea» la quita de aquí y la pone en Más adelante.
 - `tema.md`: `- base: nordico-oscuro` y `- <token>: valor` (`fondo`, `superficie`, `superficie-2`, `texto`, `texto-2`, `texto-3`, `borde`, `acento`, `acento-texto`, `aviso`, `aviso-fondo`, `ok`, `ok-fondo`, `peligro`, `sombra`, `radio`, `fuente`, `fondo-deco`). Valores sin `; { } < >`.
 
 ---
@@ -301,7 +301,7 @@ El usuario pidió avanzar sin paradas; estas son las preguntas que habría hecho
 | # | Caso | Cobertura |
 |---|---|---|
 | 1 | Bloques solapados: carriles + ⚠; Proponer nunca solapa | `semana-core.test.js` (carriles), `proponer.test.js` (invariantes de cada escenario) |
-| 2 | Más de `tareas_hoy`: lo nuevo a Más adelante con aviso; «↑ hoy» deshabilitado | `ops.test.js` (Hoy lleno), `captura.test.js` (destino); UI: aviso y botón deshabilitado |
+| 2 | Más de `tareas_hoy`: lo nuevo a Más adelante con aviso; «↑ hoy» y «hoy» en la captura lo ponen igualmente (`exceder`) | `ops.test.js` (Hoy lleno), `flexible.test.js` (`exceder`), `captura.test.js` (destino); e2e `hoy.spec`, `flexible.spec` |
 | 3 | Tareas vencidas arriba en rojo | Vista Hoy (grupo «Vencidas» primero), revisado en captura de pantalla |
 | 4 | Edición a mano con la web abierta; op en vuelo → 409 | `server.test.js` (409); sondeo cada 2 s por mtime/tamaño |
 | 5 | Líneas mal escritas se conservan y se marcan | `formato.test.js` (todos los formatos); UI «⚠ línea no reconocida» |
@@ -309,7 +309,7 @@ El usuario pidió avanzar sin paradas; estas son las preguntas que habría hecho
 | 7 | Semanas futuras se crean desde plantilla al abrirlas | `ops.test.js`; UI Gestión → Semanas → planificar |
 | 8 | Semanas pasadas sin fichero: vacías y solo lectura | `semana-core.test.js` (estado «sin datos»), `ops.test.js` (rechazo) |
 | 9 | Cambiar la plantilla no toca semanas existentes | `ops.test.js` (solo toca plantilla.md) |
-| 10 | Borrar un tipo en uso: bloqueado con explicación | `ops.test.js`, `server.test.js` (422 «en uso») |
+| 10 | Borrar un tipo en uso: sin `pasarA`, bloqueado con explicación; la UI pregunta a qué tipo pasar sus usos | `ops.test.js`, `server.test.js` (422 «en uso»), `flexible.test.js` (`pasarA`), e2e `flexible.spec` |
 | 11 | Bloque que cruza la hora visible máxima: se recorta al pintar | `capacidad.js` (`minutosVisibles`), `semana.js` (recorte al pintar, el fichero no cambia) |
 | 12 | Semana ISO 53 y cambio de año | `fechas.test.js`, `proponer.test.js` (escenario 12), `semana-core.test.js` |
 | 13 | Puerto ocupado → siguiente libre; segunda instancia → abre la primera | `cli.test.js` |

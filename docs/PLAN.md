@@ -126,7 +126,7 @@ planner/
 - entreno | #A04E33
 - personal | #86651F
 ```
-Paleta de 10 colores de la maqueta (`PAL`). No se puede borrar un tipo en uso.
+Paleta de 10 colores de la maqueta (`PAL`). Un tipo en uso no se borra sin más: al quitarlo se elige a qué tipo pasan sus bloques, plantilla y tareas. Se puede renombrar (cambia en todas partes).
 
 ### `plantilla.md`
 ```markdown
@@ -223,17 +223,17 @@ Logo · selector **Semana / Hoy / Progreso** · **«apunta algo…»** centrado 
 ### Semana
 - Cabecera: rango («2 – 8 nov»), «semana 45», estado en pastilla, ‹ hoy ›, **Proponer semana**. A la derecha, «más adelante · n», «n sugerencias», «⚠ n solapes».
 - Banda de estado (cerrada / sin cerrar / reabierta / futura) con su acción (Reabrir / Cerrar ahora).
-- **Las 3** como pastillas marcables y editables en línea.
+- **Las 3** como pastillas marcables y editables en línea; «si→» abre su plan B (si … → entonces …). «Quitar sugerencias» borra lo propuesto no aceptado.
 - Rejilla 7 días × horas visibles (`PX` = 23 px/h). Bajo cada día, línea de **ocupación** (verde ≤ capacidad, ámbar ≤ capacidad + 15, rojo más) y aviso «x h estudio» si supera `foco_max`.
 - Bloques: color del tipo al 11 % de fondo con texto del color. Marcas: `↻` plantilla, `★` avanza las 3, `◎` simulacro, `⟲` repaso, `☾` trabajo después de `cierre` (rayado gris), `⚠` solape (anillo rojo), discontinuo = sugerido, tachado = hecho.
 - Interacción: doble clic en hueco → bloque de 1 h y editor; arrastrar → mover (ajuste a 30 min y a día); borde inferior → duración; clic → editor. Semanas cerradas: solo lectura.
-- **Editor de bloque (popover):** título, tipo, subtipo de estudio (aprender / ⟲ repasar / ◎ simulacro), día/hora/duración, **primer paso** (opcional), ↻ en plantilla. Aviso arriba si hay `dejado` para ese tema. Botones: Guardar, **Hecho ✓**, **A medias**, Eliminar (con deshacer).
+- **Editor de bloque (popover):** título, tipo (o «＋ nuevo»), subtipo de estudio (aprender / ⟲ repasar / ◎ simulacro), día u «otra fecha…» (otra semana), de qué hora a qué hora (aviso si cae fuera de las horas visibles, con «Ver de X a Y»), **primer paso** (opcional), ↻ en plantilla, «Duplicar en otros días…» y, si ya está hecho, «Cuánto duró de verdad» para corregirlo. Aviso arriba si hay `dejado` para ese tema. Botones: Guardar, **Hecho ✓**, **A medias**, Eliminar (con deshacer).
   - **Hecho ✓** → paso 2: «¿Cuánto duró de verdad?» (menos / lo previsto / +30 min / +1 h o más); si es simulacro, campo nota %. Un clic guarda y borra el `dejado` del tema.
   - **A medias** → «¿Dónde lo dejaste?» → guarda `dejado` en estudio.md/proyectos.md.
 
 ### Hoy
-- Columna 1: horario del día (desde los bloques del día) con «ahora», y Las 3 con su «si → entonces».
-- Columna 2: **Tareas de hoy** (máx. `tareas_hoy`, contador n/5, «↓ luego»), **Más adelante** con recordatorio de Las 3 arriba y grupos, «↑ hoy» deshabilitado si Hoy está lleno, y **Cierre del día**:
+- Columna 1: horario del día (desde los bloques del día) con «ahora», Las 3 con su «si → entonces» e **Ideas** (las notas de `inbox.md`, con «→ tarea» y «×»).
+- Columna 2: **Tareas de hoy** (máx. `tareas_hoy`, contador n/5, «↓ luego»), **Más adelante** con recordatorio de Las 3 arriba y grupos, «↑ hoy» que con Hoy lleno sube igualmente avisando (*cambiado tras el uso*: antes se deshabilitaba), y **Cierre del día**:
   1. *Hoy avanzaste en* (bloques y tareas hechos, automático).
   2. *Lo que no hiciste* → mañana / más adelante.
   3. *¿Cómo ha ido?* 1–5 + una línea.
@@ -244,8 +244,8 @@ Logo · selector **Semana / Hoy / Progreso** · **«apunta algo…»** centrado 
 ### Cajón derecho (vistas Semana y Hoy)
 Pestañas **Hoy · Metas · Diario**.
 - *Hoy*: ahora / después, tareas, «Abrir Hoy →».
-- *Metas*: frase de **constancia** (días con estudio esta semana · semanas con estudio de las anteriores; nunca rachas). Estudio por certificación: barra planificado/hecho, **«llevas X h» mientras < 50 % del objetivo semanal y «te faltan Y h» desde el 50 %**, fecha, «faltan n h por planificar», últimos 3 simulacros y aviso «◎ sin simulacro hace n semanas» (≥ 2). Proyectos con siguiente paso editable en línea y «parado».
-- *Diario*: ánimo de 7 días + últimas líneas.
+- *Metas*: frase de **constancia** (días con estudio esta semana · semanas con estudio de las anteriores; nunca rachas). Estudio por certificación: barra planificado/hecho, **«llevas X h» mientras < 50 % del objetivo semanal y «te faltan Y h» desde el 50 %**, fecha, «faltan n h por planificar», últimos 3 simulacros y aviso «◎ sin simulacro hace n semanas» (≥ 2). Proyectos con siguiente paso editable en línea y «parado». ✎ en cada estudio (nombre, horas, examen, total, añadir simulacro) y proyecto (nombre, siguiente paso, pausar y reactivar), con un solo «deshacer».
+- *Diario*: ánimo de 7 días + últimas líneas; pulsar un día abre su ánimo, línea y «mañana» para escribirlos o corregirlos.
 
 ### Progreso (sin cajón, ancho completo)
 1. **Certificaciones y curso**: por cada una, *bullet graph* (relleno = horas acumuladas, zona clara + marca = donde deberías ir hoy), texto llevas/te faltan y «+n h sobre lo previsto / n h por detrás»; barras de horas de 8 semanas; sparkline de simulacros con línea del 70 % (o aviso si no hay).
@@ -256,15 +256,16 @@ Pestañas **Hoy · Metas · Diario**.
 Reglas visuales: sin tartas ni velocímetros; color solo para tipos y un ámbar de aviso.
 
 ### Gestión ▾
-- **Semanas**: lista de −4…+5 semanas con estado (✓ cerrada, ! sin cerrar, ● en curso, ◐ planificada, ↻ solo plantilla, ○ sin planificar) y acciones ver / reabrir / cerrar / planificar.
+- **Semanas**: lista de −4…+5 semanas con estado (✓ cerrada, ! sin cerrar, ● en curso, ◐ planificada, ↻ solo plantilla, ○ sin planificar) y acciones ver / reabrir / cerrar / planificar; «Ir a la semana del…» cualquier fecha.
 - **Cerrar semana N** (asistente de 4 pasos, nada se arrastra en silencio):
   1. *Resumen*: horas por tipo vs plan, tareas, ánimo, Las 3; tarjeta de **lo que tardas de verdad**; **dos lecciones** (qué funcionó · qué cambio).
   2. *Pendientes*: cada bloque no hecho, horas de estudio que faltaron, tarea vencida, proyecto parado, INBOX → decisión por fila con botones.
   3. *Proyectos y algún día*: siguiente paso de cada proyecto; repaso de Algún día.
   4. *Nueva semana*: Las 3 de N+1 con «si … → entonces …» opcional; horas de estudio por certificación con aviso de ritmo hasta el examen. Botón **Cerrar y planificar la semana N+1** → escribe `## Cierre`, `estado: cerrada`, descarta sugerencias no aceptadas, crea N+1 desde plantilla si no existe y ejecuta Proponer.
-- **Plantilla de semana**: lista + alta (título, tipo, días, hora, duración) + quitar (con deshacer). Las semanas nuevas se crean con ella; al añadir o quitar una entrada, por defecto también cambia la semana actual (desde hoy) y las futuras ya creadas (añade aunque se solape; quita solo los bloques que siguen tal cual). En la semana, «↻ Aplicar plantilla» añade lo que falte. Cada entrada se puede editar (días, horas, título, tipo); el cambio llega a esas semanas donde el bloque sigue tal cual (mismo día, horas, título, tipo, subtipo y primer paso) y lo cambiado a mano se respeta. Horas libres («de … a …») en la plantilla y en el editor de bloque, sin duraciones fijas. Las semanas pasadas y cerradas no cambian nunca.
-- **Tipos de bloque**: color (paleta), alta, quitar (bloqueado si está en uso).
-- **Ajustes**: todos los de `ajustes.md`, aplicados al momento.
+- **Plantilla de semana**: lista + alta (título, tipo, días, hora, duración, subtipo si es de estudio, primer paso) + quitar (con deshacer). Las semanas nuevas se crean con ella; al añadir o quitar una entrada, por defecto también cambia la semana actual (desde hoy) y las futuras ya creadas (añade aunque se solape; quita solo los bloques que siguen tal cual). En la semana, «↻ Aplicar plantilla» añade lo que falte. Cada entrada se puede editar (días, horas, título, tipo); el cambio llega a esas semanas donde el bloque sigue tal cual (mismo día, horas, título, tipo, subtipo y primer paso) y lo cambiado a mano se respeta. Horas libres («de … a …») en la plantilla y en el editor de bloque, sin duraciones fijas. Las semanas pasadas y cerradas no cambian nunca.
+- **Tipos de bloque**: color (paleta), alta, renombrar (pulsando el nombre; cambia en semanas, plantilla y tareas), banderas «cuenta como ☾ trabajo / 📚 estudio» y quitar (si está en uso, se elige a qué tipo pasan sus usos).
+- **Ajustes**: todos los de `ajustes.md`, aplicados al momento (horas visibles de 0 a 24; cierre a cualquier hora, escrita como «22:30»).
+- **Atajos de teclado**: la lista (también con `?`).
 - Pie: «Guardado en ~/planner · copia diaria».
 
 ### Temas visuales
@@ -371,7 +372,7 @@ Entrada: semana, estudio, proyectos, Las 3, ajustes, factores. Salida: lista de 
 ## 7. Casos límite (deben tener test o comprobación manual)
 
 1. Bloques solapados: se permiten; carriles + ⚠; Proponer nunca solapa.
-2. Más de `tareas_hoy` tareas: lo nuevo va a Más adelante con aviso; «↑ hoy» deshabilitado.
+2. Más de `tareas_hoy` tareas: lo nuevo va a Más adelante con aviso; «↑ hoy» o «hoy» en la captura lo ponen igualmente, avisando.
 3. Tareas vencidas → grupo Vencidas arriba en rojo.
 4. Edición a mano mientras la web está abierta: sondeo recarga; si había una op en vuelo → `409` → recarga + toast.
 5. Líneas mal escritas: se conservan y se marcan; ningún fichero se reescribe perdiendo texto.
